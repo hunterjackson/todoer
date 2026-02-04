@@ -1,5 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { DndContext, DragEndEvent, DragOverlay, pointerWithin } from '@dnd-kit/core'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  PointerSensor
+} from '@dnd-kit/core'
 import { Sidebar } from './components/sidebar/Sidebar'
 import { TodayView } from './components/views/TodayView'
 import { InboxView } from './components/views/InboxView'
@@ -24,6 +32,16 @@ export default function App(): React.ReactElement {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Configure drag sensors with activation constraint
+  // This requires 8px of movement before drag activates, allowing clicks to work normally
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  )
 
   // Handle drag end - move task to new project
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
@@ -251,6 +269,7 @@ export default function App(): React.ReactElement {
 
   return (
     <DndContext
+      sensors={sensors}
       collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
