@@ -3,6 +3,7 @@ import { Calendar } from 'lucide-react'
 import { TaskList } from '../task/TaskList'
 import { TaskEditDialog } from '../task/TaskEditDialog'
 import { useTasks } from '@hooks/useTasks'
+import { startOfDay } from '@shared/utils'
 import type { Task } from '@shared/types'
 
 export function UpcomingView(): React.ReactElement {
@@ -96,12 +97,6 @@ function groupTasksByDate(tasks: Task[]): Record<string, Task[]> {
   return Object.fromEntries(
     Object.entries(grouped).sort(([a], [b]) => parseInt(a) - parseInt(b))
   )
-}
-
-function startOfDay(date: Date): number {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
 }
 
 function formatDateHeader(timestamp: string): string {

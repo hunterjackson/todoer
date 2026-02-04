@@ -3,6 +3,7 @@ import { CalendarDays } from 'lucide-react'
 import { TaskList } from '../task/TaskList'
 import { TaskEditDialog } from '../task/TaskEditDialog'
 import { useTasks } from '@hooks/useTasks'
+import { startOfDay } from '@shared/utils'
 import type { Task } from '@shared/types'
 
 export function TodayView(): React.ReactElement {
@@ -101,10 +102,4 @@ export function TodayView(): React.ReactElement {
       />
     </div>
   )
-}
-
-function startOfDay(date: Date): number {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
 }

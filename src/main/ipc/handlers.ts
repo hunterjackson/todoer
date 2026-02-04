@@ -1,6 +1,4 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
-import { Database as SqlJsDatabase } from 'sql.js'
-import { writeFileSync, readFileSync } from 'fs'
 import { getDatabase } from '../db'
 import { TaskRepository } from '../db/repositories/taskRepository'
 import { ProjectRepository } from '../db/repositories/projectRepository'
@@ -16,11 +14,11 @@ import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../ser
 import {
   taskUndoStack,
   getUndoAction,
-  getRedoAction,
-  type TaskOperation
+  getRedoAction
 } from '../services/undoRedo'
-import type { TaskCreate, TaskUpdate, Task, CommentCreate, CommentUpdate } from '@shared/types'
+import type { TaskCreate, TaskUpdate, CommentCreate, CommentUpdate } from '@shared/types'
 
+// Lazy-initialized repository singletons
 let taskRepo: TaskRepository | null = null
 let projectRepo: ProjectRepository | null = null
 let labelRepo: LabelRepository | null = null
@@ -33,7 +31,6 @@ function getRepositories() {
   const db = getDatabase()
   if (!taskRepo) taskRepo = new TaskRepository(db)
   if (!projectRepo) projectRepo = new ProjectRepository(db)
-  if (!commentRepo) commentRepo = new CommentRepository(db)
   if (!labelRepo) labelRepo = new LabelRepository(db)
   if (!sectionRepo) sectionRepo = new SectionRepository(db)
   if (!filterRepo) filterRepo = new FilterRepository(db)
