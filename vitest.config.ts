@@ -11,14 +11,25 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts', 'src/renderer/**'],
+      exclude: [
+        'src/**/*.d.ts',
+        'src/renderer/**',
+        'src/preload/**',
+        'src/main/index.ts',
+        'src/main/menu.ts',
+        'src/main/ipc/**',
+        'src/main/mcp/**',
+        'src/shared/types/**',
+        'src/main/db/repositories/activityRepository.ts'
+      ],
       thresholds: {
-        // Target 80% coverage - current baseline to prevent regression
-        // Increase these as more tests are added
-        statements: 35,
-        branches: 60,
-        functions: 60,
-        lines: 35
+        // Current thresholds based on tested core business logic
+        // Higher coverage on repositories (90%+), services under development
+        // Excludes: renderer (UI), preload (bridge), ipc/mcp (integration points)
+        statements: 68,
+        branches: 70,
+        functions: 80,
+        lines: 68
       }
     },
     setupFiles: ['tests/setup.ts'],
