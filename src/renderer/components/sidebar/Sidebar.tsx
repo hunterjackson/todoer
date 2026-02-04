@@ -7,7 +7,8 @@ import {
   Search,
   Plus,
   Hash,
-  Filter
+  Filter,
+  Settings
 } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import { useProjects } from '@hooks/useProjects'
@@ -25,9 +26,10 @@ interface SidebarProps {
   currentView: ViewType
   onViewChange: (view: ViewType, id?: string) => void
   onQuickAdd: () => void
+  onOpenSettings?: () => void
 }
 
-export function Sidebar({ currentView, onViewChange, onQuickAdd }: SidebarProps): React.ReactElement {
+export function Sidebar({ currentView, onViewChange, onQuickAdd, onOpenSettings }: SidebarProps): React.ReactElement {
   const { projects, createProject } = useProjects()
   const { labels, createLabel } = useLabels()
   const { filters, createFilter } = useFilters()
@@ -212,6 +214,16 @@ export function Sidebar({ currentView, onViewChange, onQuickAdd }: SidebarProps)
           <span className="text-xs text-muted-foreground">Theme</span>
           <ThemeToggle />
         </div>
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent"
+          >
+            <Settings className="w-4 h-4" />
+            <span>Settings</span>
+            <span className="ml-auto text-xs text-muted-foreground">Cmd+,</span>
+          </button>
+        )}
       </div>
 
       {/* Project Dialog */}

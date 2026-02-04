@@ -12,6 +12,7 @@ import { FilterView } from './components/views/FilterView'
 import { QuickAddModal } from './components/task/QuickAddModal'
 import { KeyboardShortcutsHelp } from './components/ui/KeyboardShortcutsHelp'
 import { ExportImportToast } from './components/ui/ExportImportToast'
+import { SettingsPanel } from './components/settings/SettingsPanel'
 import { useStore } from './stores/useStore'
 import type { Task, ViewType } from '@shared/types'
 
@@ -21,6 +22,7 @@ export default function App(): React.ReactElement {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   // Handle drag end - move task to new project
@@ -184,6 +186,12 @@ export default function App(): React.ReactElement {
         setShowShortcutsHelp(true)
       }
 
+      // Open settings: comma
+      if (e.key === ',' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setShowSettings(true)
+      }
+
       // Go to Calendar: g c
       if (e.key === 'c' && window.__lastKey === 'g' && !isInput) {
         e.preventDefault()
@@ -253,6 +261,7 @@ export default function App(): React.ReactElement {
             currentView={currentView}
             onViewChange={setView}
             onQuickAdd={() => setQuickAddOpen(true)}
+            onOpenSettings={() => setShowSettings(true)}
           />
         )}
         <main className="flex-1 overflow-auto" key={refreshKey}>
@@ -265,6 +274,10 @@ export default function App(): React.ReactElement {
         <KeyboardShortcutsHelp
           open={showShortcutsHelp}
           onClose={() => setShowShortcutsHelp(false)}
+        />
+        <SettingsPanel
+          open={showSettings}
+          onClose={() => setShowSettings(false)}
         />
         {toast && (
           <ExportImportToast
