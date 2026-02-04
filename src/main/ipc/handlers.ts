@@ -1,4 +1,5 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { readFileSync, writeFileSync } from 'fs'
 import { getDatabase } from '../db'
 import { TaskRepository } from '../db/repositories/taskRepository'
 import { ProjectRepository } from '../db/repositories/projectRepository'
@@ -7,16 +8,18 @@ import { SectionRepository } from '../db/repositories/sectionRepository'
 import { FilterRepository } from '../db/repositories/filterRepository'
 import { CommentRepository } from '../db/repositories/commentRepository'
 import { ReminderRepository } from '../db/repositories/reminderRepository'
+import { KarmaRepository } from '../db/repositories/karmaRepository'
 import { notificationService } from '../services/notificationService'
 import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
+import { KarmaEngine } from '../services/karmaEngine'
 import {
   taskUndoStack,
   getUndoAction,
   getRedoAction
 } from '../services/undoRedo'
-import type { TaskCreate, TaskUpdate, CommentCreate, CommentUpdate } from '@shared/types'
+import type { Task, TaskCreate, TaskUpdate, CommentCreate, CommentUpdate } from '@shared/types'
 
 // Lazy-initialized repository singletons
 let taskRepo: TaskRepository | null = null
@@ -26,6 +29,8 @@ let sectionRepo: SectionRepository | null = null
 let filterRepo: FilterRepository | null = null
 let commentRepo: CommentRepository | null = null
 let reminderRepo: ReminderRepository | null = null
+let karmaRepo: KarmaRepository | null = null
+let karmaEngine: KarmaEngine | null = null
 
 function getRepositories() {
   const db = getDatabase()
@@ -36,7 +41,9 @@ function getRepositories() {
   if (!filterRepo) filterRepo = new FilterRepository(db)
   if (!commentRepo) commentRepo = new CommentRepository(db)
   if (!reminderRepo) reminderRepo = new ReminderRepository(db)
-  return { taskRepo, projectRepo, labelRepo, sectionRepo, filterRepo, commentRepo, reminderRepo }
+  if (!karmaRepo) karmaRepo = new KarmaRepository(db)
+  if (!karmaEngine) karmaEngine = new KarmaEngine(karmaRepo)
+  return { taskRepo, projectRepo, labelRepo, sectionRepo, filterRepo, commentRepo, reminderRepo, karmaRepo, karmaEngine }
 }
 
 export function registerIpcHandlers(): void {
@@ -131,8 +138,13 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('tasks:complete', async (_event, id: string, recordUndo: boolean = true) => {
-    const { taskRepo } = getRepositories()
+    const { taskRepo, karmaEngine } = getRepositories()
     const task = taskRepo.complete(id)
+
+    // Track karma points for task completion
+    if (task) {
+      karmaEngine.recordTaskCompletion(task)
+    }
 
     if (recordUndo) {
       taskUndoStack.push({
@@ -147,8 +159,17 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('tasks:uncomplete', async (_event, id: string, recordUndo: boolean = true) => {
-    const { taskRepo } = getRepositories()
+    const { taskRepo, karmaEngine } = getRepositories()
+
+    // Get task before uncompleting for karma tracking
+    const taskBefore = taskRepo.get(id)
+
     const task = taskRepo.uncomplete(id)
+
+    // Track karma points for task uncompletion
+    if (taskBefore) {
+      karmaEngine.recordTaskUncompletion(taskBefore)
+    }
 
     if (recordUndo) {
       taskUndoStack.push({
@@ -244,6 +265,76 @@ export function registerIpcHandlers(): void {
     return projectRepo.reorder(projectId, newOrder)
   })
 
+  ipcMain.handle('projects:duplicate', async (_event, id: string) => {
+    const { projectRepo, sectionRepo, taskRepo } = getRepositories()
+
+    // Get original project
+    const original = projectRepo.get(id)
+    if (!original) return null
+
+    // Create duplicated project
+    const newProject = projectRepo.create({
+      name: `${original.name} (copy)`,
+      color: original.color,
+      parentId: original.parentId,
+      viewMode: original.viewMode,
+      isFavorite: false
+    })
+
+    // Duplicate sections
+    const sections = sectionRepo.list(id)
+    const sectionIdMap = new Map<string, string>()
+    for (const section of sections) {
+      const newSection = sectionRepo.create({
+        name: section.name,
+        projectId: newProject.id
+      })
+      sectionIdMap.set(section.id, newSection.id)
+    }
+
+    // Duplicate tasks (without subtasks first)
+    const tasks = taskRepo.list({ projectId: id, completed: false })
+    const topLevelTasks = tasks.filter((t) => !t.parentId)
+    const taskIdMap = new Map<string, string>()
+
+    for (const task of topLevelTasks) {
+      const newTask = taskRepo.create({
+        content: task.content,
+        description: task.description,
+        projectId: newProject.id,
+        sectionId: task.sectionId ? sectionIdMap.get(task.sectionId) : null,
+        dueDate: task.dueDate,
+        deadline: task.deadline,
+        duration: task.duration,
+        recurrenceRule: task.recurrenceRule,
+        priority: task.priority
+      })
+      taskIdMap.set(task.id, newTask.id)
+    }
+
+    // Duplicate subtasks
+    const subtasks = tasks.filter((t) => t.parentId)
+    for (const subtask of subtasks) {
+      const newParentId = taskIdMap.get(subtask.parentId!)
+      if (newParentId) {
+        taskRepo.create({
+          content: subtask.content,
+          description: subtask.description,
+          projectId: newProject.id,
+          sectionId: subtask.sectionId ? sectionIdMap.get(subtask.sectionId) : null,
+          parentId: newParentId,
+          dueDate: subtask.dueDate,
+          deadline: subtask.deadline,
+          duration: subtask.duration,
+          recurrenceRule: subtask.recurrenceRule,
+          priority: subtask.priority
+        })
+      }
+    }
+
+    return newProject
+  })
+
   // Label handlers
   ipcMain.handle('labels:list', async () => {
     const { labelRepo } = getRepositories()
@@ -276,6 +367,11 @@ export function registerIpcHandlers(): void {
     return sectionRepo.list(projectId)
   })
 
+  ipcMain.handle('sections:listAll', async () => {
+    const { sectionRepo } = getRepositories()
+    return sectionRepo.listAll()
+  })
+
   ipcMain.handle('sections:create', async (_event, data) => {
     const { sectionRepo } = getRepositories()
     return sectionRepo.create(data)
@@ -296,10 +392,20 @@ export function registerIpcHandlers(): void {
     return sectionRepo.reorder(sectionId, newOrder)
   })
 
-  // Comment handlers
+  // Comment handlers (task comments)
   ipcMain.handle('comments:list', async (_event, taskId: string) => {
     const { commentRepo } = getRepositories()
     return commentRepo.list(taskId)
+  })
+
+  ipcMain.handle('comments:listByProject', async (_event, projectId: string) => {
+    const { commentRepo } = getRepositories()
+    return commentRepo.listByProject(projectId)
+  })
+
+  ipcMain.handle('comments:countByProject', async (_event, projectId: string) => {
+    const { commentRepo } = getRepositories()
+    return commentRepo.countByProject(projectId)
   })
 
   ipcMain.handle('comments:get', async (_event, id: string) => {
@@ -349,15 +455,17 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('filters:evaluate', async (_event, query: string) => {
-    const { taskRepo, projectRepo, labelRepo } = getRepositories()
+    const { taskRepo, projectRepo, labelRepo, sectionRepo } = getRepositories()
 
     // Get all tasks and context data
     const tasks = taskRepo.list({ completed: false })
     const projects = projectRepo.list()
     const labels = labelRepo.list()
+    // Get all sections from all projects
+    const allSections = projects.flatMap((p) => sectionRepo.list(p.id))
 
     // Create context and evaluate filter
-    const context = createFilterContext(projects, labels)
+    const context = createFilterContext(projects, labels, allSections)
     return evaluateFilter(tasks, query, context)
   })
 
@@ -763,5 +871,36 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('undo:clear', async () => {
     taskUndoStack.clear()
     return { success: true }
+  })
+
+  // Karma handlers
+  ipcMain.handle('karma:getStats', async () => {
+    const { karmaEngine } = getRepositories()
+    return karmaEngine.getStats()
+  })
+
+  ipcMain.handle('karma:updateGoals', async (_event, data: { dailyGoal?: number; weeklyGoal?: number }) => {
+    const { karmaEngine } = getRepositories()
+    return karmaEngine.updateGoals(data.dailyGoal, data.weeklyGoal)
+  })
+
+  ipcMain.handle('karma:getTodayStats', async () => {
+    const { karmaEngine } = getRepositories()
+    return karmaEngine.getTodayStats()
+  })
+
+  ipcMain.handle('karma:getWeekStats', async () => {
+    const { karmaEngine } = getRepositories()
+    return karmaEngine.getWeekStats()
+  })
+
+  ipcMain.handle('karma:getHistory', async (_event, startDate: string, endDate: string) => {
+    const { karmaEngine } = getRepositories()
+    return karmaEngine.getHistory(startDate, endDate)
+  })
+
+  ipcMain.handle('karma:getProductivitySummary', async () => {
+    const { karmaEngine } = getRepositories()
+    return karmaEngine.getProductivitySummary()
   })
 }

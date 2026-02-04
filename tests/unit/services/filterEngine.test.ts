@@ -12,7 +12,10 @@ describe('Enhanced Filter Engine', () => {
     content: string
     description: string | null
     projectId: string | null
+    sectionId?: string | null
     dueDate: number | null
+    deadline?: number | null
+    duration?: number | null
     priority: number
     completed: boolean
     deletedAt: number | null
@@ -24,6 +27,7 @@ describe('Enhanced Filter Engine', () => {
   interface TestFilterContext {
     projects: Map<string, string>
     labels: Map<string, string>
+    sections?: Map<string, string>
   }
 
   beforeEach(() => {
@@ -36,12 +40,19 @@ describe('Enhanced Filter Engine', () => {
       projects: new Map([
         ['work', 'proj-1'],
         ['personal', 'proj-2'],
-        ['shopping', 'proj-3']
+        ['shopping', 'proj-3'],
+        ['work-admin', 'proj-4']
       ]),
       labels: new Map([
         ['urgent', 'label-1'],
         ['home', 'label-2'],
-        ['waiting', 'label-3']
+        ['waiting', 'label-3'],
+        ['urgent-blocker', 'label-4']
+      ]),
+      sections: new Map([
+        ['to do', 'sec-1'],
+        ['in progress', 'sec-2'],
+        ['done', 'sec-3']
       ])
     }
 
@@ -51,7 +62,10 @@ describe('Enhanced Filter Engine', () => {
         content: 'Work meeting',
         description: 'Discuss project timeline',
         projectId: 'proj-1',
+        sectionId: 'sec-1',
         dueDate: now,
+        deadline: tomorrow,
+        duration: 60,
         priority: 1,
         completed: false,
         deletedAt: null,
@@ -64,7 +78,10 @@ describe('Enhanced Filter Engine', () => {
         content: 'Buy groceries',
         description: null,
         projectId: 'proj-2',
+        sectionId: null,
         dueDate: tomorrow,
+        deadline: null,
+        duration: null,
         priority: 3,
         completed: false,
         deletedAt: null,
@@ -77,7 +94,10 @@ describe('Enhanced Filter Engine', () => {
         content: 'Review documents',
         description: 'Important review needed',
         projectId: 'proj-1',
+        sectionId: 'sec-2',
         dueDate: null,
+        deadline: yesterday,
+        duration: 30,
         priority: 2,
         completed: false,
         deletedAt: null,
@@ -90,7 +110,10 @@ describe('Enhanced Filter Engine', () => {
         content: 'Call mom',
         description: null,
         projectId: null,
+        sectionId: null,
         dueDate: yesterday,
+        deadline: now,
+        duration: null,
         priority: 4,
         completed: false,
         deletedAt: null,
@@ -103,13 +126,32 @@ describe('Enhanced Filter Engine', () => {
         content: 'Completed task',
         description: null,
         projectId: 'proj-1',
+        sectionId: null,
         dueDate: now,
+        deadline: null,
+        duration: null,
         priority: 1,
         completed: true,
         deletedAt: null,
         recurrenceRule: null,
         createdAt: lastWeek,
         labels: []
+      },
+      {
+        id: '6',
+        content: 'Admin task',
+        description: null,
+        projectId: 'proj-4',
+        sectionId: null,
+        dueDate: now,
+        deadline: null,
+        duration: 45,
+        priority: 2,
+        completed: false,
+        deletedAt: null,
+        recurrenceRule: null,
+        createdAt: now,
+        labels: [{ id: 'label-4', name: 'urgent-blocker' }]
       }
     ]
   })
@@ -228,6 +270,65 @@ describe('Enhanced Filter Engine', () => {
       const result = evaluateFilter(tasks, 'has:labels', context)
       expect(result.every(t => t.labels && t.labels.length > 0)).toBe(true)
     })
+
+    it('should filter tasks with deadline using has:deadline', () => {
+      const result = evaluateFilter(tasks, 'has:deadline', context)
+      expect(result.every(t => t.deadline !== null)).toBe(true)
+      expect(result.length).toBeGreaterThan(0)
+    })
+
+    it('should filter tasks with duration using has:duration', () => {
+      const result = evaluateFilter(tasks, 'has:duration', context)
+      expect(result.every(t => t.duration !== null && t.duration > 0)).toBe(true)
+      expect(result.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Deadline filtering', () => {
+    it('should filter tasks with deadline today using deadline:today', () => {
+      const result = evaluateFilter(tasks, 'deadline:today', context)
+      expect(result.length).toBeGreaterThanOrEqual(1)
+      expect(result.some(t => t.content === 'Call mom')).toBe(true)
+    })
+
+    it('should filter tasks with deadline tomorrow using deadline:tomorrow', () => {
+      const result = evaluateFilter(tasks, 'deadline:tomorrow', context)
+      expect(result.length).toBeGreaterThanOrEqual(1)
+      expect(result.some(t => t.content === 'Work meeting')).toBe(true)
+    })
+
+    it('should filter tasks with overdue deadline using deadline:overdue', () => {
+      const result = evaluateFilter(tasks, 'deadline:overdue', context)
+      expect(result.length).toBeGreaterThanOrEqual(1)
+      expect(result.some(t => t.content === 'Review documents')).toBe(true)
+    })
+
+    it('should filter tasks with no deadline using no deadline', () => {
+      const result = evaluateFilter(tasks, 'no deadline', context)
+      expect(result.every(t => t.deadline === null)).toBe(true)
+    })
+  })
+
+  describe('Wildcard (*) matching', () => {
+    it('should match projects with wildcard prefix', () => {
+      const result = evaluateFilter(tasks, '#work*', context)
+      // Should match both 'work' and 'work-admin' projects
+      expect(result.some(t => t.projectId === 'proj-1')).toBe(true)
+      expect(result.some(t => t.projectId === 'proj-4')).toBe(true)
+    })
+
+    it('should match labels with wildcard', () => {
+      const result = evaluateFilter(tasks, '@urgent*', context)
+      // Should match both 'urgent' and 'urgent-blocker' labels
+      expect(result.some(t => t.labels?.some((l: { name: string }) => l.name === 'urgent'))).toBe(true)
+      expect(result.some(t => t.labels?.some((l: { name: string }) => l.name === 'urgent-blocker'))).toBe(true)
+    })
+
+    it('should match sections with wildcard', () => {
+      const result = evaluateFilter(tasks, '/*progress*', context)
+      // Should match 'in progress' section
+      expect(result.length).toBeGreaterThan(0)
+    })
   })
 })
 
@@ -296,10 +397,17 @@ function evaluateExpressionWithoutParens(
   return evaluateCondition(task, query, context)
 }
 
+function matchWildcard(pattern: string, str: string): boolean {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+  const regexPattern = escaped.replace(/\*/g, '.*')
+  const regex = new RegExp(`^${regexPattern}$`, 'i')
+  return regex.test(str)
+}
+
 function evaluateCondition(
   task: any,
   condition: string,
-  context: { projects: Map<string, string>; labels: Map<string, string> }
+  context: { projects: Map<string, string>; labels: Map<string, string>; sections?: Map<string, string> }
 ): boolean {
   const c = condition.toLowerCase().trim()
 
@@ -320,6 +428,12 @@ function evaluateCondition(
   if (c === 'has:date') {
     return task.dueDate !== null
   }
+  if (c === 'has:deadline') {
+    return task.deadline !== null
+  }
+  if (c === 'has:duration') {
+    return task.duration !== null && task.duration > 0
+  }
   if (c === 'has:description') {
     return task.description !== null && task.description !== ''
   }
@@ -327,10 +441,43 @@ function evaluateCondition(
     return task.labels && task.labels.length > 0
   }
 
-  // Label (@name)
+  // No deadline
+  if (c === 'no deadline') {
+    return task.deadline === null
+  }
+
+  // Deadline filtering
+  if (c === 'deadline:today') {
+    if (!task.deadline) return false
+    const now = Date.now()
+    const startOfToday = new Date(now).setHours(0, 0, 0, 0)
+    const endOfToday = new Date(now).setHours(23, 59, 59, 999)
+    return task.deadline >= startOfToday && task.deadline <= endOfToday
+  }
+
+  if (c === 'deadline:tomorrow') {
+    if (!task.deadline) return false
+    const now = Date.now()
+    const tomorrow = now + 86400000
+    const startOfTomorrow = new Date(tomorrow).setHours(0, 0, 0, 0)
+    const endOfTomorrow = new Date(tomorrow).setHours(23, 59, 59, 999)
+    return task.deadline >= startOfTomorrow && task.deadline <= endOfTomorrow
+  }
+
+  if (c === 'deadline:overdue') {
+    if (!task.deadline) return false
+    const startOfToday = new Date().setHours(0, 0, 0, 0)
+    return task.deadline < startOfToday
+  }
+
+  // Label (@name) - supports wildcard
   if (c.startsWith('@')) {
     const labelName = c.slice(1).trim()
     if (!task.labels || task.labels.length === 0) return false
+    const hasWildcard = labelName.includes('*')
+    if (hasWildcard) {
+      return task.labels.some((l: any) => matchWildcard(labelName, l.name.toLowerCase()))
+    }
     return task.labels.some((l: any) => l.name.toLowerCase() === labelName)
   }
 
@@ -348,11 +495,36 @@ function evaluateCondition(
     return task.priority === parseInt(priorityMatch[1], 10)
   }
 
-  // Project (#name)
+  // Project (#name) - supports wildcard
   if (c.startsWith('#')) {
     const projectName = c.slice(1).trim()
+    const hasWildcard = projectName.includes('*')
+    if (hasWildcard) {
+      for (const [name, id] of context.projects) {
+        if (matchWildcard(projectName, name) && task.projectId === id) {
+          return true
+        }
+      }
+      return false
+    }
     const projectId = context.projects.get(projectName)
     return task.projectId === projectId
+  }
+
+  // Section (/name) - supports wildcard
+  if (c.startsWith('/') && context.sections) {
+    const sectionName = c.slice(1).trim()
+    const hasWildcard = sectionName.includes('*')
+    if (hasWildcard) {
+      for (const [name, id] of context.sections) {
+        if (matchWildcard(sectionName, name) && task.sectionId === id) {
+          return true
+        }
+      }
+      return false
+    }
+    const sectionId = context.sections.get(sectionName)
+    return task.sectionId === sectionId
   }
 
   // No date

@@ -17,6 +17,7 @@ async function createTestDb(): Promise<SqlJsDatabase> {
     CREATE TABLE projects (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      description TEXT,
       color TEXT NOT NULL DEFAULT '#808080',
       parent_id TEXT,
       sort_order REAL NOT NULL,

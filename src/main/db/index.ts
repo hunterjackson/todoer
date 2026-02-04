@@ -43,6 +43,18 @@ function getDatabasePath(): string {
   return join(userDataPath, 'todoer.db')
 }
 
+// Run migrations to add missing columns to existing tables
+function runMigrations(database: SqlJsDatabase): void {
+  // Get existing columns in projects table
+  const projectCols = database.exec("PRAGMA table_info(projects)")
+  const projectColNames = projectCols[0]?.values.map(row => row[1]) || []
+
+  // Add description column to projects if missing
+  if (!projectColNames.includes('description')) {
+    database.run('ALTER TABLE projects ADD COLUMN description TEXT')
+  }
+}
+
 // Initialize database with schema
 function initSchema(database: SqlJsDatabase): void {
   database.run(`
@@ -71,6 +83,7 @@ function initSchema(database: SqlJsDatabase): void {
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      description TEXT,
       color TEXT NOT NULL DEFAULT '#808080',
       parent_id TEXT,
       sort_order REAL NOT NULL,
@@ -119,13 +132,15 @@ function initSchema(database: SqlJsDatabase): void {
       created_at INTEGER NOT NULL
     );
 
-    -- Comments table
+    -- Comments table (supports both task and project comments)
     CREATE TABLE IF NOT EXISTS comments (
       id TEXT PRIMARY KEY,
-      task_id TEXT NOT NULL,
+      task_id TEXT,
+      project_id TEXT,
       content TEXT NOT NULL,
       created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
+      updated_at INTEGER NOT NULL,
+      CHECK (task_id IS NOT NULL OR project_id IS NOT NULL)
     );
 
     -- Attachments table
@@ -263,6 +278,9 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
   // Initialize schema
   initSchema(db)
 
+  // Run migrations for existing databases
+  runMigrations(db)
+
   // Seed initial data
   seedInitialData(db)
 
@@ -285,6 +303,7 @@ export async function createTestDatabase(): Promise<SqlJsDatabase> {
   const SQL = await initSqlJs()
   const testDb = new SQL.Database()
   initSchema(testDb)
+  runMigrations(testDb)
   seedInitialData(testDb)
   return testDb
 }

@@ -25,6 +25,7 @@ describe('SectionRepository', () => {
       CREATE TABLE projects (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
+        description TEXT,
         color TEXT DEFAULT 'gray',
         parent_id TEXT,
         sort_order REAL DEFAULT 0,

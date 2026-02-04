@@ -55,6 +55,13 @@ export class SectionRepository {
     return rows.map((row) => this.rowToSection(row))
   }
 
+  listAll(): Section[] {
+    const rows = this.queryAll<SectionRow>(
+      'SELECT * FROM sections ORDER BY project_id, sort_order ASC'
+    )
+    return rows.map((row) => this.rowToSection(row))
+  }
+
   get(id: string): Section | null {
     const row = this.queryOne<SectionRow>(
       'SELECT * FROM sections WHERE id = ?',

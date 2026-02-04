@@ -6,7 +6,10 @@ import {
   createRRule,
   describeRecurrence,
   matchesRecurrence,
-  calculateNextDueDate
+  calculateNextDueDate,
+  isCompletionBasedRecurrence,
+  getActualRRule,
+  createCompletionBasedRule
 } from '@main/services/recurrenceEngine'
 
 describe('recurrenceEngine', () => {
@@ -189,6 +192,68 @@ describe('recurrenceEngine', () => {
     it('should return null for invalid rule', () => {
       const result = calculateNextDueDate('invalid', Date.now(), Date.now())
       expect(result).toBeNull()
+    })
+
+    // Completion-based recurrence tests
+    it('should use completion date for completion-based recurrence', () => {
+      // Due date was Jan 1, but completed early on Dec 30
+      // For completion-based, next should be calculated from Dec 30
+      const dueDate = new Date('2024-01-01T12:00:00Z').getTime()
+      const completedAt = new Date('2023-12-30T12:00:00Z').getTime()
+
+      // Regular recurrence - uses the later of dueDate and completedAt
+      const regularNext = calculateNextDueDate('FREQ=DAILY;INTERVAL=3', dueDate, completedAt)
+
+      // Completion-based - uses completedAt
+      const completionBasedNext = calculateNextDueDate('COMPLETION:FREQ=DAILY;INTERVAL=3', dueDate, completedAt)
+
+      // Both should return valid dates
+      expect(regularNext).toBeDefined()
+      expect(completionBasedNext).toBeDefined()
+
+      // Completion-based should be earlier (based on completedAt, not dueDate)
+      expect(completionBasedNext).toBeLessThan(regularNext!)
+    })
+
+    it('should calculate completion-based next date correctly', () => {
+      // Completed on Jan 15
+      const completedAt = new Date('2024-01-15T10:00:00Z').getTime()
+      const dueDate = new Date('2024-01-10T10:00:00Z').getTime() // Due date was earlier
+
+      // Every day from completion
+      const next = calculateNextDueDate('COMPLETION:FREQ=DAILY', dueDate, completedAt)
+
+      // Should be in the future after completion
+      expect(next).toBeDefined()
+      expect(next!).toBeGreaterThan(completedAt)
+
+      // Should be within 2 days (allowing for timezone/rrule behavior)
+      const daysDiff = (next! - completedAt) / (24 * 60 * 60 * 1000)
+      expect(daysDiff).toBeLessThanOrEqual(2)
+    })
+  })
+
+  describe('isCompletionBasedRecurrence', () => {
+    it('should identify completion-based rules', () => {
+      expect(isCompletionBasedRecurrence('COMPLETION:FREQ=DAILY')).toBe(true)
+      expect(isCompletionBasedRecurrence('FREQ=DAILY')).toBe(false)
+    })
+  })
+
+  describe('getActualRRule', () => {
+    it('should extract actual rrule from prefixed string', () => {
+      expect(getActualRRule('COMPLETION:FREQ=DAILY')).toBe('FREQ=DAILY')
+      expect(getActualRRule('FREQ=WEEKLY')).toBe('FREQ=WEEKLY')
+    })
+  })
+
+  describe('createCompletionBasedRule', () => {
+    it('should add completion prefix', () => {
+      expect(createCompletionBasedRule('FREQ=DAILY')).toBe('COMPLETION:FREQ=DAILY')
+    })
+
+    it('should not double-prefix', () => {
+      expect(createCompletionBasedRule('COMPLETION:FREQ=DAILY')).toBe('COMPLETION:FREQ=DAILY')
     })
   })
 })

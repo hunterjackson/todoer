@@ -21,6 +21,7 @@ describe('ProjectRepository', () => {
       CREATE TABLE projects (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
+        description TEXT,
         color TEXT DEFAULT '#808080',
         parent_id TEXT,
         sort_order REAL DEFAULT 0,
@@ -72,12 +73,19 @@ describe('ProjectRepository', () => {
 
       expect(project.id).toBeDefined()
       expect(project.name).toBe('My Project')
+      expect(project.description).toBeNull()
       expect(project.color).toBe('#808080')
       expect(project.viewMode).toBe('list')
       expect(project.isFavorite).toBe(false)
       expect(project.parentId).toBeNull()
       expect(project.archivedAt).toBeNull()
       expect(project.deletedAt).toBeNull()
+    })
+
+    it('should create a project with description', () => {
+      const project = projectRepo.create({ name: 'Test', description: 'Project description' })
+
+      expect(project.description).toBe('Project description')
     })
 
     it('should create a project with custom color', () => {

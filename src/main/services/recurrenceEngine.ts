@@ -173,6 +173,30 @@ export function matchesRecurrence(rruleString: string, date: Date): boolean {
   }
 }
 
+// Prefix used to mark completion-based recurrence (every! syntax)
+export const COMPLETION_BASED_PREFIX = 'COMPLETION:'
+
+// Check if a recurrence rule is completion-based
+export function isCompletionBasedRecurrence(rruleString: string): boolean {
+  return rruleString.startsWith(COMPLETION_BASED_PREFIX)
+}
+
+// Get the actual RRULE from a potentially prefixed rule string
+export function getActualRRule(rruleString: string): string {
+  if (rruleString.startsWith(COMPLETION_BASED_PREFIX)) {
+    return rruleString.slice(COMPLETION_BASED_PREFIX.length)
+  }
+  return rruleString
+}
+
+// Create a completion-based recurrence rule
+export function createCompletionBasedRule(rruleString: string): string {
+  if (rruleString.startsWith(COMPLETION_BASED_PREFIX)) {
+    return rruleString // Already marked
+  }
+  return COMPLETION_BASED_PREFIX + rruleString
+}
+
 // Calculate the next due date after completing a recurring task
 export function calculateNextDueDate(
   rruleString: string,
@@ -180,19 +204,32 @@ export function calculateNextDueDate(
   completedAt: number
 ): number | null {
   try {
+    // Check if this is completion-based recurrence
+    const isCompletionBased = isCompletionBasedRecurrence(rruleString)
+    const actualRule = getActualRRule(rruleString)
+
     // Create a new rule with DTSTART set to the current due date
-    const baseRule = rrulestr(rruleString)
+    const baseRule = rrulestr(actualRule)
     const options = baseRule.options
 
-    // Create new rule with the current due date as start
+    let referenceDate: Date
+    if (isCompletionBased) {
+      // For completion-based recurrence, always use completion time
+      referenceDate = new Date(completedAt)
+    } else {
+      // For regular recurrence, use the later of due date and completion time
+      referenceDate = new Date(Math.max(currentDueDate, completedAt))
+    }
+
+    // Create new rule starting from the reference date
     const rule = new RRule({
       ...options,
-      dtstart: new Date(currentDueDate)
+      dtstart: referenceDate
     })
 
     // Get the next occurrence after the reference point
-    const referenceDate = new Date(Math.max(currentDueDate, completedAt))
-    const next = rule.after(referenceDate)
+    // We need to add 1ms to ensure we get the NEXT occurrence, not the same moment
+    const next = rule.after(new Date(referenceDate.getTime() + 1))
 
     return next ? next.getTime() : null
   } catch {

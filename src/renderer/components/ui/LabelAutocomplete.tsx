@@ -9,6 +9,7 @@ interface LabelAutocompleteProps {
   onChange: (value: string) => void
   onLabelSelect: (label: Label) => void
   onLabelCreate: (name: string) => Promise<Label>
+  onPaste?: (e: React.ClipboardEvent) => void
   placeholder?: string
   className?: string
   autoFocus?: boolean
@@ -19,6 +20,7 @@ export function LabelAutocomplete({
   onChange,
   onLabelSelect,
   onLabelCreate,
+  onPaste,
   placeholder = 'Task name',
   className,
   autoFocus
@@ -175,6 +177,7 @@ export function LabelAutocomplete({
         value={value}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
+        onPaste={onPaste}
         placeholder={placeholder}
         className={className}
         autoFocus={autoFocus}

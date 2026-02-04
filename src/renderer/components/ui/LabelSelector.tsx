@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Hash, Check, X } from 'lucide-react'
+import { Hash, Check, X, Plus } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useLabels } from '@hooks/useLabels'
-import type { Label } from '@shared/types'
+import { PROJECT_COLORS } from '@shared/types'
 
 interface LabelSelectorProps {
   selectedIds: string[]
@@ -15,11 +15,17 @@ export function LabelSelector({
   onChange,
   placeholder = 'Add labels'
 }: LabelSelectorProps): React.ReactElement {
-  const { labels } = useLabels()
+  const { labels, createLabel } = useLabels()
   const [isOpen, setIsOpen] = useState(false)
+  const [newLabelName, setNewLabelName] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const selectedLabels = labels.filter((l) => selectedIds.includes(l.id))
+  const filteredLabels = newLabelName
+    ? labels.filter((l) => l.name.toLowerCase().includes(newLabelName.toLowerCase()))
+    : labels
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -34,6 +40,13 @@ export function LabelSelector({
     }
   }, [isOpen])
 
+  // Focus input when dropdown opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isOpen])
+
   const toggleLabel = (labelId: string) => {
     if (selectedIds.includes(labelId)) {
       onChange(selectedIds.filter((id) => id !== labelId))
@@ -45,6 +58,47 @@ export function LabelSelector({
   const removeLabel = (labelId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     onChange(selectedIds.filter((id) => id !== labelId))
+  }
+
+  const handleCreateLabel = async () => {
+    if (!newLabelName.trim() || isCreating) return
+
+    // Check if label already exists
+    const existingLabel = labels.find(
+      (l) => l.name.toLowerCase() === newLabelName.trim().toLowerCase()
+    )
+    if (existingLabel) {
+      // If exists, just select it
+      if (!selectedIds.includes(existingLabel.id)) {
+        onChange([...selectedIds, existingLabel.id])
+      }
+      setNewLabelName('')
+      return
+    }
+
+    setIsCreating(true)
+    try {
+      // Create with random color from project colors
+      const randomColor = PROJECT_COLORS[Math.floor(Math.random() * PROJECT_COLORS.length)]
+      const newLabel = await createLabel({
+        name: newLabelName.trim(),
+        color: randomColor
+      })
+      // Add new label to selection
+      onChange([...selectedIds, newLabel.id])
+      setNewLabelName('')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleCreateLabel()
+    } else if (e.key === 'Escape') {
+      setIsOpen(false)
+    }
   }
 
   return (
@@ -87,32 +141,65 @@ export function LabelSelector({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-56 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-          {labels.length === 0 ? (
-            <div className="p-3 text-sm text-muted-foreground text-center">
-              No labels yet
+        <div className="absolute z-50 mt-1 w-56 bg-popover border rounded-md shadow-lg max-h-72 overflow-hidden flex flex-col">
+          {/* Create new label input */}
+          <div className="p-2 border-b">
+            <div className="flex items-center gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={newLabelName}
+                onChange={(e) => setNewLabelName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Search or create label..."
+                className="flex-1 px-2 py-1 text-sm bg-transparent border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              {newLabelName.trim() && !labels.some((l) => l.name.toLowerCase() === newLabelName.trim().toLowerCase()) && (
+                <button
+                  onClick={handleCreateLabel}
+                  disabled={isCreating}
+                  className="p-1 rounded hover:bg-accent text-primary"
+                  title="Create new label"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="py-1">
-              {labels.map((label) => {
-                const isSelected = selectedIds.includes(label.id)
-                return (
-                  <button
-                    key={label.id}
-                    onClick={() => toggleLabel(label.id)}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-left',
-                      isSelected && 'bg-accent/50'
-                    )}
-                  >
-                    <Hash className="w-4 h-4" style={{ color: label.color }} />
-                    <span className="flex-1">{label.name}</span>
-                    {isSelected && <Check className="w-4 h-4 text-primary" />}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+            {newLabelName.trim() && !labels.some((l) => l.name.toLowerCase() === newLabelName.trim().toLowerCase()) && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Press Enter to create &quot;{newLabelName.trim()}&quot;
+              </p>
+            )}
+          </div>
+
+          {/* Labels list */}
+          <div className="overflow-y-auto flex-1">
+            {filteredLabels.length === 0 ? (
+              <div className="p-3 text-sm text-muted-foreground text-center">
+                {labels.length === 0 ? 'No labels yet' : 'No matching labels'}
+              </div>
+            ) : (
+              <div className="py-1">
+                {filteredLabels.map((label) => {
+                  const isSelected = selectedIds.includes(label.id)
+                  return (
+                    <button
+                      key={label.id}
+                      onClick={() => toggleLabel(label.id)}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-left',
+                        isSelected && 'bg-accent/50'
+                      )}
+                    >
+                      <Hash className="w-4 h-4" style={{ color: label.color }} />
+                      <span className="flex-1">{label.name}</span>
+                      {isSelected && <Check className="w-4 h-4 text-primary" />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

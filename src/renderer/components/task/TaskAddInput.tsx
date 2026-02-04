@@ -65,6 +65,36 @@ export function TaskAddInput({
     }
   }
 
+  // Handle paste event to support multiple tasks
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const pastedText = e.clipboardData.getData('text')
+    const lines = pastedText.split('\n').map((line) => line.trim()).filter((line) => line.length > 0)
+
+    // If multiple lines are pasted, create multiple tasks
+    if (lines.length > 1 && onCreate) {
+      e.preventDefault()
+      setIsSubmitting(true)
+      try {
+        for (const line of lines) {
+          await onCreate({
+            content: line,
+            priority,
+            projectId
+          })
+        }
+        setContent('')
+        setDueDate(null)
+        setPriority(4)
+        if (!autoFocus) {
+          setIsExpanded(false)
+        }
+      } finally {
+        setIsSubmitting(false)
+      }
+    }
+    // If single line or no onCreate, let default paste behavior work
+  }
+
   const handleCancel = () => {
     setIsExpanded(false)
     setContent('')
@@ -97,6 +127,7 @@ export function TaskAddInput({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         placeholder={placeholder}
         className="w-full text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground"
         autoFocus={autoFocus || isExpanded}

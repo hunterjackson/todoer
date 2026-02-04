@@ -175,3 +175,11 @@ export function escapeHtml(text: string): string {
   }
   return text.replace(/[&<>"']/g, (m) => map[m])
 }
+
+// Re-export inline task parser utilities
+export {
+  parseInlineTaskContent,
+  findProjectByName,
+  findSectionByName
+} from './inlineTaskParser'
+export type { ParsedTaskContent } from './inlineTaskParser'

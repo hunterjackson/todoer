@@ -1,35 +1,48 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Calendar, Flag, X, Hash } from 'lucide-react'
+import { Calendar, Flag, X, Hash, Clock, FolderKanban } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
-import { useProjects } from '@hooks/useProjects'
-import { useLabels } from '@hooks/useLabels'
-import { LabelAutocomplete } from '@renderer/components/ui/LabelAutocomplete'
-import type { Priority, Label } from '@shared/types'
+import { useProjects, notifyProjectsChanged } from '@hooks/useProjects'
+import { useLabels, notifyLabelsChanged } from '@hooks/useLabels'
+import { TaskContentAutocomplete } from '@renderer/components/ui/TaskContentAutocomplete'
+import type { Priority, Label, Section, Project } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
+import { parseInlineTaskContent, findProjectByName, findSectionByName } from '@shared/utils'
 
 interface QuickAddModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onTaskCreated?: () => void
 }
 
-export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps): React.ReactElement | null {
+export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddModalProps): React.ReactElement | null {
   const [content, setContent] = useState('')
   const [description, setDescription] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState<Priority>(4)
   const [projectId, setProjectId] = useState<string>('inbox')
+  const [sectionId, setSectionId] = useState<string | null>(null)
+  const [duration, setDuration] = useState<number | null>(null)
   const [labelIds, setLabelIds] = useState<string[]>([])
   const [selectedLabels, setSelectedLabels] = useState<Label[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [allSections, setAllSections] = useState<Section[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const { projects, refresh: refreshProjects } = useProjects()
   const { labels, createLabel, refresh: refreshLabels } = useLabels()
 
-  // Refresh projects and labels when modal opens
+  // Refresh projects, labels, and sections when modal opens
   useEffect(() => {
     if (open) {
       refreshProjects()
       refreshLabels()
+      // Fetch all sections for inline parsing
+      window.api.sections.listAll().then(setAllSections).catch(console.error)
+      // Load default project setting
+      window.api.settings.get('defaultProject').then((defaultProject) => {
+        if (defaultProject) {
+          setProjectId(defaultProject)
+        }
+      }).catch(console.error)
       setTimeout(() => inputRef.current?.focus(), 100)
 
       // Add global escape listener
@@ -46,6 +59,8 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps): React
       setDueDate('')
       setPriority(4)
       setProjectId('inbox')
+      setSectionId(null)
+      setDuration(null)
       setLabelIds([])
       setSelectedLabels([])
     }
@@ -62,8 +77,24 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps): React
   // Handle creating new label
   const handleLabelCreate = useCallback(async (name: string): Promise<Label> => {
     const newLabel = await createLabel({ name, color: '#808080' })
+    // Notify sidebar to refresh labels
+    notifyLabelsChanged()
     return newLabel
   }, [createLabel])
+
+  // Handle project selection from autocomplete
+  const handleProjectSelect = useCallback((project: Project) => {
+    setProjectId(project.id)
+  }, [])
+
+  // Handle creating new project from autocomplete
+  const handleProjectCreate = useCallback(async (name: string): Promise<Project> => {
+    const newProject = await window.api.projects.create({ name, color: '#808080' })
+    await refreshProjects()
+    // Notify sidebar to refresh projects
+    notifyProjectsChanged()
+    return newProject
+  }, [refreshProjects])
 
   // Remove a selected label
   const handleRemoveLabel = useCallback((labelId: string) => {
@@ -76,15 +107,82 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps): React
 
     setIsSubmitting(true)
     try {
-      await window.api.tasks.create({
-        content: content.trim(),
+      // Parse inline modifiers from content
+      const parsed = parseInlineTaskContent(content)
+
+      // Resolve project from inline #projectname
+      let finalProjectId = projectId
+      let finalSectionId = sectionId
+      let finalPriority = priority
+      let finalDuration = duration
+      let finalDeadline: number | undefined
+
+      if (parsed.projectName) {
+        const matchedProject = findProjectByName(parsed.projectName, projects)
+        if (matchedProject) {
+          finalProjectId = matchedProject.id
+        }
+      }
+
+      // Resolve section from inline /sectionname (within the resolved project)
+      if (parsed.sectionName) {
+        const matchedSection = findSectionByName(parsed.sectionName, allSections, finalProjectId)
+        if (matchedSection) {
+          finalSectionId = matchedSection.id
+          // If section is in a different project than currently selected, update project
+          if (matchedSection.projectId !== finalProjectId) {
+            finalProjectId = matchedSection.projectId
+          }
+        }
+      }
+
+      // Use inline priority if specified
+      if (parsed.priority) {
+        finalPriority = parsed.priority
+      }
+
+      // Use inline duration if specified
+      if (parsed.duration) {
+        finalDuration = parsed.duration
+      }
+
+      // Parse deadline from inline {date} syntax
+      if (parsed.deadlineText) {
+        const parsedDeadline = await window.api.parseDate(parsed.deadlineText)
+        if (parsedDeadline) {
+          finalDeadline = parsedDeadline
+        }
+      }
+
+      const task = await window.api.tasks.create({
+        content: parsed.content.trim() || content.trim(),
         description: description.trim() || undefined,
         dueDate: dueDate || undefined,
-        priority,
-        projectId,
+        priority: finalPriority,
+        projectId: finalProjectId,
+        sectionId: finalSectionId || undefined,
+        duration: finalDuration || undefined,
+        deadline: finalDeadline,
         labelIds: labelIds.length > 0 ? labelIds : undefined
       })
+
+      // Notify parent that task was created
+      onTaskCreated?.()
+
+      // Create reminder from inline !datetime syntax
+      if (parsed.reminderText && task) {
+        const parsedReminder = await window.api.parseDate(parsed.reminderText)
+        if (parsedReminder) {
+          await window.api.reminders.create({
+            taskId: task.id,
+            remindAt: parsedReminder
+          })
+        }
+      }
+
       onOpenChange(false)
+    } catch (error) {
+      console.error('[QuickAdd] Error creating task:', error)
     } finally {
       setIsSubmitting(false)
     }
@@ -97,6 +195,89 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps): React
     }
     if (e.key === 'Escape') {
       onOpenChange(false)
+    }
+  }
+
+  // Handle paste event for multiple tasks
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const pastedText = e.clipboardData.getData('text')
+    const lines = pastedText.split('\n').map((line) => line.trim()).filter((line) => line.length > 0)
+
+    // If multiple lines are pasted, create multiple tasks
+    if (lines.length > 1) {
+      e.preventDefault()
+      setIsSubmitting(true)
+      try {
+        for (const line of lines) {
+          // Parse inline modifiers from each line
+          const parsed = parseInlineTaskContent(line)
+
+          let finalProjectId = projectId
+          let finalSectionId: string | undefined
+          let finalPriority = priority
+          let finalDuration: number | undefined
+          let finalDeadline: number | undefined
+
+          if (parsed.projectName) {
+            const matchedProject = findProjectByName(parsed.projectName, projects)
+            if (matchedProject) {
+              finalProjectId = matchedProject.id
+            }
+          }
+
+          if (parsed.sectionName) {
+            const matchedSection = findSectionByName(parsed.sectionName, allSections, finalProjectId)
+            if (matchedSection) {
+              finalSectionId = matchedSection.id
+              if (matchedSection.projectId !== finalProjectId) {
+                finalProjectId = matchedSection.projectId
+              }
+            }
+          }
+
+          if (parsed.priority) {
+            finalPriority = parsed.priority
+          }
+
+          if (parsed.duration) {
+            finalDuration = parsed.duration
+          }
+
+          // Parse deadline from inline {date} syntax
+          if (parsed.deadlineText) {
+            const parsedDeadline = await window.api.parseDate(parsed.deadlineText)
+            if (parsedDeadline) {
+              finalDeadline = parsedDeadline
+            }
+          }
+
+          const task = await window.api.tasks.create({
+            content: parsed.content.trim() || line,
+            priority: finalPriority,
+            projectId: finalProjectId,
+            sectionId: finalSectionId,
+            duration: finalDuration,
+            deadline: finalDeadline,
+            labelIds: labelIds.length > 0 ? labelIds : undefined
+          })
+
+          // Create reminder from inline !datetime syntax
+          if (parsed.reminderText && task) {
+            const parsedReminder = await window.api.parseDate(parsed.reminderText)
+            if (parsedReminder) {
+              await window.api.reminders.create({
+                taskId: task.id,
+                remindAt: parsedReminder
+              })
+            }
+          }
+        }
+        // Notify parent that tasks were created
+        onTaskCreated?.()
+        onOpenChange(false)
+      } finally {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -125,13 +306,16 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps): React
 
         {/* Content */}
         <div className="p-4 space-y-4" onKeyDown={handleKeyDown}>
-          {/* Task content with label autocomplete */}
-          <LabelAutocomplete
+          {/* Task content with label and project autocomplete */}
+          <TaskContentAutocomplete
             value={content}
             onChange={setContent}
             onLabelSelect={handleLabelSelect}
             onLabelCreate={handleLabelCreate}
-            placeholder="Task name (type # for labels)"
+            onProjectSelect={handleProjectSelect}
+            onProjectCreate={handleProjectCreate}
+            onPaste={handlePaste}
+            placeholder="Task name (#label @project /section p1-p4 for X min)"
             className="w-full text-lg bg-transparent border-none outline-none placeholder:text-muted-foreground"
             autoFocus
           />

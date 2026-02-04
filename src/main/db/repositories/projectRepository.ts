@@ -5,6 +5,7 @@ import type { Project, ProjectCreate, ProjectUpdate } from '@shared/types'
 interface ProjectRow {
   id: string
   name: string
+  description: string | null
   color: string
   parent_id: string | null
   sort_order: number
@@ -22,6 +23,7 @@ export class ProjectRepository {
     return {
       id: row.id,
       name: row.name,
+      description: row.description,
       color: row.color,
       parentId: row.parent_id,
       sortOrder: row.sort_order,
@@ -84,11 +86,12 @@ export class ProjectRepository {
     const sortOrder = (result?.max_order ?? 0) + 1
 
     this.run(
-      `INSERT INTO projects (id, name, color, parent_id, sort_order, view_mode, is_favorite, archived_at, created_at, deleted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL)`,
+      `INSERT INTO projects (id, name, description, color, parent_id, sort_order, view_mode, is_favorite, archived_at, created_at, deleted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL)`,
       [
         id,
         data.name,
+        data.description ?? null,
         data.color ?? '#808080',
         data.parentId ?? null,
         sortOrder,
@@ -111,6 +114,10 @@ export class ProjectRepository {
     if (data.name !== undefined) {
       updates.push('name = ?')
       params.push(data.name)
+    }
+    if (data.description !== undefined) {
+      updates.push('description = ?')
+      params.push(data.description)
     }
     if (data.color !== undefined) {
       updates.push('color = ?')

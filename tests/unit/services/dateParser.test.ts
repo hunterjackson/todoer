@@ -144,6 +144,32 @@ describe('dateParser', () => {
       expect(parseRecurrence('tomorrow')).toBeNull()
       expect(parseRecurrence('March 15')).toBeNull()
     })
+
+    // Completion-based recurrence (every! syntax)
+    it('should parse "every! day" as completion-based', () => {
+      const result = parseRecurrence('every! day')
+      expect(result).toBe('COMPLETION:FREQ=DAILY')
+    })
+
+    it('should parse "every! 3 days" as completion-based', () => {
+      const result = parseRecurrence('every! 3 days')
+      expect(result).toBe('COMPLETION:FREQ=DAILY;INTERVAL=3')
+    })
+
+    it('should parse "every! week" as completion-based', () => {
+      const result = parseRecurrence('every! week')
+      expect(result).toBe('COMPLETION:FREQ=WEEKLY')
+    })
+
+    it('should parse "every! monday" as completion-based', () => {
+      const result = parseRecurrence('every! monday')
+      expect(result).toBe('COMPLETION:FREQ=WEEKLY;BYDAY=MO')
+    })
+
+    it('should parse "every! 2 weeks" as completion-based', () => {
+      const result = parseRecurrence('every! 2 weeks')
+      expect(result).toBe('COMPLETION:FREQ=WEEKLY;INTERVAL=2')
+    })
   })
 
   describe('parseDateWithRecurrence', () => {

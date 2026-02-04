@@ -289,6 +289,7 @@ export default function App(): React.ReactElement {
         <QuickAddModal
           open={quickAddOpen}
           onOpenChange={setQuickAddOpen}
+          onTaskCreated={() => setRefreshKey((k) => k + 1)}
         />
         <KeyboardShortcutsHelp
           open={showShortcutsHelp}

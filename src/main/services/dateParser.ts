@@ -40,9 +40,19 @@ export function parseDate(text: string, referenceDate?: Date): ParsedDate | null
   }
 }
 
+// Prefix used to mark completion-based recurrence (every! syntax)
+const COMPLETION_BASED_PREFIX = 'COMPLETION:'
+
 // Parse recurring date patterns (returns RRULE string)
+// Supports "every!" syntax for completion-based recurrence
 export function parseRecurrence(text: string): string | null {
   const lowerText = text.toLowerCase().trim()
+
+  // Check for completion-based recurrence (every!)
+  const isCompletionBased = lowerText.includes('every!')
+
+  // Normalize "every!" to "every" for parsing
+  const normalizedText = lowerText.replace(/every!/g, 'every')
 
   // Common patterns
   const patterns: Record<string, string> = {
@@ -59,18 +69,23 @@ export function parseRecurrence(text: string): string | null {
     'annually': 'FREQ=YEARLY',
   }
 
+  // Helper to add completion prefix if needed
+  const withCompletionPrefix = (rule: string): string => {
+    return isCompletionBased ? COMPLETION_BASED_PREFIX + rule : rule
+  }
+
   // Check for simple patterns
-  if (patterns[lowerText]) {
-    return patterns[lowerText]
+  if (patterns[normalizedText]) {
+    return withCompletionPrefix(patterns[normalizedText])
   }
 
   // Match "every N days/weeks/months/years"
-  const everyNMatch = lowerText.match(/every (\d+) (day|week|month|year)s?/)
+  const everyNMatch = normalizedText.match(/every (\d+) (day|week|month|year)s?/)
   if (everyNMatch) {
     const interval = parseInt(everyNMatch[1])
     const unit = everyNMatch[2].toUpperCase()
     const freq = unit === 'DAY' ? 'DAILY' : unit === 'WEEK' ? 'WEEKLY' : unit === 'MONTH' ? 'MONTHLY' : 'YEARLY'
-    return `FREQ=${freq};INTERVAL=${interval}`
+    return withCompletionPrefix(`FREQ=${freq};INTERVAL=${interval}`)
   }
 
   // Match "every monday/tuesday/etc"
@@ -84,16 +99,16 @@ export function parseRecurrence(text: string): string | null {
     'saturday': 'SA', 'sat': 'SA',
   }
 
-  const everyDayMatch = lowerText.match(/every (sunday|sun|monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat)/)
+  const everyDayMatch = normalizedText.match(/every (sunday|sun|monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat)/)
   if (everyDayMatch) {
     const day = dayNames[everyDayMatch[1]]
     if (day) {
-      return `FREQ=WEEKLY;BYDAY=${day}`
+      return withCompletionPrefix(`FREQ=WEEKLY;BYDAY=${day}`)
     }
   }
 
   // Match "every monday and wednesday" etc
-  const multipleDaysMatch = lowerText.match(/every (.+)/)
+  const multipleDaysMatch = normalizedText.match(/every (.+)/)
   if (multipleDaysMatch) {
     const daysText = multipleDaysMatch[1]
     const days: string[] = []
@@ -107,20 +122,20 @@ export function parseRecurrence(text: string): string | null {
     if (days.length > 0) {
       // Remove duplicates
       const uniqueDays = [...new Set(days)]
-      return `FREQ=WEEKLY;BYDAY=${uniqueDays.join(',')}`
+      return withCompletionPrefix(`FREQ=WEEKLY;BYDAY=${uniqueDays.join(',')}`)
     }
   }
 
   // Match "on the Nth of every month"
-  const nthOfMonthMatch = lowerText.match(/(?:on the )?(\d+)(?:st|nd|rd|th)? (?:of )?every month/)
+  const nthOfMonthMatch = normalizedText.match(/(?:on the )?(\d+)(?:st|nd|rd|th)? (?:of )?every month/)
   if (nthOfMonthMatch) {
     const day = parseInt(nthOfMonthMatch[1])
-    return `FREQ=MONTHLY;BYMONTHDAY=${day}`
+    return withCompletionPrefix(`FREQ=MONTHLY;BYMONTHDAY=${day}`)
   }
 
   // Match "on the last day of every month"
-  if (lowerText.includes('last day') && lowerText.includes('month')) {
-    return 'FREQ=MONTHLY;BYMONTHDAY=-1'
+  if (normalizedText.includes('last day') && normalizedText.includes('month')) {
+    return withCompletionPrefix('FREQ=MONTHLY;BYMONTHDAY=-1')
   }
 
   return null
@@ -137,11 +152,11 @@ export function parseDateWithRecurrence(text: string, referenceDate?: Date): {
   // Remove recurrence part to parse the date
   let dateText = text
   if (recurrence) {
-    // Try to extract date part if present
+    // Try to extract date part if present (handle both "every" and "every!" patterns)
     dateText = text
-      .replace(/every (day|week|month|year|weekday|weekend)/gi, '')
-      .replace(/every \d+ (day|week|month|year)s?/gi, '')
-      .replace(/every (sunday|monday|tuesday|wednesday|thursday|friday|saturday)/gi, '')
+      .replace(/every!? (day|week|month|year|weekday|weekend)/gi, '')
+      .replace(/every!? \d+ (day|week|month|year)s?/gi, '')
+      .replace(/every!? (sunday|monday|tuesday|wednesday|thursday|friday|saturday)/gi, '')
       .replace(/daily|weekly|monthly|yearly|annually/gi, '')
       .trim()
   }

@@ -7,16 +7,16 @@ import { BoardView } from './BoardView'
 import { useTasks } from '@hooks/useTasks'
 import { useProject, useProjects } from '@hooks/useProjects'
 import { cn } from '@renderer/lib/utils'
-import type { Task } from '@shared/types'
+import type { Task, Priority } from '@shared/types'
 
 interface ProjectViewProps {
   projectId: string
 }
 
 export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement {
-  const { project, loading: projectLoading } = useProject(projectId)
+  const { project, loading: projectLoading, refresh: refreshProject } = useProject(projectId)
   const { updateProject } = useProjects()
-  const { tasks, loading: tasksLoading, createTask, updateTask, completeTask, uncompleteTask, deleteTask } = useTasks({
+  const { tasks, loading: tasksLoading, createTask, updateTask, completeTask, uncompleteTask, deleteTask, reorderTask } = useTasks({
     projectId,
     completed: false
   })
@@ -33,10 +33,16 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
     await deleteTask(id)
   }
 
+  const handleUpdatePriority = async (id: string, priority: Priority) => {
+    await updateTask(id, { priority })
+  }
+
   const toggleViewMode = async () => {
     if (!project) return
     const newMode = viewMode === 'list' ? 'board' : 'list'
     await updateProject(project.id, { viewMode: newMode })
+    // Refresh the project to get the updated viewMode
+    await refreshProject()
   }
 
   if (!project && !loading) {
@@ -62,6 +68,9 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
             />
             <div>
               <h1 className="text-xl font-bold">{project?.name || 'Loading...'}</h1>
+              {project?.description && (
+                <p className="text-sm text-muted-foreground">{project.description}</p>
+              )}
               <p className="text-sm text-muted-foreground">
                 {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
               </p>
@@ -71,20 +80,14 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
             <div className="flex items-center border rounded-md">
               <button
                 onClick={toggleViewMode}
-                className={cn(
-                  'p-2 rounded-l-md',
-                  viewMode === 'list' && 'bg-accent'
-                )}
+                className="p-2 rounded-l-md"
                 title="List view"
               >
                 <List className="w-4 h-4" />
               </button>
               <button
                 onClick={toggleViewMode}
-                className={cn(
-                  'p-2 rounded-r-md',
-                  viewMode === 'board' && 'bg-accent'
-                )}
+                className="p-2 rounded-r-md bg-accent"
                 title="Board view"
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -102,6 +105,7 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
     )
   }
 
+  // List view
   return (
     <div className="max-w-3xl mx-auto p-6">
       {/* Header */}
@@ -113,6 +117,9 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
           />
           <div>
             <h1 className="text-2xl font-bold">{project?.name || 'Loading...'}</h1>
+            {project?.description && (
+              <p className="text-sm text-muted-foreground">{project.description}</p>
+            )}
             <p className="text-sm text-muted-foreground">
               {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
             </p>
@@ -122,20 +129,14 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
           <div className="flex items-center border rounded-md">
             <button
               onClick={toggleViewMode}
-              className={cn(
-                'p-2 rounded-l-md',
-                viewMode === 'list' && 'bg-accent'
-              )}
+              className="p-2 rounded-l-md bg-accent"
               title="List view"
             >
               <List className="w-4 h-4" />
             </button>
             <button
               onClick={toggleViewMode}
-              className={cn(
-                'p-2 rounded-r-md',
-                viewMode === 'board' && 'bg-accent'
-              )}
+              className="p-2 rounded-r-md"
               title="Board view"
             >
               <LayoutGrid className="w-4 h-4" />
@@ -157,6 +158,8 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
             onUncomplete={uncompleteTask}
             onEdit={setEditingTask}
             onDelete={deleteTask}
+            onUpdatePriority={handleUpdatePriority}
+            onReorder={reorderTask}
             onCreate={async (data) => {
               await createTask({
                 ...data,

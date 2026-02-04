@@ -452,7 +452,7 @@ export function BoardView({ projectId }: BoardViewProps): React.ReactElement {
         onSave={async (id, data) => {
           await updateTask(id, data)
         }}
-        onDelete={deleteTask}
+        onDelete={async (id) => { await deleteTask(id) }}
       />
 
       {/* Edit Section Dialog */}

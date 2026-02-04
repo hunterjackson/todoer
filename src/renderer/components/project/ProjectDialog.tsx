@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, Check } from 'lucide-react'
+import { X, Check, Archive, ArchiveRestore, Copy } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import type { Project, ProjectCreate, ProjectUpdate } from '@shared/types'
 import { PROJECT_COLORS } from '@shared/types'
@@ -8,34 +8,61 @@ interface ProjectDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   project?: Project | null // If provided, we're editing
+  projects?: Project[] // Available projects for parent selection
   onSave: (data: ProjectCreate | ProjectUpdate) => Promise<void>
   onDelete?: (id: string) => Promise<void>
+  onArchive?: (id: string, archived: boolean) => Promise<void>
+  onDuplicate?: (id: string) => Promise<void>
 }
 
 export function ProjectDialog({
   open,
   onOpenChange,
   project,
+  projects = [],
   onSave,
-  onDelete
+  onDelete,
+  onArchive,
+  onDuplicate
 }: ProjectDialogProps): React.ReactElement | null {
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [color, setColor] = useState(PROJECT_COLORS[0])
+  const [parentId, setParentId] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isEditing = !!project
 
+  // Get available parent projects (exclude self and descendants when editing)
+  const availableParents = projects.filter((p) => {
+    if (!project) return true
+    // Can't be own parent
+    if (p.id === project.id) return false
+    // Can't select a descendant as parent (would create cycle)
+    let current = p
+    while (current.parentId) {
+      if (current.parentId === project.id) return false
+      current = projects.find((pp) => pp.id === current.parentId) || current
+      if (!projects.find((pp) => pp.id === current.parentId)) break
+    }
+    return true
+  })
+
   useEffect(() => {
     if (project) {
       setName(project.name)
+      setDescription(project.description || '')
       setColor(project.color)
+      setParentId(project.parentId)
       setIsFavorite(project.isFavorite)
       setViewMode(project.viewMode)
     } else {
       setName('')
+      setDescription('')
       setColor(PROJECT_COLORS[0])
+      setParentId(null)
       setIsFavorite(false)
       setViewMode('list')
     }
@@ -62,7 +89,9 @@ export function ProjectDialog({
     try {
       await onSave({
         name: name.trim(),
+        description: description.trim() || null,
         color,
+        parentId,
         isFavorite,
         viewMode
       })
@@ -80,6 +109,21 @@ export function ProjectDialog({
       onOpenChange(false)
     }
   }
+
+  const handleArchive = async () => {
+    if (!project || !onArchive) return
+    const willArchive = !project.archivedAt
+    await onArchive(project.id, willArchive)
+    onOpenChange(false)
+  }
+
+  const handleDuplicate = async () => {
+    if (!project || !onDuplicate) return
+    await onDuplicate(project.id)
+    onOpenChange(false)
+  }
+
+  const isArchived = !!project?.archivedAt
 
   if (!open) return null
 
@@ -119,6 +163,37 @@ export function ProjectDialog({
               autoFocus
             />
           </div>
+
+          {/* Description input */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add a description..."
+              rows={2}
+              className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            />
+          </div>
+
+          {/* Parent project selector */}
+          {availableParents.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Parent project</label>
+              <select
+                value={parentId || ''}
+                onChange={(e) => setParentId(e.target.value || null)}
+                className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">None (top-level)</option>
+                {availableParents.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Color picker */}
           <div>
@@ -190,17 +265,46 @@ export function ProjectDialog({
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-4">
-            {isEditing && onDelete ? (
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 rounded-md"
-              >
-                Delete
-              </button>
-            ) : (
-              <div />
-            )}
+            <div className="flex gap-2">
+              {isEditing && onDuplicate && (
+                <button
+                  type="button"
+                  onClick={handleDuplicate}
+                  className="px-3 py-1.5 text-sm hover:bg-accent rounded-md flex items-center gap-1"
+                >
+                  <Copy className="w-4 h-4" />
+                  Duplicate
+                </button>
+              )}
+              {isEditing && onArchive && (
+                <button
+                  type="button"
+                  onClick={handleArchive}
+                  className="px-3 py-1.5 text-sm hover:bg-accent rounded-md flex items-center gap-1"
+                >
+                  {isArchived ? (
+                    <>
+                      <ArchiveRestore className="w-4 h-4" />
+                      Unarchive
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="w-4 h-4" />
+                      Archive
+                    </>
+                  )}
+                </button>
+              )}
+              {isEditing && onDelete && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 rounded-md"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"

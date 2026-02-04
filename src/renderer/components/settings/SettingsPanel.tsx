@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { X, Settings, Moon, Sun, Monitor, Bell, Trash2, Globe, Clock, Calendar } from 'lucide-react'
+import { X, Settings, Moon, Sun, Monitor, Bell, Trash2, Globe, Clock, Calendar, FolderKanban } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { useProjects } from '@hooks/useProjects'
 
 interface SettingsPanelProps {
   open: boolean
@@ -11,12 +12,15 @@ type ThemeOption = 'light' | 'dark' | 'system'
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.ReactElement | null {
   const { theme, setTheme } = useStore()
+  const { projects, refresh: refreshProjects } = useProjects()
   const [dailyGoal, setDailyGoal] = useState(5)
   const [confirmDelete, setConfirmDelete] = useState(true)
   const [showCompletedTasks, setShowCompletedTasks] = useState(true)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [weekStart, setWeekStart] = useState(0) // 0 = Sunday, 1 = Monday
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h')
+  const [dateFormat, setDateFormat] = useState<'mdy' | 'dmy' | 'ymd'>('mdy')
+  const [defaultProjectId, setDefaultProjectId] = useState<string>('inbox')
 
   // Load settings
   useEffect(() => {
@@ -39,6 +43,12 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
 
         const timeFormatVal = await window.api.settings.get('timeFormat')
         if (timeFormatVal) setTimeFormat(timeFormatVal as '12h' | '24h')
+
+        const dateFormatVal = await window.api.settings.get('dateFormat')
+        if (dateFormatVal) setDateFormat(dateFormatVal as 'mdy' | 'dmy' | 'ymd')
+
+        const defaultProjectVal = await window.api.settings.get('defaultProject')
+        if (defaultProjectVal) setDefaultProjectId(defaultProjectVal)
       } catch (err) {
         console.error('Failed to load settings:', err)
       }
@@ -46,8 +56,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
 
     if (open) {
       loadSettings()
+      refreshProjects()
     }
-  }, [open])
+  }, [open, refreshProjects])
 
   // Save setting helper
   const saveSetting = async (key: string, value: string) => {
@@ -200,6 +211,59 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Date Format */}
+          <div>
+            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4" /> Date Format
+            </h3>
+            <div className="flex gap-2">
+              {[
+                { value: 'mdy', label: 'MM/DD/YYYY' },
+                { value: 'dmy', label: 'DD/MM/YYYY' },
+                { value: 'ymd', label: 'YYYY-MM-DD' }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    setDateFormat(option.value as 'mdy' | 'dmy' | 'ymd')
+                    saveSetting('dateFormat', option.value)
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-lg border text-sm transition-colors ${
+                    dateFormat === option.value
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Default Project */}
+          <div>
+            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <FolderKanban className="w-4 h-4" /> Default Project
+            </h3>
+            <select
+              value={defaultProjectId}
+              onChange={(e) => {
+                setDefaultProjectId(e.target.value)
+                saveSetting('defaultProject', e.target.value)
+              }}
+              className="w-full py-2 px-3 text-sm rounded-lg border border-border bg-background cursor-pointer hover:border-primary/50"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              New tasks will be created in this project by default
+            </p>
           </div>
 
           {/* Notifications */}

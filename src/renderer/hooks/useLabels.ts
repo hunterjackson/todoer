@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Label, LabelCreate, LabelUpdate } from '@shared/types'
 
+// Global event for label data changes
+export const LABELS_CHANGED_EVENT = 'todoer:labels-changed'
+
+// Utility function to notify all label hooks of changes
+export function notifyLabelsChanged(): void {
+  window.dispatchEvent(new CustomEvent(LABELS_CHANGED_EVENT))
+}
+
 interface UseLabelsResult {
   labels: Label[]
   loading: boolean
@@ -31,6 +39,15 @@ export function useLabels(): UseLabelsResult {
 
   useEffect(() => {
     fetchLabels()
+  }, [fetchLabels])
+
+  // Listen for global label change events
+  useEffect(() => {
+    const handleLabelsChanged = () => {
+      fetchLabels()
+    }
+    window.addEventListener(LABELS_CHANGED_EVENT, handleLabelsChanged)
+    return () => window.removeEventListener(LABELS_CHANGED_EVENT, handleLabelsChanged)
   }, [fetchLabels])
 
   const createLabel = useCallback(async (data: LabelCreate): Promise<Label> => {

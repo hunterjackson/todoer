@@ -4,7 +4,7 @@ import { TaskList } from '../task/TaskList'
 import { TaskAddInput } from '../task/TaskAddInput'
 import { TaskEditDialog } from '../task/TaskEditDialog'
 import { useLabels } from '@hooks/useLabels'
-import type { Task, TaskCreate, TaskUpdate } from '@shared/types'
+import type { Task, TaskCreate, TaskUpdate, Priority } from '@shared/types'
 
 interface LabelViewProps {
   labelId: string
@@ -66,6 +66,16 @@ export function LabelView({ labelId }: LabelViewProps): React.ReactElement {
     fetchTasks()
   }
 
+  const handleUpdatePriority = async (id: string, priority: Priority) => {
+    await window.api.tasks.update(id, { priority })
+    fetchTasks()
+  }
+
+  const handleReorderTask = async (id: string, newOrder: number, newParentId?: string | null) => {
+    await window.api.tasks.reorder(id, newOrder, newParentId ?? null)
+    fetchTasks()
+  }
+
   if (!label) {
     return (
       <div className="p-6">
@@ -97,6 +107,8 @@ export function LabelView({ labelId }: LabelViewProps): React.ReactElement {
               onUncomplete={handleUncompleteTask}
               onEdit={setEditingTask}
               onDelete={handleDeleteTask}
+              onUpdatePriority={handleUpdatePriority}
+              onReorder={handleReorderTask}
               showProject
               showAddInput={false}
             />

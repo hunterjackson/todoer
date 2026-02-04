@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Circle, CheckCircle2, Calendar, Flag, Trash2, Edit, Hash } from 'lucide-react'
+import { Circle, CheckCircle2, Calendar, Flag, Trash2, Edit, Hash, Clock, AlertCircle } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import type { Task, Priority, Label } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
@@ -44,6 +44,7 @@ export function TaskItem({
 
   const priorityColor = PRIORITY_COLORS[task.priority as Priority]
   const isOverdue = task.dueDate && task.dueDate < Date.now() && !task.completed
+  const isDeadlinePast = task.deadline && task.deadline < Date.now() && !task.completed
 
   return (
     <div
@@ -99,6 +100,19 @@ export function TaskItem({
             </span>
           )}
 
+          {task.deadline && (
+            <span
+              className={cn(
+                'flex items-center gap-1 text-xs',
+                isDeadlinePast ? 'text-destructive font-medium' : 'text-orange-500'
+              )}
+              title="Deadline"
+            >
+              <AlertCircle className="w-3 h-3" />
+              {formatDueDate(task.deadline)}
+            </span>
+          )}
+
           {task.priority < 4 && (
             <span
               className="flex items-center gap-0.5 text-xs"
@@ -106,6 +120,13 @@ export function TaskItem({
             >
               <Flag className="w-3 h-3" />
               P{task.priority}
+            </span>
+          )}
+
+          {task.duration && task.duration > 0 && (
+            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3" />
+              {formatDuration(task.duration)}
             </span>
           )}
 
@@ -180,4 +201,16 @@ function formatDueDate(timestamp: number): string {
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   return `${months[date.getMonth()]} ${date.getDate()}`
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes}m`
+  }
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (remainingMinutes === 0) {
+    return `${hours}h`
+  }
+  return `${hours}h ${remainingMinutes}m`
 }

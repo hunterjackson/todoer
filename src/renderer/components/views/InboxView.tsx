@@ -5,10 +5,10 @@ import { TaskEditDialog } from '../task/TaskEditDialog'
 import { CompletedTasksSection } from '../task/CompletedTasksSection'
 import { useTasks } from '@hooks/useTasks'
 import { INBOX_PROJECT_ID } from '@shared/constants'
-import type { Task } from '@shared/types'
+import type { Task, Priority } from '@shared/types'
 
 export function InboxView(): React.ReactElement {
-  const { tasks, loading, createTask, updateTask, completeTask, uncompleteTask, deleteTask } = useTasks({
+  const { tasks, loading, createTask, updateTask, completeTask, uncompleteTask, deleteTask, reorderTask } = useTasks({
     projectId: INBOX_PROJECT_ID,
     completed: false
   })
@@ -20,6 +20,10 @@ export function InboxView(): React.ReactElement {
 
   const handleDeleteTask = async (id: string) => {
     await deleteTask(id)
+  }
+
+  const handleUpdatePriority = async (id: string, priority: Priority) => {
+    await updateTask(id, { priority })
   }
 
   return (
@@ -45,6 +49,8 @@ export function InboxView(): React.ReactElement {
             onUncomplete={uncompleteTask}
             onEdit={setEditingTask}
             onDelete={deleteTask}
+            onUpdatePriority={handleUpdatePriority}
+            onReorder={reorderTask}
             onCreate={async (data) => {
               await createTask({
                 ...data,

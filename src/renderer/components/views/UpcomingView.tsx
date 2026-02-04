@@ -4,10 +4,10 @@ import { TaskList } from '../task/TaskList'
 import { TaskEditDialog } from '../task/TaskEditDialog'
 import { useTasks } from '@hooks/useTasks'
 import { startOfDay } from '@shared/utils'
-import type { Task } from '@shared/types'
+import type { Task, Priority } from '@shared/types'
 
 export function UpcomingView(): React.ReactElement {
-  const { tasks, loading, createTask, updateTask, completeTask, uncompleteTask, deleteTask } = useTasks({
+  const { tasks, loading, createTask, updateTask, completeTask, uncompleteTask, deleteTask, reorderTask } = useTasks({
     view: 'upcoming'
   })
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -21,6 +21,10 @@ export function UpcomingView(): React.ReactElement {
 
   const handleDeleteTask = async (id: string) => {
     await deleteTask(id)
+  }
+
+  const handleUpdatePriority = async (id: string, priority: Priority) => {
+    await updateTask(id, { priority })
   }
 
   return (
@@ -54,6 +58,8 @@ export function UpcomingView(): React.ReactElement {
                 onUncomplete={uncompleteTask}
                 onEdit={setEditingTask}
                 onDelete={deleteTask}
+                onUpdatePriority={handleUpdatePriority}
+                onReorder={reorderTask}
                 onCreate={async (data) => {
                   await createTask({
                     ...data,

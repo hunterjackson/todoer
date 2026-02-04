@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Filter } from 'lucide-react'
 import { TaskList } from '../task/TaskList'
 import { TaskEditDialog } from '../task/TaskEditDialog'
-import type { Task, TaskUpdate, Filter as FilterType } from '@shared/types'
+import type { Task, TaskUpdate, Filter as FilterType, Priority } from '@shared/types'
 
 interface FilterViewProps {
   filterId: string
@@ -68,6 +68,16 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
     if (filter) fetchTasks(filter.query)
   }
 
+  const handleUpdatePriority = async (id: string, priority: Priority) => {
+    await window.api.tasks.update(id, { priority })
+    if (filter) fetchTasks(filter.query)
+  }
+
+  const handleReorderTask = async (id: string, newOrder: number, newParentId?: string | null) => {
+    await window.api.tasks.reorder(id, newOrder, newParentId ?? null)
+    if (filter) fetchTasks(filter.query)
+  }
+
   if (!filter && !loading) {
     return (
       <div className="p-6">
@@ -101,6 +111,8 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
               onUncomplete={handleUncompleteTask}
               onEdit={setEditingTask}
               onDelete={handleDeleteTask}
+              onUpdatePriority={handleUpdatePriority}
+              onReorder={handleReorderTask}
               showProject
               showAddInput={false}
             />

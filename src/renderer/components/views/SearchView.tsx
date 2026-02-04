@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react'
 import { TaskList } from '../task/TaskList'
 import { TaskEditDialog } from '../task/TaskEditDialog'
 import { useTaskSearch, useTasks } from '@hooks/useTasks'
-import type { Task } from '@shared/types'
+import type { Task, Priority } from '@shared/types'
 
 interface SearchViewProps {
   initialQuery?: string
@@ -26,6 +26,10 @@ export function SearchView({ initialQuery = '' }: SearchViewProps): React.ReactE
 
   const handleDeleteTask = async (id: string) => {
     await deleteTask(id)
+  }
+
+  const handleUpdatePriority = async (id: string, priority: Priority) => {
+    await updateTask(id, { priority })
   }
 
   return (
@@ -81,6 +85,7 @@ export function SearchView({ initialQuery = '' }: SearchViewProps): React.ReactE
             onUncomplete={uncompleteTask}
             onEdit={setEditingTask}
             onDelete={deleteTask}
+            onUpdatePriority={handleUpdatePriority}
             onCreate={async (data) => { await createTask(data) }}
             showProject
             showAddInput={false}

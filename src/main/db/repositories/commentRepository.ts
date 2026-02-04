@@ -1,16 +1,36 @@
 import type { Database } from 'sql.js'
 import type { Comment, CommentCreate, CommentUpdate } from '@shared/types'
 
+interface CommentRow {
+  id: string
+  task_id: string | null
+  project_id: string | null
+  content: string
+  created_at: number
+  updated_at: number
+}
+
 export class CommentRepository {
   constructor(private db: Database) {}
+
+  private rowToComment(row: CommentRow): Comment {
+    return {
+      id: row.id,
+      taskId: row.task_id,
+      projectId: row.project_id,
+      content: row.content,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }
+  }
 
   create(data: CommentCreate): Comment {
     const id = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const now = Date.now()
 
     this.db.run(
-      `INSERT INTO comments (id, task_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-      [id, data.taskId, data.content, now, now]
+      `INSERT INTO comments (id, task_id, project_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, data.taskId || null, data.projectId || null, data.content, now, now]
     )
 
     return this.get(id)!
@@ -21,21 +41,9 @@ export class CommentRepository {
     stmt.bind([id])
 
     if (stmt.step()) {
-      const row = stmt.getAsObject() as {
-        id: string
-        task_id: string
-        content: string
-        created_at: number
-        updated_at: number
-      }
+      const row = stmt.getAsObject() as unknown as CommentRow
       stmt.free()
-      return {
-        id: row.id,
-        taskId: row.task_id,
-        content: row.content,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      }
+      return this.rowToComment(row)
     }
 
     stmt.free()
@@ -50,20 +58,24 @@ export class CommentRepository {
 
     const comments: Comment[] = []
     while (stmt.step()) {
-      const row = stmt.getAsObject() as {
-        id: string
-        task_id: string
-        content: string
-        created_at: number
-        updated_at: number
-      }
-      comments.push({
-        id: row.id,
-        taskId: row.task_id,
-        content: row.content,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      })
+      const row = stmt.getAsObject() as unknown as CommentRow
+      comments.push(this.rowToComment(row))
+    }
+    stmt.free()
+
+    return comments
+  }
+
+  listByProject(projectId: string): Comment[] {
+    const stmt = this.db.prepare(
+      'SELECT * FROM comments WHERE project_id = ? ORDER BY created_at ASC'
+    )
+    stmt.bind([projectId])
+
+    const comments: Comment[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as unknown as CommentRow
+      comments.push(this.rowToComment(row))
     }
     stmt.free()
 
@@ -89,9 +101,22 @@ export class CommentRepository {
     this.db.run('DELETE FROM comments WHERE task_id = ?', [taskId])
   }
 
+  deleteByProject(projectId: string): void {
+    this.db.run('DELETE FROM comments WHERE project_id = ?', [projectId])
+  }
+
   count(taskId: string): number {
     const stmt = this.db.prepare('SELECT COUNT(*) as count FROM comments WHERE task_id = ?')
     stmt.bind([taskId])
+    stmt.step()
+    const row = stmt.getAsObject() as { count: number }
+    stmt.free()
+    return row.count
+  }
+
+  countByProject(projectId: string): number {
+    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM comments WHERE project_id = ?')
+    stmt.bind([projectId])
     stmt.step()
     const row = stmt.getAsObject() as { count: number }
     stmt.free()

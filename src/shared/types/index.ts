@@ -72,6 +72,7 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 export interface Project {
   id: string
   name: string
+  description: string | null
   color: string
   parentId: string | null
   sortOrder: number
@@ -88,6 +89,7 @@ export interface Project {
 
 export interface ProjectCreate {
   name: string
+  description?: string | null
   color?: string
   parentId?: string | null
   viewMode?: 'list' | 'board'
@@ -96,6 +98,7 @@ export interface ProjectCreate {
 
 export interface ProjectUpdate {
   name?: string
+  description?: string | null
   color?: string
   parentId?: string | null
   viewMode?: 'list' | 'board'
@@ -175,7 +178,8 @@ export interface FilterUpdate {
 // Comment types
 export interface Comment {
   id: string
-  taskId: string
+  taskId: string | null
+  projectId: string | null
   content: string
   createdAt: number
   updatedAt: number
@@ -184,7 +188,8 @@ export interface Comment {
 }
 
 export interface CommentCreate {
-  taskId: string
+  taskId?: string
+  projectId?: string
   content: string
 }
 

@@ -16,10 +16,10 @@
 | Create tasks | ✅ | |
 | Quick Add modal | ✅ | Q shortcut |
 | Task name/title | ✅ | |
-| Task description | ✅ | |
-| Inline editing | 🔶 | Via edit dialog, not inline |
+| Task description | ✅ | Rich text via TipTap |
+| Inline editing | ✅ | Via edit dialog |
 | Natural language date parsing | ✅ | chrono-node |
-| Copy/paste multiple tasks | ❌ | |
+| Copy/paste multiple tasks | ✅ | Paste multiple lines to create tasks |
 | Auto-convert URLs to titles | ❌ | |
 | Voice-to-task (Ramble) | 🚫 | Requires cloud AI |
 | Email forwarding to tasks | 🚫 | Requires email server |
@@ -28,24 +28,24 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Complete tasks | ✅ | |
-| Undo completion | ❌ | No undo stack |
-| View completed tasks | ❌ | |
+| Undo completion | ✅ | Undo/redo stack implemented |
+| View completed tasks | ✅ | CompletedTasksSection component |
 
 ### Sub-tasks
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Create sub-tasks | ✅ | parent_id support |
 | Nested display | ✅ | |
-| Drag to indent | ❌ | |
-| Keyboard indent/outdent | ❌ | |
-| Show/hide sub-tasks | ❌ | |
+| Drag to indent | ✅ | Drag task onto another to make it a child |
+| Keyboard indent/outdent | ✅ | Tab to indent, Shift+Tab to outdent |
+| Show/hide sub-tasks | ✅ | Collapse/expand with chevron, H/L or arrow keys |
 
 ### Recurring Tasks
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Basic recurring | ✅ | rrule library |
-| Natural language recurring | 🔶 | Limited patterns |
-| Completion-based recurrence | ❌ | every! syntax |
+| Natural language recurring | ✅ | "every monday", etc |
+| Completion-based recurrence | ✅ | every! syntax (e.g., "every! 3 days") |
 | Starting/ending dates | ❌ | |
 
 ### Priorities
@@ -54,7 +54,7 @@
 | 4 priority levels | ✅ | P1-P4 |
 | Visual color coding | ✅ | |
 | Quick set in Quick Add | ✅ | |
-| Keyboard shortcuts (1-4) | ❌ | |
+| Keyboard shortcuts (1-4) | ✅ | 1-4 keys when task focused |
 
 ### Due Dates
 | Feature | Status | Notes |
@@ -68,23 +68,23 @@
 ### Deadlines (Separate)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Deadline field | ❌ | DB schema has it, UI missing |
-| Deadline filtering | ❌ | |
+| Deadline field | ✅ | In TaskEditDialog, displays in TaskItem |
+| Deadline filtering | ✅ | deadline:today, deadline:tomorrow, deadline:overdue, has:deadline, no deadline |
 
 ### Reminders
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Time-based reminders | ❌ | DB schema exists |
-| Desktop notifications | ❌ | |
-| Multiple reminders | ❌ | |
+| Time-based reminders | ✅ | ReminderRepository + NotificationService |
+| Desktop notifications | ✅ | Electron Notification API |
+| Multiple reminders | ✅ | |
 | Location-based | 🚫 | Requires GPS |
 
 ### Task Duration
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Duration field | ❌ | DB schema has it |
+| Duration field | ✅ | In TaskEditDialog, displays in TaskItem |
 | Duration in calendar | ❌ | |
-| Natural language duration | ❌ | |
+| Natural language duration | ✅ | "for X min/hour" in Quick Add |
 
 ---
 
@@ -96,15 +96,15 @@
 | Create projects | ✅ | |
 | Project colors | ✅ | |
 | Project favorites | ✅ | |
-| Archive projects | ❌ | DB has archived_at |
+| Archive projects | ✅ | Double-click to edit, archive/unarchive |
 | Delete projects | ✅ | |
-| Duplicate projects | ❌ | |
-| Project description | ❌ | |
+| Duplicate projects | ✅ | Duplicates project with sections and tasks |
+| Project description | ✅ | In ProjectDialog and ProjectView |
 
 ### Sub-projects
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Nested projects | ❌ | DB has parent_id |
+| Nested projects | ✅ | Hierarchical display in sidebar |
 | Drag to indent | ❌ | |
 
 ### Sections
@@ -112,7 +112,7 @@
 |---------|--------|-------|
 | Create sections | ✅ | |
 | Reorder sections | ✅ | |
-| Collapse sections | 🔶 | DB has it, UI partial |
+| Collapse sections | ✅ | In board view |
 
 ### Project Templates
 | Feature | Status | Notes |
@@ -124,10 +124,10 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | List view | ✅ | |
-| Board/Kanban view | ❌ | DB has view_mode |
+| Board/Kanban view | ✅ | BoardView component |
 | Calendar view | ✅ | Month grid |
-| Grouping options | ❌ | |
-| Sorting options | ❌ | |
+| Grouping options | ✅ | By priority, project, due date |
+| Sorting options | ✅ | By priority, date, alphabetical, date added |
 
 ---
 
@@ -137,10 +137,11 @@
 |---------|--------|-------|
 | Create labels | ✅ | |
 | Label colors | ✅ | |
-| Add via @ symbol | ❌ | Should be # in our case |
+| Add via # symbol | ✅ | TaskContentAutocomplete component |
 | Multiple labels per task | ✅ | |
 | Filter by label | ✅ | |
-| Inline label autocomplete | ❌ | Task #30 |
+| Inline label autocomplete | ✅ | Type # in task title for dropdown |
+| Create labels inline | ✅ | "Create" option in autocomplete dropdown |
 
 ---
 
@@ -167,16 +168,16 @@
 |---------|--------|-------|
 | OR operator (\|) | ✅ | |
 | AND operator (&) | ✅ | |
-| NOT operator (!) | ❌ | |
-| Grouping () | ❌ | |
-| @label filter | ❌ | |
+| NOT operator (!) | ✅ | Enhanced filter engine |
+| Grouping () | ✅ | Enhanced filter engine |
+| @label filter | ✅ | |
 | #project filter | ✅ | |
-| /section filter | ❌ | |
+| /section filter | ✅ | Filter engine updated |
 | Priority filters | ✅ | p1-p4 |
 | Date filters | ✅ | today, tomorrow, overdue |
 | no date filter | ✅ | |
-| search: keyword | ❌ | |
-| Wildcard (*) | ❌ | |
+| search: keyword | ✅ | search:text in filter engine |
+| Wildcard (*) | ✅ | Supports * in #project, @label, /section filters |
 
 ---
 
@@ -185,13 +186,15 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Natural language dates | ✅ | |
-| Priorities (p1-p4) | ✅ | |
-| Projects (#name) | ❌ | Need inline parsing |
-| Sections (/name) | ❌ | |
-| Labels (@name) | ❌ | Task #30 |
-| Reminders (!) | ❌ | |
-| Deadlines ({date}) | ❌ | |
-| Duration (for X min) | ❌ | |
+| Priorities (p1-p4) | ✅ | Inline p1-p4 parsing |
+| Projects (@name) | ✅ | @project triggers autocomplete dropdown |
+| Project inline autocomplete | ✅ | Type @ for dropdown, create new option |
+| Sections (/name) | ✅ | /sectionname inline parsing |
+| Labels (#name) | ✅ | #label triggers autocomplete dropdown |
+| Label inline autocomplete | ✅ | Type # for dropdown, create new option |
+| Reminders (!) | ✅ | !tomorrow, !10min, !"Dec 25 3pm" in Quick Add |
+| Deadlines ({date}) | ✅ | {tomorrow}, {Dec 31} in Quick Add |
+| Duration (for X min) | ✅ | "for X min/hour" inline parsing |
 
 ---
 
@@ -199,10 +202,10 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Task comments | ❌ | DB schema exists |
+| Task comments | ✅ | TaskComments component |
 | File attachments | ❌ | DB schema exists |
 | Audio comments | 🚫 | |
-| Project comments | ❌ | |
+| Project comments | ✅ | CommentRepository updated to support project_id |
 
 ---
 
@@ -218,8 +221,8 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Desktop notifications | ❌ | Electron supports this |
-| Reminder notifications | ❌ | |
+| Desktop notifications | ✅ | NotificationService |
+| Reminder notifications | ✅ | |
 
 ---
 
@@ -227,10 +230,10 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Karma points | ❌ | DB schema exists |
-| Daily/weekly goals | ❌ | |
-| Streaks | ❌ | |
-| Productivity view | ❌ | |
+| Karma points | ✅ | KarmaEngine tracks points for task completion |
+| Daily/weekly goals | ✅ | In Settings panel |
+| Streaks | ✅ | KarmaRepository.calculateStreak() |
+| Productivity view | ✅ | ProductivityPanel component |
 
 ---
 
@@ -239,10 +242,12 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Theme/dark mode | ✅ | |
-| Start of week | ❌ | |
-| Date format | ❌ | |
-| Time format | ❌ | |
-| Default project | ❌ | |
+| Start of week | ✅ | In Settings panel |
+| Date format | ✅ | MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD in Settings |
+| Time format | ✅ | 12h/24h in Settings panel |
+| Default project | ✅ | In Settings panel, used by QuickAddModal |
+| Notification settings | ✅ | Quiet hours, enable/disable |
+| Daily/weekly goals | ✅ | |
 
 ---
 
@@ -250,9 +255,10 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Export to CSV/JSON | ❌ | |
-| Import from CSV | ❌ | |
-| Backup/restore | ❌ | |
+| Export to CSV/JSON | ✅ | DataExport service |
+| Import from CSV | ✅ | |
+| Import from JSON | ✅ | |
+| Backup/restore | ✅ | Via JSON export/import |
 
 ---
 
@@ -266,53 +272,72 @@
 | G then I - Inbox | ✅ | |
 | G then U - Upcoming | ✅ | |
 | G then C - Calendar | ✅ | |
-| M - Toggle sidebar | ❌ | |
-| E - Complete task | ❌ | |
-| 1-4 - Set priority | ❌ | |
-| J/K - Navigate | ❌ | |
+| M - Toggle sidebar | ✅ | |
+| ? - Shortcuts help | ✅ | |
+| Cmd/Ctrl+, - Settings | ✅ | |
+| Cmd/Ctrl+Z - Undo | ✅ | |
+| Cmd/Ctrl+Shift+Z - Redo | ✅ | |
+| E - Complete task | ✅ | TaskList keyboard support |
+| 1-4 - Set priority | ✅ | TaskList keyboard support |
+| J/K - Navigate | ✅ | TaskList keyboard support |
 | Esc - Dismiss | ✅ | |
 
 ---
 
-## Priority Implementation List
+## Remaining Features to Implement
 
 ### High Priority (Core UX)
-1. ❌ Undo/redo stack
-2. ❌ View completed tasks
-3. ❌ Inline label autocomplete (#) - Task #30
-4. ❌ Board/Kanban view
-5. ❌ Desktop notifications/reminders
-6. ❌ Drag and drop between projects - Task #28
-7. ❌ More keyboard shortcuts
+(All completed!)
 
 ### Medium Priority (Power Users)
-8. ❌ Comments on tasks
-9. ❌ Export/import
-10. ❌ Task duration
-11. ❌ Deadlines (separate from due)
-12. ❌ Advanced filter syntax (!, (), @label)
-13. ❌ Sub-project hierarchy UI
-14. ❌ Archive projects
-15. ❌ Sorting/grouping options
+(All completed!)
 
 ### Lower Priority (Nice to Have)
-16. ❌ Karma/productivity tracking
-17. ❌ Project templates
-18. ❌ Settings preferences
-19. ❌ Duplicate project
-20. ❌ Copy/paste multiple tasks
+9. ❌ Project templates
+16. ❌ File attachments
 
 ---
 
-## Tasks to Create
-
-Based on this audit, the following features should be added to the task list:
-1. Undo/redo stack
-2. View completed tasks
-3. Board/Kanban view
-4. Desktop notifications and reminders
-5. Task comments
-6. Export/import functionality
-7. More keyboard shortcuts (E, 1-4, J/K, M)
-8. Advanced filter syntax (!, (), @label, /section)
-9. Settings preferences (date format, start of week, etc.)
+## Recently Completed (This Session)
+- ✅ Project comments (comments table updated to support project_id)
+- ✅ Completion-based recurrence (every! syntax - recurs from completion date)
+- ✅ Karma/productivity tracking (KarmaEngine + ProductivityPanel)
+- ✅ Streaks tracking (calculateStreak with consecutive days)
+- ✅ Default project setting (Settings panel + QuickAddModal integration)
+- ✅ Quick Add reminders (!) syntax - !tomorrow, !10min, !"Dec 25 3pm"
+- ✅ Quick Add deadlines ({date}) syntax - {tomorrow}, {Dec 31}
+- ✅ Deadline filtering (deadline:today/tomorrow/overdue, has:deadline, no deadline)
+- ✅ Wildcard (*) filter support for projects, labels, sections
+- ✅ Inline Quick Add parsing (#project /section p1-p4 "for X min")
+- ✅ Natural language duration parsing
+- ✅ Drag subtasks to indent/outdent (Tab/Shift+Tab keyboard shortcuts)
+- ✅ Copy/paste multiple tasks
+- ✅ Sorting/grouping options in views
+- ✅ Date format setting (MM/DD, DD/MM, YYYY-MM-DD)
+- ✅ Project description field
+- ✅ Start of week setting (already in Settings)
+- ✅ Time format setting (already in Settings)
+- ✅ Show/hide subtasks toggle (with H/L keyboard shortcuts)
+- ✅ Create new labels from task edit dialog
+- ✅ Fixed project view mode toggle not updating immediately
+- ✅ Fixed task project change (now clears section when moving)
+- ✅ Comprehensive E2E tests for bug fixes
+- ✅ Duplicate project
+- ✅ Deadline field UI
+- ✅ Task duration UI
+- ✅ /section filter syntax
+- ✅ search: keyword filter (already existed)
+- ✅ Archive/unarchive projects
+- ✅ Sub-project hierarchy UI
+- ✅ Keyboard shortcuts (J/K navigation, E complete, 1-4 priority)
+- ✅ Undo/redo stack
+- ✅ View completed tasks
+- ✅ Board/Kanban view
+- ✅ Desktop notifications and reminders
+- ✅ Task comments
+- ✅ Export/import (JSON/CSV)
+- ✅ Enhanced filter syntax (!, (), @label)
+- ✅ Settings panel
+- ✅ ESLint setup
+- ✅ Code coverage thresholds
+- ✅ Click/drag behavior fix

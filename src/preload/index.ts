@@ -34,7 +34,8 @@ const api = {
     update: (id: string, data: ProjectUpdate) => ipcRenderer.invoke('projects:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('projects:delete', id),
     reorder: (projectId: string, newOrder: number) =>
-      ipcRenderer.invoke('projects:reorder', projectId, newOrder)
+      ipcRenderer.invoke('projects:reorder', projectId, newOrder),
+    duplicate: (id: string) => ipcRenderer.invoke('projects:duplicate', id)
   },
 
   // Label operations
@@ -49,6 +50,7 @@ const api = {
   // Section operations
   sections: {
     list: (projectId: string) => ipcRenderer.invoke('sections:list', projectId),
+    listAll: () => ipcRenderer.invoke('sections:listAll'),
     create: (data: { name: string; projectId: string }) =>
       ipcRenderer.invoke('sections:create', data),
     update: (id: string, data: { name?: string; isCollapsed?: boolean }) =>
@@ -58,16 +60,18 @@ const api = {
       ipcRenderer.invoke('sections:reorder', sectionId, newOrder)
   },
 
-  // Comment operations
+  // Comment operations (task and project comments)
   comments: {
     list: (taskId: string) => ipcRenderer.invoke('comments:list', taskId),
+    listByProject: (projectId: string) => ipcRenderer.invoke('comments:listByProject', projectId),
     get: (id: string) => ipcRenderer.invoke('comments:get', id),
-    create: (data: { taskId: string; content: string }) =>
+    create: (data: { taskId?: string; projectId?: string; content: string }) =>
       ipcRenderer.invoke('comments:create', data),
     update: (id: string, data: { content: string }) =>
       ipcRenderer.invoke('comments:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('comments:delete', id),
-    count: (taskId: string) => ipcRenderer.invoke('comments:count', taskId)
+    count: (taskId: string) => ipcRenderer.invoke('comments:count', taskId),
+    countByProject: (projectId: string) => ipcRenderer.invoke('comments:countByProject', projectId)
   },
 
   // Reminder operations
@@ -125,6 +129,18 @@ const api = {
     clear: () => ipcRenderer.invoke('undo:clear')
   },
 
+  // Karma/productivity operations
+  karma: {
+    getStats: () => ipcRenderer.invoke('karma:getStats'),
+    updateGoals: (data: { dailyGoal?: number; weeklyGoal?: number }) =>
+      ipcRenderer.invoke('karma:updateGoals', data),
+    getTodayStats: () => ipcRenderer.invoke('karma:getTodayStats'),
+    getWeekStats: () => ipcRenderer.invoke('karma:getWeekStats'),
+    getHistory: (startDate: string, endDate: string) =>
+      ipcRenderer.invoke('karma:getHistory', startDate, endDate),
+    getProductivitySummary: () => ipcRenderer.invoke('karma:getProductivitySummary')
+  },
+
   // Event subscriptions
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     const subscription = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
@@ -142,8 +158,8 @@ if (process.contextIsolated) {
     console.error(error)
   }
 } else {
-  // @ts-expect-error (define in dts)
-  window.api = api
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).api = api
 }
 
 export type ElectronAPI = typeof api

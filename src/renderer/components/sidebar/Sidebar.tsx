@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   CalendarDays,
   Inbox,
@@ -8,7 +8,8 @@ import {
   Plus,
   Hash,
   Filter,
-  Settings
+  Settings,
+  ChevronRight
 } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import { useProjects } from '@hooks/useProjects'
@@ -19,8 +20,13 @@ import { ThemeToggle } from '@renderer/components/ui/ThemeToggle'
 import { ProjectDialog } from '@renderer/components/project/ProjectDialog'
 import { LabelDialog } from '@renderer/components/label/LabelDialog'
 import { FilterDialog } from '@renderer/components/filter/FilterDialog'
-import type { ViewType, ProjectCreate, ProjectUpdate, LabelCreate, LabelUpdate, FilterCreate, FilterUpdate } from '@shared/types'
+import type { ViewType, Project, ProjectCreate, ProjectUpdate, LabelCreate, LabelUpdate, FilterCreate, FilterUpdate } from '@shared/types'
 import { INBOX_PROJECT_ID } from '@shared/constants'
+
+interface ProjectNode extends Project {
+  children: ProjectNode[]
+  depth: number
+}
 
 interface SidebarProps {
   currentView: ViewType
@@ -29,18 +35,120 @@ interface SidebarProps {
   onOpenSettings?: () => void
 }
 
+// Build a tree structure from flat projects list
+function buildProjectTree(projects: Project[]): ProjectNode[] {
+  const nodeMap = new Map<string, ProjectNode>()
+  const roots: ProjectNode[] = []
+
+  // Create nodes
+  for (const project of projects) {
+    nodeMap.set(project.id, { ...project, children: [], depth: 0 })
+  }
+
+  // Build tree
+  for (const project of projects) {
+    const node = nodeMap.get(project.id)!
+    if (project.parentId && nodeMap.has(project.parentId)) {
+      const parent = nodeMap.get(project.parentId)!
+      node.depth = parent.depth + 1
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  }
+
+  // Sort children by sortOrder
+  const sortNodes = (nodes: ProjectNode[]): void => {
+    nodes.sort((a, b) => a.sortOrder - b.sortOrder)
+    for (const node of nodes) {
+      sortNodes(node.children)
+    }
+  }
+  sortNodes(roots)
+
+  return roots
+}
+
+// Flatten tree for rendering
+function flattenProjectTree(nodes: ProjectNode[]): ProjectNode[] {
+  const result: ProjectNode[] = []
+  const traverse = (node: ProjectNode): void => {
+    result.push(node)
+    for (const child of node.children) {
+      traverse(child)
+    }
+  }
+  for (const node of nodes) {
+    traverse(node)
+  }
+  return result
+}
+
 export function Sidebar({ currentView, onViewChange, onQuickAdd, onOpenSettings }: SidebarProps): React.ReactElement {
-  const { projects, createProject } = useProjects()
+  const { projects, createProject, updateProject, deleteProject, duplicateProject } = useProjects()
   const { labels, createLabel } = useLabels()
   const { filters, createFilter } = useFilters()
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [showArchivedProjects, setShowArchivedProjects] = useState(false)
   const [labelDialogOpen, setLabelDialogOpen] = useState(false)
   const [filterDialogOpen, setFilterDialogOpen] = useState(false)
+  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set())
 
-  const userProjects = projects.filter((p) => p.id !== INBOX_PROJECT_ID)
+  // Filter out inbox and optionally archived projects
+  const userProjects = projects.filter((p) => p.id !== INBOX_PROJECT_ID && !p.archivedAt)
+  const archivedProjects = projects.filter((p) => p.id !== INBOX_PROJECT_ID && p.archivedAt)
+
+  // Build hierarchical project structure
+  const projectTree = useMemo(() => buildProjectTree(userProjects), [userProjects])
+  const flattenedProjects = useMemo(() => flattenProjectTree(projectTree), [projectTree])
+
+  const toggleProjectCollapse = (projectId: string) => {
+    setCollapsedProjects((prev) => {
+      const next = new Set(prev)
+      if (next.has(projectId)) {
+        next.delete(projectId)
+      } else {
+        next.add(projectId)
+      }
+      return next
+    })
+  }
+
+  // Check if a project should be visible (not hidden by collapsed parent)
+  const isProjectVisible = (project: ProjectNode): boolean => {
+    let current = project
+    while (current.parentId) {
+      if (collapsedProjects.has(current.parentId)) return false
+      const parent = userProjects.find((p) => p.id === current.parentId)
+      if (!parent) break
+      current = { ...parent, children: [], depth: 0 }
+    }
+    return true
+  }
 
   const handleCreateProject = async (data: ProjectCreate | ProjectUpdate) => {
-    await createProject(data as ProjectCreate)
+    if (editingProject) {
+      await updateProject(editingProject.id, data as ProjectUpdate)
+    } else {
+      await createProject(data as ProjectCreate)
+    }
+    setEditingProject(null)
+  }
+
+  const handleDeleteProject = async (id: string) => {
+    await deleteProject(id)
+    setEditingProject(null)
+  }
+
+  const handleArchiveProject = async (id: string, archive: boolean) => {
+    await updateProject(id, { archivedAt: archive ? Date.now() : null })
+    setEditingProject(null)
+  }
+
+  const handleDuplicateProject = async (id: string) => {
+    await duplicateProject(id)
+    setEditingProject(null)
   }
 
   const handleCreateLabel = async (data: LabelCreate | LabelUpdate) => {
@@ -152,27 +260,71 @@ export function Sidebar({ currentView, onViewChange, onQuickAdd, onOpenSettings 
             </button>
           </div>
           <div className="space-y-0.5 mt-1">
-            {userProjects.map((project) => (
-              <DroppableProjectItem
-                key={project.id}
-                projectId={project.id}
-                icon={
-                  <span
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: project.color }}
-                  />
-                }
-                label={project.name}
-                active={currentView === 'project'}
-                onClick={() => onViewChange('project', project.id)}
-              />
-            ))}
+            {flattenedProjects.map((project) => {
+              if (!isProjectVisible(project)) return null
+              const hasChildren = project.children.length > 0
+              const isCollapsed = collapsedProjects.has(project.id)
+
+              return (
+                <DroppableProjectItem
+                  key={project.id}
+                  projectId={project.id}
+                  icon={
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: project.color }}
+                    />
+                  }
+                  label={project.name}
+                  active={currentView === 'project'}
+                  onClick={() => onViewChange('project', project.id)}
+                  onDoubleClick={() => setEditingProject(project)}
+                  depth={project.depth}
+                  hasChildren={hasChildren}
+                  isCollapsed={isCollapsed}
+                  onToggleCollapse={() => toggleProjectCollapse(project.id)}
+                />
+              )
+            })}
             {userProjects.length === 0 && (
               <p className="px-3 py-2 text-sm text-muted-foreground">
                 No projects yet
               </p>
             )}
           </div>
+
+          {/* Archived projects */}
+          {archivedProjects.length > 0 && (
+            <div className="mt-2">
+              <button
+                onClick={() => setShowArchivedProjects(!showArchivedProjects)}
+                className="flex items-center gap-1 px-3 py-1 text-xs text-muted-foreground hover:text-foreground w-full"
+              >
+                <ChevronRight className={cn('w-3 h-3 transition-transform', showArchivedProjects && 'rotate-90')} />
+                Archived ({archivedProjects.length})
+              </button>
+              {showArchivedProjects && (
+                <div className="space-y-0.5 mt-1">
+                  {archivedProjects.map((project) => (
+                    <DroppableProjectItem
+                      key={project.id}
+                      projectId={project.id}
+                      icon={
+                        <span
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0 opacity-50"
+                          style={{ backgroundColor: project.color }}
+                        />
+                      }
+                      label={project.name}
+                      active={currentView === 'project'}
+                      onClick={() => onViewChange('project', project.id)}
+                      onDoubleClick={() => setEditingProject(project)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Labels */}
@@ -228,9 +380,19 @@ export function Sidebar({ currentView, onViewChange, onQuickAdd, onOpenSettings 
 
       {/* Project Dialog */}
       <ProjectDialog
-        open={projectDialogOpen}
-        onOpenChange={setProjectDialogOpen}
+        open={projectDialogOpen || !!editingProject}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProjectDialogOpen(false)
+            setEditingProject(null)
+          }
+        }}
+        project={editingProject}
+        projects={userProjects}
         onSave={handleCreateProject}
+        onDelete={editingProject ? handleDeleteProject : undefined}
+        onArchive={editingProject ? handleArchiveProject : undefined}
+        onDuplicate={editingProject ? handleDuplicateProject : undefined}
       />
 
       {/* Label Dialog */}
@@ -295,6 +457,11 @@ interface DroppableProjectItemProps {
   label: string
   active: boolean
   onClick: () => void
+  onDoubleClick?: () => void
+  depth?: number
+  hasChildren?: boolean
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
 function DroppableProjectItem({
@@ -302,7 +469,12 @@ function DroppableProjectItem({
   icon,
   label,
   active,
-  onClick
+  onClick,
+  onDoubleClick,
+  depth = 0,
+  hasChildren = false,
+  isCollapsed = false,
+  onToggleCollapse
 }: DroppableProjectItemProps): React.ReactElement {
   const { isOver, setNodeRef } = useDroppable({
     id: `project-${projectId}`,
@@ -313,17 +485,41 @@ function DroppableProjectItem({
   })
 
   return (
-    <button
+    <div
       ref={setNodeRef}
-      onClick={onClick}
       className={cn(
-        'sidebar-item w-full text-left',
+        'sidebar-item w-full text-left flex items-center',
         active && 'active',
         isOver && 'bg-primary/20 ring-2 ring-primary ring-inset'
       )}
+      style={{ paddingLeft: `${12 + depth * 16}px` }}
     >
-      {icon}
-      <span className="flex-1 truncate">{label}</span>
-    </button>
+      {hasChildren ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleCollapse?.()
+          }}
+          className="p-0.5 rounded hover:bg-accent mr-1"
+        >
+          <ChevronRight
+            className={cn(
+              'w-3 h-3 transition-transform',
+              !isCollapsed && 'rotate-90'
+            )}
+          />
+        </button>
+      ) : (
+        <span className="w-4" /> // Spacer for alignment
+      )}
+      <button
+        onClick={onClick}
+        onDoubleClick={onDoubleClick}
+        className="flex-1 flex items-center gap-2 truncate"
+      >
+        {icon}
+        <span className="truncate">{label}</span>
+      </button>
+    </div>
   )
 }
