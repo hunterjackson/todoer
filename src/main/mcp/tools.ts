@@ -293,7 +293,7 @@ export function handleToolCall(
         }
 
         // Resolve label names to IDs
-        let labelIds: string[] = []
+        const labelIds: string[] = []
         if (args.labels && Array.isArray(args.labels)) {
           for (const labelName of args.labels as string[]) {
             let label = labelRepo.getByName(labelName)

@@ -65,7 +65,7 @@ export function SearchView({ initialQuery = '' }: SearchViewProps): React.ReactE
         </div>
       ) : tasks.length === 0 ? (
         <div className="py-8 text-center text-muted-foreground">
-          <p>No tasks found for "{query}"</p>
+          <p>No tasks found for &quot;{query}&quot;</p>
           <p className="text-sm mt-2">
             Try different keywords
           </p>

@@ -210,7 +210,7 @@ export function LabelAutocomplete({
               )}
             >
               <Plus className="w-4 h-4 text-primary" />
-              <span>Create "<strong>{searchTerm}</strong>"</span>
+              <span>Create &quot;<strong>{searchTerm}</strong>&quot;</span>
             </button>
           )}
         </div>

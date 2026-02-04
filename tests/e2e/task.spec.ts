@@ -241,7 +241,7 @@ test.describe('Task Editing', () => {
     await page.waitForTimeout(300)
 
     // Find or create a task
-    let taskItem = page.locator('.task-item, [data-task]').first()
+    const taskItem = page.locator('.task-item, [data-task]').first()
     if (!(await taskItem.isVisible().catch(() => false))) {
       const addButton = page.locator('button:has-text("Add task")').first()
       if (await addButton.isVisible()) {

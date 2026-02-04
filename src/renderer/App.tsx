@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -22,7 +22,7 @@ import { KeyboardShortcutsHelp } from './components/ui/KeyboardShortcutsHelp'
 import { ExportImportToast } from './components/ui/ExportImportToast'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { useStore } from './stores/useStore'
-import type { Task, ViewType } from '@shared/types'
+import type { Task } from '@shared/types'
 
 export default function App(): React.ReactElement {
   const { currentView, currentViewId, setView, searchQuery, theme, sidebarCollapsed, toggleSidebar } = useStore()
