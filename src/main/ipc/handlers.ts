@@ -10,7 +10,13 @@ import { FilterRepository } from '../db/repositories/filterRepository'
 import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
-import type { TaskCreate, TaskUpdate } from '@shared/types'
+import {
+  taskUndoStack,
+  getUndoAction,
+  getRedoAction,
+  type TaskOperation
+} from '../services/undoRedo'
+import type { TaskCreate, TaskUpdate, Task } from '@shared/types'
 
 let taskRepo: TaskRepository | null = null
 let projectRepo: ProjectRepository | null = null
@@ -40,7 +46,7 @@ export function registerIpcHandlers(): void {
     return taskRepo.get(id)
   })
 
-  ipcMain.handle('tasks:create', async (_event, data: TaskCreate) => {
+  ipcMain.handle('tasks:create', async (_event, data: TaskCreate, recordUndo: boolean = true) => {
     const { taskRepo } = getRepositories()
 
     // Parse natural language date if provided as string
@@ -52,11 +58,26 @@ export function registerIpcHandlers(): void {
       }
     }
 
-    return taskRepo.create(data)
+    const task = taskRepo.create(data)
+
+    // Record operation for undo
+    if (recordUndo) {
+      taskUndoStack.push({
+        type: 'create',
+        taskId: task.id,
+        data,
+        timestamp: Date.now()
+      })
+    }
+
+    return task
   })
 
-  ipcMain.handle('tasks:update', async (_event, id: string, data: TaskUpdate) => {
+  ipcMain.handle('tasks:update', async (_event, id: string, data: TaskUpdate, recordUndo: boolean = true) => {
     const { taskRepo } = getRepositories()
+
+    // Get previous state for undo
+    const previousTask = recordUndo ? taskRepo.get(id) : null
 
     // Parse natural language date if provided as string
     if (typeof data.dueDate === 'string') {
@@ -67,27 +88,94 @@ export function registerIpcHandlers(): void {
       }
     }
 
-    return taskRepo.update(id, data)
+    const task = taskRepo.update(id, data)
+
+    // Record operation for undo
+    if (recordUndo && previousTask) {
+      taskUndoStack.push({
+        type: 'update',
+        taskId: id,
+        data,
+        previousData: previousTask,
+        timestamp: Date.now()
+      })
+    }
+
+    return task
   })
 
-  ipcMain.handle('tasks:delete', async (_event, id: string) => {
+  ipcMain.handle('tasks:delete', async (_event, id: string, recordUndo: boolean = true) => {
     const { taskRepo } = getRepositories()
-    return taskRepo.delete(id)
+
+    // Get task data for potential undo
+    const task = recordUndo ? taskRepo.get(id) : null
+
+    const result = taskRepo.delete(id)
+
+    // Record operation for undo (store full task data for restoration)
+    if (recordUndo && task) {
+      taskUndoStack.push({
+        type: 'delete',
+        taskId: id,
+        data: task,
+        timestamp: Date.now()
+      })
+    }
+
+    return result
   })
 
-  ipcMain.handle('tasks:complete', async (_event, id: string) => {
+  ipcMain.handle('tasks:complete', async (_event, id: string, recordUndo: boolean = true) => {
     const { taskRepo } = getRepositories()
-    return taskRepo.complete(id)
+    const task = taskRepo.complete(id)
+
+    if (recordUndo) {
+      taskUndoStack.push({
+        type: 'complete',
+        taskId: id,
+        data: {},
+        timestamp: Date.now()
+      })
+    }
+
+    return task
   })
 
-  ipcMain.handle('tasks:uncomplete', async (_event, id: string) => {
+  ipcMain.handle('tasks:uncomplete', async (_event, id: string, recordUndo: boolean = true) => {
     const { taskRepo } = getRepositories()
-    return taskRepo.uncomplete(id)
+    const task = taskRepo.uncomplete(id)
+
+    if (recordUndo) {
+      taskUndoStack.push({
+        type: 'uncomplete',
+        taskId: id,
+        data: {},
+        timestamp: Date.now()
+      })
+    }
+
+    return task
   })
 
   ipcMain.handle('tasks:reorder', async (_event, taskId: string, newOrder: number, newParentId?: string | null) => {
     const { taskRepo } = getRepositories()
-    return taskRepo.reorder(taskId, newOrder, newParentId)
+
+    // Get previous state
+    const previousTask = taskRepo.get(taskId)
+
+    const result = taskRepo.reorder(taskId, newOrder, newParentId)
+
+    if (previousTask) {
+      taskUndoStack.push({
+        type: 'reorder',
+        taskId,
+        data: { sortOrder: newOrder, parentId: newParentId },
+        previousData: { sortOrder: previousTask.sortOrder, parentId: previousTask.parentId },
+        timestamp: Date.now()
+      })
+    }
+
+    return result
   })
 
   ipcMain.handle('tasks:getToday', async () => {
@@ -467,5 +555,136 @@ export function registerIpcHandlers(): void {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  })
+
+  // Undo/Redo handlers
+  ipcMain.handle('undo:canUndo', async () => {
+    return taskUndoStack.canUndo()
+  })
+
+  ipcMain.handle('undo:canRedo', async () => {
+    return taskUndoStack.canRedo()
+  })
+
+  ipcMain.handle('undo:undo', async () => {
+    const operation = taskUndoStack.undo()
+    if (!operation) return { success: false, reason: 'Nothing to undo' }
+
+    const { taskRepo } = getRepositories()
+
+    try {
+      // Handle single operation or batch
+      const operations = Array.isArray(operation) ? operation : [operation]
+
+      for (const op of operations.reverse()) {
+        const action = getUndoAction(op)
+
+        switch (action.action) {
+          case 'create':
+            // Recreate deleted task
+            if (action.data) {
+              taskRepo.create({
+                content: (action.data as Task).content,
+                description: (action.data as Task).description,
+                projectId: (action.data as Task).projectId,
+                sectionId: (action.data as Task).sectionId,
+                parentId: (action.data as Task).parentId,
+                dueDate: (action.data as Task).dueDate,
+                priority: (action.data as Task).priority,
+                recurrenceRule: (action.data as Task).recurrenceRule
+              })
+            }
+            break
+
+          case 'delete':
+            taskRepo.delete(action.taskId)
+            break
+
+          case 'update':
+            if (action.data) {
+              taskRepo.update(action.taskId, action.data)
+            }
+            break
+
+          case 'complete':
+            taskRepo.complete(action.taskId)
+            break
+
+          case 'uncomplete':
+            taskRepo.uncomplete(action.taskId)
+            break
+        }
+      }
+
+      return { success: true, operation: operations[0].type }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('undo:redo', async () => {
+    const operation = taskUndoStack.redo()
+    if (!operation) return { success: false, reason: 'Nothing to redo' }
+
+    const { taskRepo } = getRepositories()
+
+    try {
+      // Handle single operation or batch
+      const operations = Array.isArray(operation) ? operation : [operation]
+
+      for (const op of operations) {
+        const action = getRedoAction(op)
+
+        switch (action.action) {
+          case 'create':
+            if (action.data) {
+              taskRepo.create({
+                content: (action.data as Task).content || '',
+                description: (action.data as Task).description,
+                projectId: (action.data as Task).projectId,
+                sectionId: (action.data as Task).sectionId,
+                parentId: (action.data as Task).parentId,
+                dueDate: (action.data as Task).dueDate,
+                priority: (action.data as Task).priority,
+                recurrenceRule: (action.data as Task).recurrenceRule
+              })
+            }
+            break
+
+          case 'delete':
+            taskRepo.delete(action.taskId)
+            break
+
+          case 'update':
+            if (action.data) {
+              taskRepo.update(action.taskId, action.data)
+            }
+            break
+
+          case 'complete':
+            taskRepo.complete(action.taskId)
+            break
+
+          case 'uncomplete':
+            taskRepo.uncomplete(action.taskId)
+            break
+        }
+      }
+
+      return { success: true, operation: operations[0].type }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('undo:clear', async () => {
+    taskUndoStack.clear()
+    return { success: true }
   })
 }

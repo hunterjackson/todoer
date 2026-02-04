@@ -14,7 +14,9 @@ const shortcuts = [
       { keys: ['/', 'Cmd+K'], description: 'Search' },
       { keys: ['M'], description: 'Toggle sidebar' },
       { keys: ['?'], description: 'Show keyboard shortcuts' },
-      { keys: ['Esc'], description: 'Close modal/dialog' }
+      { keys: ['Esc'], description: 'Close modal/dialog' },
+      { keys: ['Cmd+Z'], description: 'Undo' },
+      { keys: ['Cmd+Shift+Z'], description: 'Redo' }
     ]
   },
   {

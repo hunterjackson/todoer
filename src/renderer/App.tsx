@@ -132,8 +132,33 @@ export default function App(): React.ReactElement {
 
   // Keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       const isInput = isInputFocused()
+
+      // Undo: Cmd/Ctrl+Z
+      if (e.key === 'z' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        e.preventDefault()
+        const result = await window.api.undo.undo()
+        if (result.success) {
+          setToast({ message: `Undid ${result.operation}`, type: 'success' })
+          setRefreshKey((k) => k + 1)
+        }
+        return
+      }
+
+      // Redo: Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y
+      if (
+        (e.key === 'z' && (e.metaKey || e.ctrlKey) && e.shiftKey) ||
+        (e.key === 'y' && (e.metaKey || e.ctrlKey))
+      ) {
+        e.preventDefault()
+        const result = await window.api.undo.redo()
+        if (result.success) {
+          setToast({ message: `Redid ${result.operation}`, type: 'success' })
+          setRefreshKey((k) => k + 1)
+        }
+        return
+      }
 
       // Quick add: q
       if (e.key === 'q' && !e.metaKey && !e.ctrlKey && !isInput) {

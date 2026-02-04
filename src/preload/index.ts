@@ -86,6 +86,15 @@ const api = {
     importCSV: () => ipcRenderer.invoke('data:importCSV')
   },
 
+  // Undo/Redo operations
+  undo: {
+    canUndo: () => ipcRenderer.invoke('undo:canUndo'),
+    canRedo: () => ipcRenderer.invoke('undo:canRedo'),
+    undo: () => ipcRenderer.invoke('undo:undo'),
+    redo: () => ipcRenderer.invoke('undo:redo'),
+    clear: () => ipcRenderer.invoke('undo:clear')
+  },
+
   // Event subscriptions
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     const subscription = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
