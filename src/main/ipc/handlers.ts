@@ -8,6 +8,8 @@ import { LabelRepository } from '../db/repositories/labelRepository'
 import { SectionRepository } from '../db/repositories/sectionRepository'
 import { FilterRepository } from '../db/repositories/filterRepository'
 import { CommentRepository } from '../db/repositories/commentRepository'
+import { ReminderRepository } from '../db/repositories/reminderRepository'
+import { notificationService } from '../services/notificationService'
 import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
@@ -25,6 +27,7 @@ let labelRepo: LabelRepository | null = null
 let sectionRepo: SectionRepository | null = null
 let filterRepo: FilterRepository | null = null
 let commentRepo: CommentRepository | null = null
+let reminderRepo: ReminderRepository | null = null
 
 function getRepositories() {
   const db = getDatabase()
@@ -35,7 +38,8 @@ function getRepositories() {
   if (!sectionRepo) sectionRepo = new SectionRepository(db)
   if (!filterRepo) filterRepo = new FilterRepository(db)
   if (!commentRepo) commentRepo = new CommentRepository(db)
-  return { taskRepo, projectRepo, labelRepo, sectionRepo, filterRepo, commentRepo }
+  if (!reminderRepo) reminderRepo = new ReminderRepository(db)
+  return { taskRepo, projectRepo, labelRepo, sectionRepo, filterRepo, commentRepo, reminderRepo }
 }
 
 export function registerIpcHandlers(): void {
@@ -363,6 +367,47 @@ export function registerIpcHandlers(): void {
   // Date parsing handler
   ipcMain.handle('date:parse', async (_event, text: string) => {
     return parseDateWithRecurrence(text)
+  })
+
+  // Reminder handlers
+  ipcMain.handle('reminders:create', async (_event, data: { taskId: string; remindAt: number }) => {
+    const { reminderRepo } = getRepositories()
+    return reminderRepo.create(data)
+  })
+
+  ipcMain.handle('reminders:getByTask', async (_event, taskId: string) => {
+    const { reminderRepo } = getRepositories()
+    return reminderRepo.getByTask(taskId)
+  })
+
+  ipcMain.handle('reminders:getDue', async () => {
+    const { reminderRepo } = getRepositories()
+    return reminderRepo.getDue()
+  })
+
+  ipcMain.handle('reminders:markNotified', async (_event, id: string) => {
+    const { reminderRepo } = getRepositories()
+    return reminderRepo.markNotified(id)
+  })
+
+  ipcMain.handle('reminders:delete', async (_event, id: string) => {
+    const { reminderRepo } = getRepositories()
+    return reminderRepo.delete(id)
+  })
+
+  // Notification handlers
+  ipcMain.handle('notifications:show', async (_event, data: { title: string; body: string }) => {
+    notificationService.showNotification(data)
+    return true
+  })
+
+  ipcMain.handle('notifications:setEnabled', async (_event, enabled: boolean) => {
+    notificationService.setEnabled(enabled)
+    return true
+  })
+
+  ipcMain.handle('notifications:isEnabled', async () => {
+    return notificationService.isEnabled()
   })
 
   // Settings handlers

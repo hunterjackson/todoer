@@ -70,6 +70,24 @@ const api = {
     count: (taskId: string) => ipcRenderer.invoke('comments:count', taskId)
   },
 
+  // Reminder operations
+  reminders: {
+    create: (data: { taskId: string; remindAt: number }) =>
+      ipcRenderer.invoke('reminders:create', data),
+    getByTask: (taskId: string) => ipcRenderer.invoke('reminders:getByTask', taskId),
+    getDue: () => ipcRenderer.invoke('reminders:getDue'),
+    markNotified: (id: string) => ipcRenderer.invoke('reminders:markNotified', id),
+    delete: (id: string) => ipcRenderer.invoke('reminders:delete', id)
+  },
+
+  // Notification operations
+  notifications: {
+    show: (data: { title: string; body: string }) =>
+      ipcRenderer.invoke('notifications:show', data),
+    setEnabled: (enabled: boolean) => ipcRenderer.invoke('notifications:setEnabled', enabled),
+    isEnabled: () => ipcRenderer.invoke('notifications:isEnabled')
+  },
+
   // Filter operations
   filters: {
     list: () => ipcRenderer.invoke('filters:list'),
