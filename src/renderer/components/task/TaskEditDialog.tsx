@@ -3,6 +3,7 @@ import { X, Flag } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { DatePicker } from '@renderer/components/ui/DatePicker'
 import { LabelSelector } from '@renderer/components/ui/LabelSelector'
+import { TaskComments } from './TaskComments'
 import { useProjects } from '@hooks/useProjects'
 import type { Task, TaskUpdate, Priority, Label } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
@@ -206,6 +207,11 @@ export function TaskEditDialog({
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Comments */}
+          <div className="pt-4 border-t">
+            <TaskComments taskId={task.id} />
           </div>
 
           {/* Actions */}

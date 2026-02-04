@@ -7,6 +7,7 @@ import { ProjectRepository } from '../db/repositories/projectRepository'
 import { LabelRepository } from '../db/repositories/labelRepository'
 import { SectionRepository } from '../db/repositories/sectionRepository'
 import { FilterRepository } from '../db/repositories/filterRepository'
+import { CommentRepository } from '../db/repositories/commentRepository'
 import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
@@ -16,22 +17,25 @@ import {
   getRedoAction,
   type TaskOperation
 } from '../services/undoRedo'
-import type { TaskCreate, TaskUpdate, Task } from '@shared/types'
+import type { TaskCreate, TaskUpdate, Task, CommentCreate, CommentUpdate } from '@shared/types'
 
 let taskRepo: TaskRepository | null = null
 let projectRepo: ProjectRepository | null = null
 let labelRepo: LabelRepository | null = null
 let sectionRepo: SectionRepository | null = null
 let filterRepo: FilterRepository | null = null
+let commentRepo: CommentRepository | null = null
 
 function getRepositories() {
   const db = getDatabase()
   if (!taskRepo) taskRepo = new TaskRepository(db)
   if (!projectRepo) projectRepo = new ProjectRepository(db)
+  if (!commentRepo) commentRepo = new CommentRepository(db)
   if (!labelRepo) labelRepo = new LabelRepository(db)
   if (!sectionRepo) sectionRepo = new SectionRepository(db)
   if (!filterRepo) filterRepo = new FilterRepository(db)
-  return { taskRepo, projectRepo, labelRepo, sectionRepo, filterRepo }
+  if (!commentRepo) commentRepo = new CommentRepository(db)
+  return { taskRepo, projectRepo, labelRepo, sectionRepo, filterRepo, commentRepo }
 }
 
 export function registerIpcHandlers(): void {
@@ -289,6 +293,37 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('sections:reorder', async (_event, sectionId: string, newOrder: number) => {
     const { sectionRepo } = getRepositories()
     return sectionRepo.reorder(sectionId, newOrder)
+  })
+
+  // Comment handlers
+  ipcMain.handle('comments:list', async (_event, taskId: string) => {
+    const { commentRepo } = getRepositories()
+    return commentRepo.list(taskId)
+  })
+
+  ipcMain.handle('comments:get', async (_event, id: string) => {
+    const { commentRepo } = getRepositories()
+    return commentRepo.get(id)
+  })
+
+  ipcMain.handle('comments:create', async (_event, data: CommentCreate) => {
+    const { commentRepo } = getRepositories()
+    return commentRepo.create(data)
+  })
+
+  ipcMain.handle('comments:update', async (_event, id: string, data: CommentUpdate) => {
+    const { commentRepo } = getRepositories()
+    return commentRepo.update(id, data)
+  })
+
+  ipcMain.handle('comments:delete', async (_event, id: string) => {
+    const { commentRepo } = getRepositories()
+    return commentRepo.delete(id)
+  })
+
+  ipcMain.handle('comments:count', async (_event, taskId: string) => {
+    const { commentRepo } = getRepositories()
+    return commentRepo.count(taskId)
   })
 
   // Filter handlers

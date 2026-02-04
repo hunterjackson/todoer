@@ -58,6 +58,18 @@ const api = {
       ipcRenderer.invoke('sections:reorder', sectionId, newOrder)
   },
 
+  // Comment operations
+  comments: {
+    list: (taskId: string) => ipcRenderer.invoke('comments:list', taskId),
+    get: (id: string) => ipcRenderer.invoke('comments:get', id),
+    create: (data: { taskId: string; content: string }) =>
+      ipcRenderer.invoke('comments:create', data),
+    update: (id: string, data: { content: string }) =>
+      ipcRenderer.invoke('comments:update', id, data),
+    delete: (id: string) => ipcRenderer.invoke('comments:delete', id),
+    count: (taskId: string) => ipcRenderer.invoke('comments:count', taskId)
+  },
+
   // Filter operations
   filters: {
     list: () => ipcRenderer.invoke('filters:list'),

@@ -183,6 +183,15 @@ export interface Comment {
   attachments?: Attachment[]
 }
 
+export interface CommentCreate {
+  taskId: string
+  content: string
+}
+
+export interface CommentUpdate {
+  content: string
+}
+
 // Attachment types
 export interface Attachment {
   id: string
