@@ -1,4 +1,4 @@
-import type { Task } from '@shared/types'
+import type { Task, Label } from '@shared/types'
 import { startOfDay, endOfDay, addDays } from '@shared/utils'
 
 /**
@@ -7,11 +7,17 @@ import { startOfDay, endOfDay, addDays } from '@shared/utils'
  * Supported query syntax:
  * - today, tomorrow, overdue
  * - p1, p2, p3, p4 (priority)
- * - #project_name
- * - @label_name
+ * - #project_name (project)
+ * - @label_name (label - requires labels on task)
  * - due before: DATE, due after: DATE
- * - no date
+ * - no date, has:date
+ * - recurring, !recurring
+ * - assigned, unassigned
+ * - has:description, has:labels
+ * - search:text (explicit text search)
+ * - ! (negation prefix)
  * - & (AND), | (OR)
+ * - (parentheses for grouping)
  */
 
 interface FilterContext {
@@ -35,16 +41,39 @@ export function evaluateFilter(
 }
 
 function evaluateExpression(task: Task, query: string, context: FilterContext): boolean {
+  // Handle parentheses - find innermost parentheses and evaluate
+  let currentQuery = query
+  while (currentQuery.includes('(')) {
+    const parenMatch = currentQuery.match(/\(([^()]+)\)/)
+    if (!parenMatch) break
+    const inner = parenMatch[1]
+    const result = evaluateExpressionWithoutParens(task, inner, context)
+    currentQuery = currentQuery.replace(`(${inner})`, result ? 'TRUE' : 'FALSE')
+  }
+
+  return evaluateExpressionWithoutParens(task, currentQuery, context)
+}
+
+function evaluateExpressionWithoutParens(task: Task, query: string, context: FilterContext): boolean {
+  // Handle TRUE/FALSE placeholders from parentheses evaluation
+  if (query.toLowerCase() === 'true') return true
+  if (query.toLowerCase() === 'false') return false
+
   // Handle OR (|)
   if (query.includes('|')) {
     const parts = query.split('|').map((p) => p.trim())
-    return parts.some((part) => evaluateExpression(task, part, context))
+    return parts.some((part) => evaluateExpressionWithoutParens(task, part, context))
   }
 
   // Handle AND (&)
   if (query.includes('&')) {
     const parts = query.split('&').map((p) => p.trim())
-    return parts.every((part) => evaluateExpression(task, part, context))
+    return parts.every((part) => evaluateExpressionWithoutParens(task, part, context))
+  }
+
+  // Handle negation (!)
+  if (query.startsWith('!') && query.length > 1) {
+    return !evaluateCondition(task, query.slice(1), context)
   }
 
   // Handle individual conditions
@@ -57,6 +86,38 @@ function evaluateCondition(task: Task, condition: string, context: FilterContext
   // Skip completed and deleted tasks by default
   if (task.completed || task.deletedAt) {
     return false
+  }
+
+  // Recurring filter
+  if (c === 'recurring') {
+    return task.recurrenceRule !== null && task.recurrenceRule !== ''
+  }
+
+  // Assigned/unassigned filter
+  if (c === 'assigned') {
+    return task.projectId !== null
+  }
+  if (c === 'unassigned') {
+    return task.projectId === null
+  }
+
+  // has: prefix queries
+  if (c === 'has:date') {
+    return task.dueDate !== null
+  }
+  if (c === 'has:description') {
+    return task.description !== null && task.description !== ''
+  }
+  if (c === 'has:labels') {
+    return task.labels !== undefined && task.labels.length > 0
+  }
+
+  // Explicit search (search:text)
+  if (c.startsWith('search:')) {
+    const searchTerm = c.slice(7).trim()
+    const inContent = task.content.toLowerCase().includes(searchTerm)
+    const inDescription = task.description?.toLowerCase().includes(searchTerm) || false
+    return inContent || inDescription
   }
 
   // Date-based conditions
@@ -110,12 +171,16 @@ function evaluateCondition(task: Task, condition: string, context: FilterContext
     return task.projectId === projectName
   }
 
-  // Label (@name) - Note: We'd need to check task_labels table for this
-  // For now, we'll skip this since we'd need to pass label data
+  // Label (@name) - check task.labels array if populated
   if (c.startsWith('@')) {
-    // This would require having labels data on the task
-    // For now, return false (would need refactoring)
-    return false
+    const labelName = c.slice(1).trim()
+    // Check if task has labels populated (from join)
+    if (!task.labels || task.labels.length === 0) {
+      // Try matching against context's label map
+      const labelId = context.labels.get(labelName)
+      return false // Without labels data on task, can't match
+    }
+    return task.labels.some((l: Label) => l.name.toLowerCase() === labelName)
   }
 
   // "due before: DATE" or "due after: DATE"
