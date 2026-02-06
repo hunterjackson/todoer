@@ -243,14 +243,18 @@ function formatDueDate(timestamp: number, dateFormat: 'mdy' | 'dmy' | 'ymd' = 'm
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const day = date.getDate()
   const mon = months[date.getMonth()]
+  const dayPad = String(day).padStart(2, '0')
+  const monthNum = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  const showYear = year !== now.getFullYear()
 
   switch (dateFormat) {
     case 'dmy':
-      return `${day} ${mon}`
+      return showYear ? `${dayPad}/${monthNum}/${year}` : `${day} ${mon}`
     case 'ymd':
-      return `${mon} ${day}`
+      return showYear ? `${year}-${monthNum}-${dayPad}` : `${monthNum}-${dayPad}`
     default: // mdy
-      return `${mon} ${day}`
+      return showYear ? `${monthNum}/${dayPad}/${year}` : `${mon} ${day}`
   }
 }
 
