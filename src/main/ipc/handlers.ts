@@ -329,44 +329,49 @@ export function registerIpcHandlers(): void {
       sectionIdMap.set(section.id, newSection.id)
     }
 
-    // Duplicate tasks (without subtasks first)
-    const tasks = taskRepo.list({ projectId: id, completed: false })
-    const topLevelTasks = tasks.filter((t) => !t.parentId)
+    // Duplicate ALL tasks (including completed ones) with labels
+    const tasks = taskRepo.list({ projectId: id })
     const taskIdMap = new Map<string, string>()
 
-    for (const task of topLevelTasks) {
-      const newTask = taskRepo.create({
-        content: task.content,
-        description: task.description,
-        projectId: newProject.id,
-        sectionId: task.sectionId ? sectionIdMap.get(task.sectionId) : null,
-        dueDate: task.dueDate,
-        deadline: task.deadline,
-        duration: task.duration,
-        recurrenceRule: task.recurrenceRule,
-        priority: task.priority
-      })
-      taskIdMap.set(task.id, newTask.id)
-    }
+    // Process tasks level by level for correct parent mapping
+    // Start with top-level tasks, then children, etc.
+    let currentLevel = tasks.filter((t) => !t.parentId)
+    while (currentLevel.length > 0) {
+      const nextLevel: typeof tasks = []
+      for (const task of currentLevel) {
+        const newParentId = task.parentId ? taskIdMap.get(task.parentId) : undefined
+        // Skip if parent wasn't mapped (shouldn't happen with level-by-level)
+        if (task.parentId && !newParentId) continue
 
-    // Duplicate subtasks
-    const subtasks = tasks.filter((t) => t.parentId)
-    for (const subtask of subtasks) {
-      const newParentId = taskIdMap.get(subtask.parentId!)
-      if (newParentId) {
-        taskRepo.create({
-          content: subtask.content,
-          description: subtask.description,
+        // Get labels for this task
+        const labels = taskRepo.getLabels(task.id)
+        const labelIds = labels.map(l => l.id)
+
+        const newTask = taskRepo.create({
+          content: task.content,
+          description: task.description,
           projectId: newProject.id,
-          sectionId: subtask.sectionId ? sectionIdMap.get(subtask.sectionId) : null,
-          parentId: newParentId,
-          dueDate: subtask.dueDate,
-          deadline: subtask.deadline,
-          duration: subtask.duration,
-          recurrenceRule: subtask.recurrenceRule,
-          priority: subtask.priority
+          sectionId: task.sectionId ? sectionIdMap.get(task.sectionId) : null,
+          parentId: newParentId || null,
+          dueDate: task.dueDate,
+          deadline: task.deadline,
+          duration: task.duration,
+          recurrenceRule: task.recurrenceRule,
+          priority: task.priority,
+          labelIds: labelIds.length > 0 ? labelIds : undefined
         })
+        taskIdMap.set(task.id, newTask.id)
+
+        // If original was completed, complete the duplicate too
+        if (task.completed) {
+          taskRepo.complete(newTask.id)
+        }
+
+        // Find children of this task for the next level
+        const children = tasks.filter(t => t.parentId === task.id)
+        nextLevel.push(...children)
       }
+      currentLevel = nextLevel
     }
 
     return newProject

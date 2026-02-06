@@ -345,6 +345,20 @@ describe('ProjectRepository', () => {
     })
   })
 
+  describe('duplication fidelity', () => {
+    it('should include completed tasks in task list for duplication', () => {
+      const project = projectRepo.create({ name: 'Test' })
+      taskRepo.create({ content: 'Active task', projectId: project.id })
+      const completedTask = taskRepo.create({ content: 'Done task', projectId: project.id })
+      taskRepo.complete(completedTask.id)
+
+      // When listing ALL tasks (not filtered), both should be present
+      const allTasks = taskRepo.list({ projectId: project.id })
+      expect(allTasks.some(t => t.content === 'Active task')).toBe(true)
+      expect(allTasks.some(t => t.content === 'Done task')).toBe(true)
+    })
+  })
+
   describe('recursive delete', () => {
     it('should delete grandchild subprojects when deleting a parent', () => {
       const parent = projectRepo.create({ name: 'Parent' })
