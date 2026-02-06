@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import initSqlJs, { Database } from 'sql.js'
-import { DEFAULT_SETTINGS } from '@shared/constants'
+import { DEFAULT_SETTINGS, INBOX_PROJECT_ID } from '@shared/constants'
 
 /**
  * Tests for settings storage using the same SQL patterns as the IPC handlers
@@ -136,11 +136,38 @@ describe('Settings Service', () => {
   })
 
   describe('Default Settings', () => {
-    it('should define all required default settings', () => {
-      expect(DEFAULT_SETTINGS.theme).toBeDefined()
-      expect(DEFAULT_SETTINGS.dailyGoal).toBeDefined()
-      expect(DEFAULT_SETTINGS.weekStart).toBeDefined()
-      expect(DEFAULT_SETTINGS.weeklyGoal).toBeDefined()
+    it('should have all keys matching AppSettings interface', () => {
+      // DEFAULT_SETTINGS must define every key from the runtime AppSettings contract
+      const expectedKeys = [
+        'confirmDelete',
+        'weekStart',
+        'timeFormat',
+        'dateFormat',
+        'notificationsEnabled',
+        'dailyGoal',
+        'weeklyGoal',
+        'quietHoursStart',
+        'quietHoursEnd',
+        'defaultProject'
+      ]
+      for (const key of expectedKeys) {
+        expect(DEFAULT_SETTINGS).toHaveProperty(key)
+      }
+      // Should not have extra stale keys
+      expect(Object.keys(DEFAULT_SETTINGS).sort()).toEqual(expectedKeys.sort())
+    })
+
+    it('should use correct types and values', () => {
+      expect(DEFAULT_SETTINGS.confirmDelete).toBe(true)
+      expect(DEFAULT_SETTINGS.weekStart).toBe(0)
+      expect(['12h', '24h']).toContain(DEFAULT_SETTINGS.timeFormat)
+      expect(['mdy', 'dmy', 'ymd']).toContain(DEFAULT_SETTINGS.dateFormat)
+      expect(typeof DEFAULT_SETTINGS.notificationsEnabled).toBe('boolean')
+      expect(typeof DEFAULT_SETTINGS.dailyGoal).toBe('number')
+      expect(typeof DEFAULT_SETTINGS.weeklyGoal).toBe('number')
+      expect(typeof DEFAULT_SETTINGS.quietHoursStart).toBe('number')
+      expect(typeof DEFAULT_SETTINGS.quietHoursEnd).toBe('number')
+      expect(DEFAULT_SETTINGS.defaultProject).toBe(INBOX_PROJECT_ID)
     })
   })
 })
