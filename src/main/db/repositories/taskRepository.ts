@@ -97,6 +97,14 @@ export class TaskRepository {
     }
   }
 
+  private hasTable(tableName: string): boolean {
+    const row = this.queryOne<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      [tableName]
+    )
+    return !!row
+  }
+
   private rowToTask(row: TaskRow): Task {
     return {
       id: row.id,
@@ -404,18 +412,18 @@ export class TaskRepository {
     if (!existing) return false
 
     const timestamp = now()
-    this.run(
-      'UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [timestamp, timestamp, id]
-    )
-
-    // Recursively delete all descendants
     const descendantIds = this.getDescendantIds(id)
-    for (const descendantId of descendantIds) {
+    const taskIdsToDelete = [id, ...descendantIds]
+    const hasReminderTable = this.hasTable('reminders')
+
+    for (const taskId of taskIdsToDelete) {
       this.run(
         'UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE id = ?',
-        [timestamp, timestamp, descendantId]
+        [timestamp, timestamp, taskId]
       )
+      if (hasReminderTable) {
+        this.run('DELETE FROM reminders WHERE task_id = ?', [taskId])
+      }
     }
 
     return true

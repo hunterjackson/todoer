@@ -4,6 +4,7 @@ import { TaskRepository } from '@main/db/repositories/taskRepository'
 import { ProjectRepository } from '@main/db/repositories/projectRepository'
 import { LabelRepository } from '@main/db/repositories/labelRepository'
 import { SectionRepository } from '@main/db/repositories/sectionRepository'
+import { ReminderRepository } from '@main/db/repositories/reminderRepository'
 import { Database as SqlJsDatabase } from 'sql.js'
 
 describe('Database Integration Tests', () => {
@@ -12,6 +13,7 @@ describe('Database Integration Tests', () => {
   let projectRepo: ProjectRepository
   let labelRepo: LabelRepository
   let sectionRepo: SectionRepository
+  let reminderRepo: ReminderRepository
 
   beforeEach(async () => {
     db = await createTestDatabase()
@@ -19,6 +21,7 @@ describe('Database Integration Tests', () => {
     projectRepo = new ProjectRepository(db)
     labelRepo = new LabelRepository(db)
     sectionRepo = new SectionRepository(db)
+    reminderRepo = new ReminderRepository(db)
   })
 
   afterEach(() => {
@@ -175,6 +178,25 @@ describe('Database Integration Tests', () => {
       // Subtask should also be soft deleted
       const deletedSubtask = taskRepo.get(subtask.id)
       expect(deletedSubtask).toBeNull()
+    })
+  })
+
+  describe('Task deletion side effects', () => {
+    it('should remove reminders for deleted tasks and descendants', async () => {
+      const parent = taskRepo.create({ content: 'Parent task' })
+      const child = taskRepo.create({ content: 'Child task', parentId: parent.id })
+
+      reminderRepo.create({ taskId: parent.id, remindAt: Date.now() - 60_000 })
+      reminderRepo.create({ taskId: child.id, remindAt: Date.now() - 60_000 })
+
+      expect(reminderRepo.getByTask(parent.id)).toHaveLength(1)
+      expect(reminderRepo.getByTask(child.id)).toHaveLength(1)
+
+      taskRepo.delete(parent.id)
+
+      expect(reminderRepo.getByTask(parent.id)).toHaveLength(0)
+      expect(reminderRepo.getByTask(child.id)).toHaveLength(0)
+      expect(reminderRepo.getDue()).toHaveLength(0)
     })
   })
 
