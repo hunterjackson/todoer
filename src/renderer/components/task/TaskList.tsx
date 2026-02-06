@@ -207,8 +207,11 @@ export function TaskList({
     // Prevent creating deep nesting (max 3 levels)
     if (taskAbove.depth >= 3) return
 
-    // Make the task a child of the task above it
-    await onReorder(taskId, taskAbove.sortOrder + 0.5, taskAbove.id)
+    // Make the task a child of the task above it - place at end of its children
+    const childMaxOrder = taskAbove.children.length > 0
+      ? Math.max(...taskAbove.children.map(c => c.sortOrder))
+      : 0
+    await onReorder(taskId, childMaxOrder + 1, taskAbove.id)
   }, [flattenedTasks, findTaskAbove, onReorder])
 
   // Outdent task (move it to parent's level)
@@ -222,7 +225,15 @@ export function TaskList({
     if (!parent) return
 
     // Move to parent's parent (or null if parent is root)
-    await onReorder(taskId, parent.sortOrder + 0.5, parent.parentId)
+    // Find the next sibling of parent to compute midpoint
+    const siblings = flattenedTasks.filter(t => t.parentId === parent.parentId && t.id !== taskId)
+    const nextSibling = siblings
+      .filter(t => t.sortOrder > parent.sortOrder)
+      .sort((a, b) => a.sortOrder - b.sortOrder)[0]
+    const newOrder = nextSibling
+      ? (parent.sortOrder + nextSibling.sortOrder) / 2
+      : parent.sortOrder + 1
+    await onReorder(taskId, newOrder, parent.parentId)
   }, [flattenedTasks, onReorder])
 
   // Handle drag over to determine drop position
@@ -302,11 +313,25 @@ export function TaskList({
     } else if (dropPosition === 'above') {
       // Insert above the over task (same parent)
       newParentId = overTask.parentId
-      newOrder = overTask.sortOrder - 0.5
+      // Find previous sibling to compute midpoint
+      const siblings = flattenedTasks.filter(t => t.parentId === overTask.parentId && t.id !== activeTask.id)
+      const prevSibling = siblings
+        .filter(t => t.sortOrder < overTask.sortOrder)
+        .sort((a, b) => b.sortOrder - a.sortOrder)[0]
+      newOrder = prevSibling
+        ? (prevSibling.sortOrder + overTask.sortOrder) / 2
+        : overTask.sortOrder - 1
     } else {
       // Insert below the over task (same parent)
       newParentId = overTask.parentId
-      newOrder = overTask.sortOrder + 0.5
+      // Find next sibling to compute midpoint
+      const siblings = flattenedTasks.filter(t => t.parentId === overTask.parentId && t.id !== activeTask.id)
+      const nextSibling = siblings
+        .filter(t => t.sortOrder > overTask.sortOrder)
+        .sort((a, b) => a.sortOrder - b.sortOrder)[0]
+      newOrder = nextSibling
+        ? (overTask.sortOrder + nextSibling.sortOrder) / 2
+        : overTask.sortOrder + 1
     }
 
     await onReorder(activeTask.id, newOrder, newParentId)
