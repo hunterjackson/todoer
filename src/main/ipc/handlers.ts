@@ -295,7 +295,22 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('projects:delete', async (_event, id: string) => {
     const { projectRepo } = getRepositories()
-    return projectRepo.delete(id)
+    const result = projectRepo.delete(id)
+
+    // Reset defaultProject setting if it references the deleted project
+    const db = getDatabase()
+    const stmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+    stmt.bind(['defaultProject'])
+    if (stmt.step()) {
+      const row = stmt.getAsObject() as { value: string }
+      if (row.value === id) {
+        db.run('UPDATE settings SET value = ? WHERE key = ?', ['inbox', 'defaultProject'])
+        saveDatabase()
+      }
+    }
+    stmt.free()
+
+    return result
   })
 
   ipcMain.handle('projects:reorder', async (_event, projectId: string, newOrder: number) => {

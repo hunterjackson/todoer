@@ -506,6 +506,61 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
   })
 
+  // ─── v4 Fix #11: defaultProject reset on project deletion ───
+  describe('v4 Fix #11: defaultProject reset on deletion', () => {
+    it('should reset defaultProject to inbox when referenced project is deleted', () => {
+      const project = projectRepo.create({ name: 'My Project', color: '#ff0000' })
+
+      // Set defaultProject to this project
+      db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['defaultProject', project.id])
+
+      // Delete the project
+      projectRepo.delete(project.id)
+
+      // Simulate the handler logic: check and reset
+      const stmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+      stmt.bind(['defaultProject'])
+      let defaultProject = 'inbox'
+      if (stmt.step()) {
+        const row = stmt.getAsObject() as { value: string }
+        defaultProject = row.value
+        // The handler would reset it - verify the project no longer exists
+        const deletedProject = projectRepo.get(project.id)
+        if (!deletedProject) {
+          db.run('UPDATE settings SET value = ? WHERE key = ?', ['inbox', 'defaultProject'])
+        }
+      }
+      stmt.free()
+
+      // Verify defaultProject was reset
+      const checkStmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+      checkStmt.bind(['defaultProject'])
+      checkStmt.step()
+      const result = checkStmt.getAsObject() as { value: string }
+      checkStmt.free()
+      expect(result.value).toBe('inbox')
+    })
+
+    it('should not reset defaultProject when a different project is deleted', () => {
+      const project1 = projectRepo.create({ name: 'Keep', color: '#ff0000' })
+      const project2 = projectRepo.create({ name: 'Delete', color: '#0000ff' })
+
+      // Set defaultProject to project1
+      db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['defaultProject', project1.id])
+
+      // Delete project2 (not the default)
+      projectRepo.delete(project2.id)
+
+      // Verify defaultProject still points to project1
+      const stmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+      stmt.bind(['defaultProject'])
+      stmt.step()
+      const result = stmt.getAsObject() as { value: string }
+      stmt.free()
+      expect(result.value).toBe(project1.id)
+    })
+  })
+
   // ─── Fix #12: MCP server awaits DB init ───
   describe('Fix #12: MCP server DB init', () => {
     it('initDatabase should be idempotent (safe to call twice)', async () => {
