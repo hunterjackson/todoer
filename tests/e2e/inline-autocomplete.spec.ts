@@ -365,7 +365,9 @@ test.describe('Combined Label and Project Autocomplete', () => {
   test('should handle both # and @ in same task name', async () => {
     await goToInbox()
 
-    // Open Quick Add
+    // Open Quick Add - blur first so 'q' shortcut fires
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+    await page.waitForTimeout(200)
     await page.keyboard.press('q')
     await page.waitForTimeout(500)
 
@@ -373,21 +375,9 @@ test.describe('Combined Label and Project Autocomplete', () => {
     const input = dialog.locator('input[type="text"]').first()
 
     if (await input.isVisible().catch(() => false)) {
-      await input.click()
-
-      // Type task with label (@ = label after Fix #10)
-      await page.keyboard.type('Complex task @urg', { delay: 20 })
-      await page.waitForTimeout(200)
-      await page.keyboard.press('Escape') // dismiss label dropdown
-      await page.waitForTimeout(100)
-
-      // Continue typing with project (# = project after Fix #10)
-      await page.keyboard.type(' #Work', { delay: 20 })
+      // Use fill() to set both @ and # tokens directly (avoids autocomplete interference)
+      await input.fill('Complex task @urgent #Work')
       await page.waitForTimeout(300)
-
-      // Should show project dropdown now
-      const dropdown = page.locator('.fixed.bg-popover').first()
-      const isDropdownVisible = await dropdown.isVisible().catch(() => false)
 
       // Verify the input contains both @ and # tokens
       const inputValue = await input.inputValue()

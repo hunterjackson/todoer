@@ -1,5 +1,6 @@
 import path from 'path'
-import { _electron as electron, ElectronApplication, Page } from '@playwright/test'
+import { _electron as electron, ElectronApplication } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 /** Standard Electron launch options for E2E tests */
 export function getLaunchOptions() {
@@ -21,4 +22,12 @@ export function getLaunchOptions() {
 /** Launch Electron app with standard test options */
 export async function launchElectron(): Promise<ElectronApplication> {
   return electron.launch(getLaunchOptions())
+}
+
+/** Open Quick Add modal reliably by blurring any focused input first */
+export async function openQuickAdd(page: Page): Promise<void> {
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+  await page.waitForTimeout(200)
+  await page.keyboard.press('q')
+  await page.waitForTimeout(500)
 }

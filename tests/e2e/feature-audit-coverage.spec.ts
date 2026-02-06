@@ -108,7 +108,7 @@ test.describe('Task Management: Redo', () => {
     await page.waitForTimeout(500)
 
     // Undo (Cmd+Z)
-    await page.keyboard.press('Meta+z')
+    await page.keyboard.press('Control+z')
     await page.waitForTimeout(500)
 
     // Task should be uncompleted
@@ -116,7 +116,7 @@ test.describe('Task Management: Redo', () => {
     expect(taskVisible).toBe(true)
 
     // Redo (Cmd+Shift+Z)
-    await page.keyboard.press('Meta+Shift+z')
+    await page.keyboard.press('Control+Shift+z')
     await page.waitForTimeout(500)
 
     // Redo re-completes the task - it should no longer be visible in active list
@@ -263,6 +263,8 @@ test.describe('Quick Add: Section Syntax', () => {
     }
 
     // Now use Quick Add with /section syntax
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+    await page.waitForTimeout(200)
     await page.keyboard.press('q')
     await page.waitForTimeout(500)
 
@@ -270,9 +272,11 @@ test.describe('Quick Add: Section Syntax', () => {
     const input = dialog.locator('input[type="text"]').first()
 
     if (await input.isVisible()) {
-      // Create task - section matching is done on submit
-      await input.fill(`Section task /SecTest @${projectName}`)
-      await page.keyboard.press('Meta+Enter')
+      // Create task - use # for project (@ = label, # = project)
+      // Use fill() to avoid triggering autocomplete dropdown
+      await input.fill(`Section task /SecTest #${projectName}`)
+      await page.waitForTimeout(500)
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -294,7 +298,7 @@ test.describe('Quick Add: Section Syntax', () => {
 
 test.describe('Settings: Date Format', () => {
   test('should have date format option in settings', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     const settingsPanel = page.locator('.fixed.inset-0')
@@ -309,7 +313,7 @@ test.describe('Settings: Date Format', () => {
 
 test.describe('Settings: Time Format', () => {
   test('should have time format option in settings', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     const settingsPanel = page.locator('.fixed.inset-0')
@@ -323,7 +327,7 @@ test.describe('Settings: Time Format', () => {
 
 test.describe('Settings: Start of Week', () => {
   test('should have start of week option in settings', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     const settingsPanel = page.locator('.fixed.inset-0')
@@ -337,12 +341,12 @@ test.describe('Settings: Start of Week', () => {
 
 test.describe('Settings: Default Project', () => {
   test('should have default project option in settings', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     const settingsPanel = page.locator('.fixed.inset-0')
     await expect(settingsPanel.locator('text=Default Project')).toBeVisible()
-    await expect(settingsPanel.locator('select')).toBeVisible()
+    await expect(settingsPanel.locator('select').first()).toBeVisible()
 
     await closeDialogs()
   })
@@ -350,7 +354,7 @@ test.describe('Settings: Default Project', () => {
 
 test.describe('Settings: Daily/Weekly Goals', () => {
   test('should have goals option in settings', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     const settingsPanel = page.locator('.fixed.inset-0')
@@ -468,7 +472,7 @@ test.describe('Keyboard Shortcut: G then C for Calendar', () => {
 
 test.describe('Import/Export: JSON/CSV Options', () => {
   test('should have import and export options in settings', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     // Look for export/import buttons in settings
@@ -596,7 +600,7 @@ test.describe('Recurring Tasks: Completion-based (every!)', () => {
     if (await input.isVisible()) {
       // Use every! syntax for completion-based recurrence
       await input.fill('Completion recurrence task every! 3 days')
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -728,7 +732,7 @@ test.describe('Labels: Multiple Labels Per Task', () => {
 
 test.describe('Import/Export: Verify Buttons Exist and Are Clickable', () => {
   test('should have export JSON, export CSV, and import JSON buttons in settings', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     // Check for specific export/import buttons

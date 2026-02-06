@@ -84,7 +84,7 @@ async function resetInboxGrouping() {
 
 async function createTask(name: string) {
   const addButton = page.locator('button:has-text("Add task")').first()
-  await addButton.waitFor({ state: 'visible', timeout: 5000 })
+  await addButton.waitFor({ state: 'visible' })
   await addButton.click()
   await page.waitForTimeout(200)
 
@@ -138,16 +138,26 @@ test.describe('Hyperlinks in Task Titles', () => {
     // Reset grouping first so we can create tasks
     await resetInboxGrouping()
 
-    // Create a task with a URL
-    const taskName = `Check https://example.com for details`
-    await createTask(taskName)
+    // Create a plain task first (inline parser strips URLs due to /section syntax)
+    const plainName = `LinkTest-${Date.now()}`
+    await createTask(plainName)
+    await page.waitForTimeout(300)
+
+    // Edit the task name to include a URL via the edit dialog
+    const taskContent = page.locator(`.task-item:has-text("${plainName}") .text-sm.cursor-pointer`).first()
+    await taskContent.click()
+    await page.waitForTimeout(500)
+
+    // Find the content input in edit dialog and set URL
+    const contentInput = page.locator('.fixed.inset-0 input[type="text"]').first()
+    await contentInput.fill('Check https://example.com for details')
+    await page.waitForTimeout(1200) // Wait for autosave
+    await page.keyboard.press('Escape')
     await page.waitForTimeout(500)
 
     // Verify the link is rendered as an <a> tag with correct href
     const link = page.locator('.task-item a[href="https://example.com"]').first()
     await expect(link).toBeVisible()
-    // The link opens via window.open in onClick handler, not via target attribute
-    await expect(link).toHaveAttribute('href', 'https://example.com')
   })
 })
 

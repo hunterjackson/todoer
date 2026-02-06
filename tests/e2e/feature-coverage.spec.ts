@@ -89,7 +89,7 @@ test.describe('Bug Verification: Labels and Projects in Quick Add', () => {
       }
 
       // Submit the task
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -142,7 +142,7 @@ test.describe('Bug Verification: Labels and Projects in Quick Add', () => {
       }
 
       // Submit the task
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -291,7 +291,7 @@ test.describe('Feature Coverage: Recurring Tasks', () => {
       await input.fill('Weekly review every monday')
 
       // Submit
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -318,7 +318,7 @@ test.describe('Feature Coverage: Task Duration', () => {
       await input.fill('Task with time for 30 min')
 
       // Submit
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -385,7 +385,7 @@ test.describe('Feature Coverage: Reminders', () => {
       await input.fill('Task with reminder !tomorrow')
 
       // Submit
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -468,7 +468,7 @@ test.describe('Feature Coverage: Copy/Paste Multiple Tasks', () => {
       }, multiLineTasks).catch(() => {})
 
       await input.click()
-      await page.keyboard.press('Meta+v')
+      await page.keyboard.press('Control+v')
       await page.waitForTimeout(500)
     }
 
@@ -486,30 +486,40 @@ test.describe('Feature Coverage: View Completed Tasks', () => {
   test('should show completed tasks section', async () => {
     await goToInbox()
 
-    // Create and complete a task
-    const addTaskBtn = page.locator('button:has-text("Add task")').first()
-    if (await addTaskBtn.isVisible()) {
-      await addTaskBtn.click()
-      const taskInput = page.locator('input[placeholder*="Task"]').first()
-      await taskInput.fill('Task to complete for view test')
-      await page.click('button:has-text("Add")')
+    // Ensure completed tasks are hidden first
+    const hideBtn = page.locator('button[title="Hide completed tasks"]')
+    if (await hideBtn.isVisible().catch(() => false)) {
+      await hideBtn.click()
       await page.waitForTimeout(300)
     }
+
+    // Create a task
+    const addTaskBtn = page.locator('button:has-text("Add task")').first()
+    await addTaskBtn.waitFor({ state: 'visible' })
+    await addTaskBtn.click()
+    const taskInput = page.locator('input[placeholder*="Task"]').first()
+    await taskInput.fill('Task to complete for view test')
+    // Click the submit button (also says "Add task")
+    const submitBtn = page.locator('button:has-text("Add task")').last()
+    await submitBtn.click()
+    await page.waitForTimeout(500)
+
+    // Verify task was created
+    const taskItem = page.locator('.task-item:has-text("Task to complete for view")')
+    await expect(taskItem).toBeVisible()
 
     // Complete the task
-    const checkbox = page.locator('.task-item:has-text("Task to complete for view") button').first()
-    if (await checkbox.isVisible()) {
-      await checkbox.click()
-      await page.waitForTimeout(300)
-    }
+    const checkbox = taskItem.locator('button').first()
+    await checkbox.click()
+    await page.waitForTimeout(500)
 
-    // Show completed tasks toggle should exist
-    const showCompletedBtn = page.locator('button:has-text("Show completed")')
-    if (await showCompletedBtn.isVisible()) {
-      await showCompletedBtn.click()
-      await page.waitForTimeout(300)
-    }
-    // After toggling, completed section or completed task should be visible
+    // Show completed tasks
+    const showBtn = page.locator('button[title="Show completed tasks"]')
+    await showBtn.waitFor({ state: 'visible' })
+    await showBtn.click()
+    await page.waitForTimeout(500)
+
+    // After toggling, completed task should be visible
     const completedTask = page.locator('.task-item:has-text("Task to complete for view")')
     await expect(completedTask).toBeVisible()
   })

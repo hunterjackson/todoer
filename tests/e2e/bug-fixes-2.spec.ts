@@ -98,7 +98,7 @@ test.describe('Bug: Quick Add @ and # shortcuts for labels and projects', () => 
       }
 
       // Submit task
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -156,7 +156,7 @@ test.describe('Bug: Quick Add @ and # shortcuts for labels and projects', () => 
       }
 
       // Submit task
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 
@@ -302,7 +302,7 @@ test.describe('Bug: Labels showing as IDs instead of names', () => {
       }
 
       // Submit task
-      await page.keyboard.press('Meta+Enter')
+      await page.keyboard.press('Control+Enter')
       await page.waitForTimeout(500)
     }
 

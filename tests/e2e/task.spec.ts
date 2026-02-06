@@ -130,21 +130,19 @@ test.describe('Task Management', () => {
   })
 
   test('should open quick add modal with keyboard shortcut', async () => {
+    // Blur any focused input so the 'q' shortcut fires
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+    await page.waitForTimeout(200)
     await page.keyboard.press('q')
     await page.waitForTimeout(500)
 
     // Check for quick add modal or dialog
-    const quickAdd = page.locator('[role="dialog"], .modal, [data-quick-add]')
-    const isVisible = await quickAdd.isVisible().catch(() => false)
+    const quickAdd = page.locator('.fixed.inset-0.z-50')
+    await expect(quickAdd).toBeVisible()
 
-    if (isVisible) {
-      // Close with Escape
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(300)
-    }
-
-    // Verify the quick add modal was opened (or at least the shortcut was handled)
-    expect(isVisible).toBe(true)
+    // Close with Escape
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
   })
 
   test('should navigate with keyboard shortcuts', async () => {

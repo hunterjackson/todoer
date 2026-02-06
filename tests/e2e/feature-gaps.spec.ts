@@ -715,7 +715,7 @@ test.describe('Settings: All options present', () => {
     await ensureSidebarVisible()
 
     // Open settings
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     // Look for notification-related settings

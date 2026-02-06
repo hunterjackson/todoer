@@ -80,12 +80,9 @@ async function goToInbox() {
 async function openQuickAdd() {
   await closeDialogs()
 
-  // Click on main content area first to ensure keyboard shortcut works
-  const mainArea = page.locator('main').first()
-  if (await mainArea.isVisible().catch(() => false)) {
-    await mainArea.click({ position: { x: 50, y: 50 } })
-    await page.waitForTimeout(100)
-  }
+  // Blur any focused input so the 'q' shortcut fires
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+  await page.waitForTimeout(200)
 
   await page.keyboard.press('q')
   await page.waitForTimeout(500)
@@ -110,7 +107,7 @@ async function submitQuickAddTask() {
   }
 
   // Fallback: Try Cmd+Enter (QuickAdd modal requires this combo)
-  await page.keyboard.press('Meta+Enter')
+  await page.keyboard.press('Control+Enter')
   await page.waitForTimeout(500)
 }
 
@@ -668,7 +665,7 @@ test.describe('Keyboard Shortcuts', () => {
   })
 
   test('should open settings with Cmd+,', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     const settingsDialog = page.locator('h2:has-text("Settings"), [data-settings]')
@@ -694,17 +691,19 @@ test.describe('Keyboard Shortcuts', () => {
   })
 
   test('should show help with ?', async () => {
-    await page.keyboard.press('Shift+/')
+    // Navigate to inbox first to get out of search view
+    await goToInbox()
+    // Blur any focused input so the '?' shortcut fires
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+    await page.waitForTimeout(200)
+    // Type '?' directly - Shift+/ may not produce '?' key event on all platforms
+    await page.keyboard.type('?')
     await page.waitForTimeout(500)
 
-    const helpDialog = page.locator('[data-help], h2:has-text("Keyboard"), text=Shortcuts')
-    const isOpen = await helpDialog.isVisible().catch(() => false)
+    const helpDialog = page.locator('h2:has-text("Keyboard")')
+    await expect(helpDialog).toBeVisible()
 
-    if (isOpen) {
-      await closeDialogs()
-    }
-    // Verify the help dialog was shown
-    expect(isOpen).toBe(true)
+    await closeDialogs()
   })
 
   test('should navigate tasks with J/K keys', async () => {
@@ -861,7 +860,7 @@ test.describe('Undo/Redo', () => {
         await page.waitForTimeout(300)
 
         // Undo with Cmd+Z
-        await page.keyboard.press('Meta+z')
+        await page.keyboard.press('Control+z')
         await page.waitForTimeout(300)
       }
     }
@@ -1091,7 +1090,7 @@ test.describe('Productivity Panel', () => {
   })
 
   test('should show daily goal setting in settings', async () => {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
     await page.waitForTimeout(500)
 
     // Settings panel should show Daily Goal section (karma/productivity related)

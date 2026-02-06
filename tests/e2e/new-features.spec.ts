@@ -319,18 +319,15 @@ test.describe('Rich Text Editor', () => {
 
     // Find the ProseMirror editor (TipTap)
     const editor = page.locator('.ProseMirror').first()
-    if (await editor.isVisible()) {
-      await editor.click()
-      await page.keyboard.type('This is a rich text description')
-      await page.waitForTimeout(200)
+    await expect(editor).toBeVisible()
+    await editor.click()
+    await page.keyboard.type('This is a rich text description')
+    await page.waitForTimeout(200)
 
-      const editorContent = await editor.textContent()
-      expect(editorContent).toContain('This is a rich text description')
-    }
+    const editorContent = await editor.textContent()
+    expect(editorContent).toContain('This is a rich text description')
 
     await closeDialogs()
-    // Verify the editor was visible and typeable
-    expect(await page.locator('.ProseMirror').first().isVisible().catch(() => false)).toBe(true)
   })
 })
 

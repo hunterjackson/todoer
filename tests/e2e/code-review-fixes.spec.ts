@@ -62,7 +62,7 @@ async function openSettingsPanel() {
   if (await settingsButton.isVisible().catch(() => false)) {
     await settingsButton.click()
   } else {
-    await page.keyboard.press('Meta+,')
+    await page.keyboard.press('Control+,')
   }
   await page.locator('h2:has-text("Settings")').first().waitFor({ state: 'visible' })
 }
@@ -113,7 +113,7 @@ test.describe('Fix #4: Recurring task completion', () => {
     const dueDateInput = quickAddDialog.locator('input[placeholder="Due date"]').first()
     await dueDateInput.fill('every day')
 
-    await page.keyboard.press('Meta+Enter')
+    await page.keyboard.press('Control+Enter')
     await page.waitForTimeout(500)
     await closeDialogs()
 
@@ -180,7 +180,7 @@ test.describe('Fix #5: Filter @label functionality', () => {
     const input = quickAddDialog.locator('input[type="text"]').first()
     // Type task content with @label trigger
     await input.fill('Labeled task for filter test')
-    await page.keyboard.press('Meta+Enter')
+    await page.keyboard.press('Control+Enter')
     await page.waitForTimeout(500)
     await closeDialogs()
 
@@ -239,7 +239,7 @@ test.describe('Fix #6: Undo preserves task identity', () => {
     expect(taskGone).toBe(false)
 
     // Undo with Ctrl+Z / Cmd+Z
-    await page.keyboard.press('Meta+z')
+    await page.keyboard.press('Control+z')
     await page.waitForTimeout(500)
 
     // Task should be restored with same content
@@ -407,7 +407,7 @@ test.describe('Fix #14: Archived default project fallback', () => {
     await quickAddDialog.waitFor({ state: 'visible' })
     const input = quickAddDialog.locator('input[type="text"]').first()
     await input.fill(taskName)
-    await page.keyboard.press('Meta+Enter')
+    await page.keyboard.press('Control+Enter')
     await page.waitForTimeout(500)
     await closeDialogs()
 
