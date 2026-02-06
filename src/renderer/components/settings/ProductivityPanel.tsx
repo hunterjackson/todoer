@@ -204,7 +204,7 @@ export function ProductivityPanel({ open, onClose }: ProductivityPanelProps): Re
                           title={`${count} tasks on ${dateStr}`}
                         />
                         <span className="text-[10px] text-muted-foreground">
-                          {date.toLocaleDateString('en-US', { weekday: 'narrow' })}
+                          {date.toLocaleDateString(undefined, { weekday: 'narrow' })}
                         </span>
                       </div>
                     )

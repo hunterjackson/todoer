@@ -6,6 +6,7 @@ import type { KarmaEngine } from '../services/karmaEngine'
 import { parseDateWithRecurrence } from '../services/dateParser'
 import { calculateNextDueDate } from '../services/recurrenceEngine'
 import type { Priority } from '@shared/types'
+import { formatDateByPreference } from '@shared/utils'
 
 interface Repositories {
   taskRepo: TaskRepository
@@ -335,7 +336,7 @@ export function handleToolCall(
             // Uncomplete the task and set the next due date
             taskRepo.uncomplete(taskId)
             taskRepo.update(taskId, { dueDate: nextDueDate })
-            const nextDateStr = new Date(nextDueDate).toLocaleDateString()
+            const nextDateStr = formatDateByPreference(new Date(nextDueDate), 'mdy')
             return {
               content: [{ type: 'text', text: `Completed recurring task: "${taskBeforeComplete.content}" - next due: ${nextDateStr}` }]
             }

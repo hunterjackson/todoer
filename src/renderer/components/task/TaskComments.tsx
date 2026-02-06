@@ -4,7 +4,7 @@ import { useComments } from '../../hooks/useComments'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { RichTextEditor } from '@renderer/components/ui/RichTextEditor'
 import type { Comment } from '@shared/types'
-import { sanitizeHtml } from '@shared/utils'
+import { sanitizeHtml, formatDateByPreference } from '@shared/utils'
 
 function formatTime(date: Date, timeFormat: '12h' | '24h'): string {
   const hours = date.getHours()
@@ -77,7 +77,7 @@ export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement 
     if (diffDays < 7) return `${diffDays}d ago`
 
     const timeStr = formatTime(date, settings.timeFormat)
-    return `${date.toLocaleDateString()} ${timeStr}`
+    return `${formatDateByPreference(date, settings.dateFormat)} ${timeStr}`
   }
 
   // Check if content contains HTML tags
