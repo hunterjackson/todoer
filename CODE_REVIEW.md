@@ -11,11 +11,7 @@ Full top-down architecture review after resolving all prior findings (v1-v7). Co
 
 ## Open Findings
 
-### Finding 4 — Medium: Settings `set` handler does not validate keys or values
-**File**: `src/main/ipc/handlers.ts:613-626`
-**Impact**: Any arbitrary key/value can be written to the settings table from the renderer. While this is a local-only app (no remote attack surface), it means a bug in the renderer could corrupt settings by writing invalid keys or malformed values.
-**Detail**: The handler accepts any `(key: string, value: string)` pair and upserts it directly into the settings table without checking against known setting keys or validating value formats (e.g., `timeFormat` should only be `'12h'` or `'24h'`).
-**Fix**: Add a whitelist of valid setting keys and basic value validation. Low urgency since this is a local Electron app.
+No open findings.
 
 ## Status of Prior Findings
 - All v1-v7 findings (sessions 1-7) have been resolved and verified.

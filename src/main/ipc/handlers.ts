@@ -17,6 +17,7 @@ import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
 import { calculateRecurringRescheduleDate } from '../services/recurrenceEngine'
 import { importTaskAttachments } from '../services/attachmentImport'
+import { validateSettingEntry } from '../services/settingsValidation'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
 import { KarmaEngine } from '../services/karmaEngine'
 import {
@@ -618,17 +619,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:set', async (_event, key: string, value: string) => {
     const db = getDatabase()
+    const validated = validateSettingEntry(key, value)
 
     // Check if exists
     const stmt = db.prepare('SELECT key FROM settings WHERE key = ?')
-    stmt.bind([key])
+    stmt.bind([validated.key])
     const exists = stmt.step()
     stmt.free()
 
     if (exists) {
-      db.run('UPDATE settings SET value = ? WHERE key = ?', [value, key])
+      db.run('UPDATE settings SET value = ? WHERE key = ?', [validated.value, validated.key])
     } else {
-      db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, value])
+      db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [validated.key, validated.value])
     }
 
     saveDatabase()

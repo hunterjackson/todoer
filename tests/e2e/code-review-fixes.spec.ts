@@ -501,6 +501,40 @@ test.describe('Fix #16: Karma goal validation', () => {
 })
 
 // ─────────────────────────────────────────────
+// Fix #17: Settings set handler validates keys/values
+// ─────────────────────────────────────────────
+test.describe('Fix #17: Settings validation', () => {
+  test('should reject invalid settings keys and values', async () => {
+    const invalidKeyResult = await page.evaluate(async () => {
+      try {
+        await window.api.settings.set('theme', 'dark')
+        return { ok: true }
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? error.message : String(error) }
+      }
+    })
+    expect(invalidKeyResult.ok).toBe(false)
+
+    const invalidValueResult = await page.evaluate(async () => {
+      try {
+        await window.api.settings.set('confirmDelete', 'yes')
+        return { ok: true }
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? error.message : String(error) }
+      }
+    })
+    expect(invalidValueResult.ok).toBe(false)
+
+    // Valid writes should still work.
+    const validResult = await page.evaluate(async () => {
+      await window.api.settings.set('confirmDelete', 'false')
+      return window.api.settings.get('confirmDelete')
+    })
+    expect(validResult).toBe('false')
+  })
+})
+
+// ─────────────────────────────────────────────
 // Console error check
 // ─────────────────────────────────────────────
 test.describe('Console Errors', () => {
