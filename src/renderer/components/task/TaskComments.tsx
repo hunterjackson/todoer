@@ -1,8 +1,20 @@
 import React, { useState } from 'react'
 import { MessageSquare, Send, Trash2, Edit2, X, Check } from 'lucide-react'
 import { useComments } from '../../hooks/useComments'
+import { useSettings } from '@renderer/hooks/useSettings'
 import { RichTextEditor } from '@renderer/components/ui/RichTextEditor'
 import type { Comment } from '@shared/types'
+
+function formatTime(date: Date, timeFormat: '12h' | '24h'): string {
+  const hours = date.getHours()
+  const mins = String(date.getMinutes()).padStart(2, '0')
+  if (timeFormat === '24h') {
+    return `${String(hours).padStart(2, '0')}:${mins}`
+  }
+  const h12 = hours % 12 || 12
+  const ampm = hours < 12 ? 'AM' : 'PM'
+  return `${h12}:${mins} ${ampm}`
+}
 
 interface TaskCommentsProps {
   taskId: string
@@ -10,6 +22,7 @@ interface TaskCommentsProps {
 
 export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement {
   const { comments, loading, error, addComment, updateComment, deleteComment } = useComments(taskId)
+  const { settings } = useSettings()
   const [newComment, setNewComment] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
@@ -62,7 +75,8 @@ export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement 
     if (diffHours < 24) return `${diffHours}h ago`
     if (diffDays < 7) return `${diffDays}d ago`
 
-    return date.toLocaleDateString()
+    const timeStr = formatTime(date, settings.timeFormat)
+    return `${date.toLocaleDateString()} ${timeStr}`
   }
 
   // Check if content contains HTML tags

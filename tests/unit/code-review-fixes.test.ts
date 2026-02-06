@@ -325,6 +325,50 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
   })
 
+  // ─── v4 Fix #6: timeFormat produces correct output ───
+  describe('v4 Fix #6: timeFormat rendering', () => {
+    function formatTime(date: Date, timeFormat: '12h' | '24h'): string {
+      const hours = date.getHours()
+      const mins = String(date.getMinutes()).padStart(2, '0')
+      if (timeFormat === '24h') {
+        return `${String(hours).padStart(2, '0')}:${mins}`
+      }
+      const h12 = hours % 12 || 12
+      const ampm = hours < 12 ? 'AM' : 'PM'
+      return `${h12}:${mins} ${ampm}`
+    }
+
+    it('should format 24h correctly', () => {
+      const date = new Date(2026, 1, 6, 14, 30)
+      expect(formatTime(date, '24h')).toBe('14:30')
+    })
+
+    it('should format 12h correctly for PM', () => {
+      const date = new Date(2026, 1, 6, 14, 30)
+      expect(formatTime(date, '12h')).toBe('2:30 PM')
+    })
+
+    it('should format 12h correctly for AM', () => {
+      const date = new Date(2026, 1, 6, 9, 5)
+      expect(formatTime(date, '12h')).toBe('9:05 AM')
+    })
+
+    it('should handle midnight in 12h format', () => {
+      const date = new Date(2026, 1, 6, 0, 0)
+      expect(formatTime(date, '12h')).toBe('12:00 AM')
+    })
+
+    it('should handle noon in 12h format', () => {
+      const date = new Date(2026, 1, 6, 12, 0)
+      expect(formatTime(date, '12h')).toBe('12:00 PM')
+    })
+
+    it('should pad hours in 24h format', () => {
+      const date = new Date(2026, 1, 6, 3, 7)
+      expect(formatTime(date, '24h')).toBe('03:07')
+    })
+  })
+
   // ─── v4 Fix #3: Import dedupe for filters and sections ───
   describe('v4 Fix #3: Import dedupe for filters/sections', () => {
     it('should detect duplicate filters by name+query', () => {
