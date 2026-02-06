@@ -4,7 +4,10 @@
   "description": "A full-featured Todoist clone with embedded MCP server",
   "main": "./out/main/index.js",
   "homepage": "https://github.com/your-repo/todoer",
-  "author": "Your Name",
+  "author": {
+    "name": "Todoer",
+    "email": "todoer@localhost"
+  },
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
@@ -20,7 +23,59 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run test:coverage",
-    "setup:hooks": "git config core.hooksPath .githooks"
+    "setup:hooks": "git config core.hooksPath .githooks",
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "build:appimage": "electron-vite build && electron-builder --linux AppImage",
+    "build:deb": "electron-vite build && electron-builder --linux deb",
+    "dist": "electron-vite build && electron-builder"
+  },
+  "build": {
+    "appId": "com.todoer.app",
+    "productName": "Todoer",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "node_modules/sql.js/dist/sql-wasm.wasm"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+        "to": "sql-wasm.wasm"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "resources",
+      "category": "Office",
+      "desktop": {
+        "Name": "Todoer",
+        "Comment": "A full-featured task management app",
+        "Terminal": "false",
+        "Type": "Application",
+        "Categories": "Office;ProjectManagement;"
+      }
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1"
+      ]
+    },
+    "appImage": {
+      "artifactName": "${productName}-${version}-${arch}.AppImage"
+    }
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

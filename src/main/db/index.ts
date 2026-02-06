@@ -13,7 +13,14 @@ function getWasmPath(): string | undefined {
   if (process.env.NODE_ENV !== 'production' && !app?.isPackaged) {
     return join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm')
   }
-  // In production, WASM should be bundled or we use ASM version
+  // In production, WASM is bundled as an extra resource
+  if (process.resourcesPath) {
+    const prodPath = join(process.resourcesPath, 'sql-wasm.wasm')
+    if (existsSync(prodPath)) {
+      return prodPath
+    }
+  }
+  // Fall back to ASM.js version
   return undefined
 }
 
