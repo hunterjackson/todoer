@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { exportToJSON as realExportToJSON, importFromJSON as realImportFromJSON } from '../../../src/main/services/dataExport'
 
 describe('Data Export', () => {
   describe('exportToJSON', () => {
@@ -82,6 +83,51 @@ describe('Data Import', () => {
 
     it('should throw on missing required fields', () => {
       expect(() => importFromJSON('{}')).toThrow()
+    })
+
+    it('should round-trip comments, reminders, settings, and karma', () => {
+      const exportData = {
+        tasks: [{ id: 't1', content: 'Task 1', createdAt: 1000, updatedAt: 1000 }] as any[],
+        projects: [{ id: 'p1', name: 'Proj' }] as any[],
+        labels: [] as any[],
+        filters: [] as any[],
+        sections: [] as any[],
+        comments: [
+          { id: 'c1', taskId: 't1', projectId: null, content: 'A comment', createdAt: 2000, updatedAt: 2000 },
+          { id: 'c2', taskId: null, projectId: 'p1', content: 'Project note', createdAt: 3000, updatedAt: 3000 }
+        ] as any[],
+        reminders: [
+          { id: 'r1', taskId: 't1', remindAt: 5000, notified: false }
+        ] as any[],
+        settings: { theme: 'dark', confirmDelete: 'true' },
+        karmaStats: { id: 'default', totalPoints: 42, currentStreak: 3, longestStreak: 7, dailyGoal: 5, weeklyGoal: 25 } as any,
+        karmaHistory: [
+          { id: 'kh1', date: '2025-01-01', points: 10, tasksCompleted: 5 }
+        ] as any[]
+      }
+
+      const json = realExportToJSON(exportData)
+      const result = realImportFromJSON(json)
+
+      // Comments
+      expect(result.comments).toHaveLength(2)
+      expect(result.comments![0].content).toBe('A comment')
+      expect(result.comments![1].projectId).toBe('p1')
+
+      // Reminders
+      expect(result.reminders).toHaveLength(1)
+      expect(result.reminders![0].remindAt).toBe(5000)
+
+      // Settings
+      expect(result.settings).toEqual({ theme: 'dark', confirmDelete: 'true' })
+
+      // Karma stats
+      expect(result.karmaStats!.totalPoints).toBe(42)
+      expect(result.karmaStats!.currentStreak).toBe(3)
+
+      // Karma history
+      expect(result.karmaHistory).toHaveLength(1)
+      expect(result.karmaHistory![0].tasksCompleted).toBe(5)
     })
   })
 

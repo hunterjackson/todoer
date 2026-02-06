@@ -598,7 +598,7 @@ export function registerIpcHandlers(): void {
 
   // Data export/import handlers
   ipcMain.handle('data:exportJSON', async () => {
-    const { taskRepo, projectRepo, labelRepo, filterRepo, sectionRepo } = getRepositories()
+    const { taskRepo, projectRepo, labelRepo, filterRepo, sectionRepo, commentRepo, reminderRepo, karmaRepo } = getRepositories()
 
     const tasks = taskRepo.list({})
     const projects = projectRepo.list()
@@ -606,6 +606,20 @@ export function registerIpcHandlers(): void {
     const filters = filterRepo.list()
     // Get all sections by querying each project
     const sections = projects.flatMap((p) => sectionRepo.list(p.id))
+    const comments = commentRepo.listAll()
+    const reminders = reminderRepo.listAll()
+    const karmaStats = karmaRepo.getStats()
+    const karmaHistory = karmaRepo.getAllHistory()
+
+    // Get all settings
+    const db = getDatabase()
+    const settingsStmt = db.prepare('SELECT key, value FROM settings')
+    const settings: Record<string, string> = {}
+    while (settingsStmt.step()) {
+      const row = settingsStmt.getAsObject() as { key: string; value: string }
+      settings[row.key] = row.value
+    }
+    settingsStmt.free()
 
     // Populate labels for each task so export includes label relationships
     const tasksWithLabels = tasks.map((t) => ({
@@ -613,7 +627,18 @@ export function registerIpcHandlers(): void {
       labels: taskRepo.getLabels(t.id)
     }))
 
-    const json = exportToJSON({ tasks: tasksWithLabels, projects, labels, filters, sections })
+    const json = exportToJSON({
+      tasks: tasksWithLabels,
+      projects,
+      labels,
+      filters,
+      sections,
+      comments,
+      reminders,
+      settings,
+      karmaStats,
+      karmaHistory
+    })
 
     const window = BrowserWindow.getFocusedWindow()
     const result = await dialog.showSaveDialog(window!, {
@@ -666,7 +691,7 @@ export function registerIpcHandlers(): void {
       const content = readFileSync(result.filePaths[0], 'utf-8')
       const data = importFromJSON(content)
 
-      const { taskRepo, projectRepo, labelRepo, filterRepo, sectionRepo } = getRepositories()
+      const { taskRepo, projectRepo, labelRepo, filterRepo, sectionRepo, commentRepo, reminderRepo, karmaRepo } = getRepositories()
 
       // Build old ID -> new ID maps for relational integrity
       const projectIdMap = new Map<string, string>()
@@ -740,9 +765,9 @@ export function registerIpcHandlers(): void {
       let sectionsImported = 0
       for (const section of data.sections || []) {
         try {
-          // Remap project ID for section
+          // Remap project ID for section (null if not mapped, will be skipped)
           const remappedProjectId = section.projectId
-            ? projectIdMap.get(section.projectId) || section.projectId
+            ? projectIdMap.get(section.projectId) || null
             : null
 
           // Skip sections without valid project
@@ -784,14 +809,14 @@ export function registerIpcHandlers(): void {
       let tasksImported = 0
       for (const task of sortedTasks) {
         try {
-          // Remap label IDs using the old->new map
+          // Remap label IDs using the old->new map (drop unmapped labels)
           const remappedLabelIds = (task.labels?.map((l: { id: string }) =>
-            labelIdMap.get(l.id) || l.id
-          ) || []).filter(Boolean)
+            labelIdMap.get(l.id)
+          ) || []).filter(Boolean) as string[]
 
-          // Remap project ID
+          // Remap project ID (fall back to null/Inbox, not old ID)
           const remappedProjectId = task.projectId
-            ? projectIdMap.get(task.projectId) || task.projectId
+            ? projectIdMap.get(task.projectId) || null
             : null
 
           // Remap parent task ID
@@ -830,6 +855,93 @@ export function registerIpcHandlers(): void {
         }
       }
 
+      // Import comments (after tasks/projects since they reference them)
+      let commentsImported = 0
+      for (const comment of data.comments || []) {
+        try {
+          // Remap task/project IDs
+          const remappedTaskId = comment.taskId
+            ? taskIdMap.get(comment.taskId) || null
+            : null
+          const remappedProjectId = comment.projectId
+            ? projectIdMap.get(comment.projectId) || null
+            : null
+
+          // Skip if neither task nor project was imported
+          if (!remappedTaskId && !remappedProjectId) continue
+
+          if (remappedTaskId) {
+            commentRepo.create({ taskId: remappedTaskId, content: comment.content })
+          } else if (remappedProjectId) {
+            commentRepo.create({ projectId: remappedProjectId, content: comment.content })
+          }
+          commentsImported++
+        } catch {
+          // Skip failures
+        }
+      }
+
+      // Import reminders (after tasks)
+      let remindersImported = 0
+      for (const reminder of data.reminders || []) {
+        try {
+          const remappedTaskId = reminder.taskId
+            ? taskIdMap.get(reminder.taskId) || null
+            : null
+          if (!remappedTaskId) continue
+
+          reminderRepo.create({ taskId: remappedTaskId, remindAt: reminder.remindAt })
+          remindersImported++
+        } catch {
+          // Skip failures
+        }
+      }
+
+      // Import settings
+      if (data.settings && typeof data.settings === 'object') {
+        const db = getDatabase()
+        for (const [key, value] of Object.entries(data.settings)) {
+          try {
+            const stmt = db.prepare('SELECT key FROM settings WHERE key = ?')
+            stmt.bind([key])
+            const exists = stmt.step()
+            stmt.free()
+
+            if (exists) {
+              db.run('UPDATE settings SET value = ? WHERE key = ?', [value, key])
+            } else {
+              db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, value])
+            }
+          } catch {
+            // Skip failures
+          }
+        }
+      }
+
+      // Import karma stats
+      if (data.karmaStats) {
+        try {
+          karmaRepo.updateStats({
+            totalPoints: data.karmaStats.totalPoints,
+            currentStreak: data.karmaStats.currentStreak,
+            longestStreak: data.karmaStats.longestStreak,
+            dailyGoal: data.karmaStats.dailyGoal,
+            weeklyGoal: data.karmaStats.weeklyGoal
+          })
+        } catch {
+          // Skip failures
+        }
+      }
+
+      // Import karma history
+      for (const history of data.karmaHistory || []) {
+        try {
+          karmaRepo.recordHistory(history.date, history.points, history.tasksCompleted)
+        } catch {
+          // Skip duplicates
+        }
+      }
+
       return {
         success: true,
         imported: {
@@ -837,7 +949,9 @@ export function registerIpcHandlers(): void {
           projects: projectsImported,
           labels: labelsImported,
           filters: filtersImported,
-          sections: sectionsImported
+          sections: sectionsImported,
+          comments: commentsImported,
+          reminders: remindersImported
         }
       }
     } catch (error) {

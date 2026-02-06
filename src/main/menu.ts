@@ -32,7 +32,7 @@ export function createAppMenu(): void {
           label: 'Export',
           submenu: [
             {
-              label: 'Export All Data (JSON)...',
+              label: 'Backup Data (JSON)...',
               accelerator: 'CmdOrCtrl+Shift+E',
               click: async () => {
                 const window = BrowserWindow.getFocusedWindow()

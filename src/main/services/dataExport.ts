@@ -1,4 +1,4 @@
-import type { Task, Project, Label, Filter, Section } from '@shared/types'
+import type { Task, Project, Label, Filter, Section, Comment, Reminder, KarmaStats, KarmaHistory } from '@shared/types'
 
 export interface ExportData {
   version: number
@@ -8,6 +8,11 @@ export interface ExportData {
   labels: Label[]
   filters: Filter[]
   sections?: Section[]
+  comments?: Comment[]
+  reminders?: Reminder[]
+  settings?: Record<string, string>
+  karmaStats?: KarmaStats
+  karmaHistory?: KarmaHistory[]
 }
 
 /**
@@ -90,7 +95,12 @@ export function importFromJSON(jsonStr: string): Omit<ExportData, 'version' | 'e
     projects: data.projects || [],
     labels: data.labels || [],
     filters: data.filters || [],
-    sections: data.sections || []
+    sections: data.sections || [],
+    comments: data.comments || [],
+    reminders: data.reminders || [],
+    settings: data.settings || {},
+    karmaStats: data.karmaStats,
+    karmaHistory: data.karmaHistory || []
   }
 }
 

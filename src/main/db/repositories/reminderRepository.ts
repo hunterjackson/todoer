@@ -50,6 +50,31 @@ export class ReminderRepository {
     return null
   }
 
+  listAll(): Reminder[] {
+    const stmt = this.db.prepare(
+      'SELECT * FROM reminders ORDER BY remind_at ASC'
+    )
+
+    const reminders: Reminder[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as {
+        id: string
+        task_id: string
+        remind_at: number
+        notified: number
+      }
+      reminders.push({
+        id: row.id,
+        taskId: row.task_id,
+        remindAt: row.remind_at,
+        notified: row.notified === 1
+      })
+    }
+    stmt.free()
+
+    return reminders
+  }
+
   getByTask(taskId: string): Reminder[] {
     const stmt = this.db.prepare(
       'SELECT * FROM reminders WHERE task_id = ? ORDER BY remind_at ASC'

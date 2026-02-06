@@ -56,6 +56,21 @@ export class CommentRepository {
     return null
   }
 
+  listAll(): Comment[] {
+    const stmt = this.db.prepare(
+      'SELECT * FROM comments ORDER BY created_at ASC'
+    )
+
+    const comments: Comment[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as unknown as CommentRow
+      comments.push(this.rowToComment(row))
+    }
+    stmt.free()
+
+    return comments
+  }
+
   list(taskId: string): Comment[] {
     const stmt = this.db.prepare(
       'SELECT * FROM comments WHERE task_id = ? ORDER BY created_at ASC'

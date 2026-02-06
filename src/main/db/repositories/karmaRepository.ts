@@ -99,6 +99,16 @@ export class KarmaRepository extends BaseRepository<KarmaStatsRow, KarmaStats> {
   }
 
   /**
+   * Get all karma history entries
+   */
+  getAllHistory(): KarmaHistory[] {
+    const rows = this.queryAll<KarmaHistoryRow>(
+      `SELECT * FROM karma_history ORDER BY date DESC`
+    )
+    return rows.map((row) => this.historyRowToEntity(row))
+  }
+
+  /**
    * Get karma history for a date range
    */
   getHistory(startDate: string, endDate: string): KarmaHistory[] {
