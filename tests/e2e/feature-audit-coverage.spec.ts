@@ -291,9 +291,7 @@ test.describe('Quick Add: Section Syntax', () => {
     await page.waitForTimeout(500)
 
     const task = page.locator('.task-item:has-text("Section task")')
-    // This is a soft test - the /section syntax parsing may not work perfectly
-    // but we verify the task is at least created in the project
-    expect(await task.isVisible().catch(() => false) || true).toBe(true)
+    await expect(task).toBeVisible({ timeout: 3000 })
   })
 })
 
@@ -303,16 +301,16 @@ test.describe('Quick Add: Section Syntax', () => {
 
 test.describe('Settings: Date Format', () => {
   test('should have date format option in settings', async () => {
-    // Open settings
     await page.keyboard.press('Meta+,')
     await page.waitForTimeout(500)
 
-    // Look for date format setting
-    const dateFormatLabel = page.locator('text=Date format, text=Date Format')
-    const hasDateFormat = await dateFormatLabel.isVisible().catch(() => false)
+    const settingsPanel = page.locator('.fixed.inset-0')
+    await expect(settingsPanel.locator('text=Date Format')).toBeVisible()
+    await expect(settingsPanel.locator('button:has-text("MM/DD/YYYY")')).toBeVisible()
+    await expect(settingsPanel.locator('button:has-text("DD/MM/YYYY")')).toBeVisible()
+    await expect(settingsPanel.locator('button:has-text("YYYY-MM-DD")')).toBeVisible()
 
     await closeDialogs()
-    expect(hasDateFormat || true).toBe(true) // Soft test - settings should have this option
   })
 })
 
@@ -321,11 +319,12 @@ test.describe('Settings: Time Format', () => {
     await page.keyboard.press('Meta+,')
     await page.waitForTimeout(500)
 
-    const timeFormatLabel = page.locator('text=Time format, text=Time Format, text=12h, text=24h')
-    const hasTimeFormat = await timeFormatLabel.isVisible().catch(() => false)
+    const settingsPanel = page.locator('.fixed.inset-0')
+    await expect(settingsPanel.locator('text=Time Format')).toBeVisible()
+    await expect(settingsPanel.locator('button:has-text("12-hour")')).toBeVisible()
+    await expect(settingsPanel.locator('button:has-text("24-hour")')).toBeVisible()
 
     await closeDialogs()
-    expect(hasTimeFormat || true).toBe(true)
   })
 })
 
@@ -334,11 +333,12 @@ test.describe('Settings: Start of Week', () => {
     await page.keyboard.press('Meta+,')
     await page.waitForTimeout(500)
 
-    const weekStartLabel = page.locator('text=Start of week, text=Week starts')
-    const hasWeekStart = await weekStartLabel.isVisible().catch(() => false)
+    const settingsPanel = page.locator('.fixed.inset-0')
+    await expect(settingsPanel.locator('text=Week Starts On')).toBeVisible()
+    await expect(settingsPanel.locator('button:has-text("Sunday")')).toBeVisible()
+    await expect(settingsPanel.locator('button:has-text("Monday")')).toBeVisible()
 
     await closeDialogs()
-    expect(hasWeekStart || true).toBe(true)
   })
 })
 
@@ -347,11 +347,11 @@ test.describe('Settings: Default Project', () => {
     await page.keyboard.press('Meta+,')
     await page.waitForTimeout(500)
 
-    const defaultProjectLabel = page.locator('text=Default project, text=Default Project')
-    const hasDefaultProject = await defaultProjectLabel.isVisible().catch(() => false)
+    const settingsPanel = page.locator('.fixed.inset-0')
+    await expect(settingsPanel.locator('text=Default Project')).toBeVisible()
+    await expect(settingsPanel.locator('select')).toBeVisible()
 
     await closeDialogs()
-    expect(hasDefaultProject || true).toBe(true)
   })
 })
 
@@ -360,11 +360,11 @@ test.describe('Settings: Daily/Weekly Goals', () => {
     await page.keyboard.press('Meta+,')
     await page.waitForTimeout(500)
 
-    const goalsLabel = page.locator('text=Daily goal, text=Weekly goal, text=Goal')
-    const hasGoals = await goalsLabel.isVisible().catch(() => false)
+    const settingsPanel = page.locator('.fixed.inset-0')
+    await expect(settingsPanel.locator('text=Daily Goal')).toBeVisible()
+    await expect(settingsPanel.locator('input[type="range"]')).toBeVisible()
 
     await closeDialogs()
-    expect(hasGoals || true).toBe(true)
   })
 })
 
@@ -396,10 +396,9 @@ test.describe('Filter Syntax: Priority Filter', () => {
 
     // Results should show the task
     const task = page.locator('.task-item:has-text("P1 priority")')
-    const visible = await task.isVisible().catch(() => false)
+    await expect(task).toBeVisible({ timeout: 3000 })
 
     await closeDialogs()
-    expect(visible || true).toBe(true) // Soft test - filter should work
   })
 })
 
@@ -479,15 +478,12 @@ test.describe('Import/Export: JSON/CSV Options', () => {
     await page.keyboard.press('Meta+,')
     await page.waitForTimeout(500)
 
-    // Look for export/import section
-    const exportLabel = page.locator('text=Export, button:has-text("Export")')
-    const importLabel = page.locator('text=Import, button:has-text("Import")')
-
-    const hasExport = await exportLabel.isVisible().catch(() => false)
-    const hasImport = await importLabel.isVisible().catch(() => false)
+    // Look for export/import buttons in settings
+    const settingsPanel = page.locator('.fixed.inset-0')
+    await expect(settingsPanel.locator('button:has-text("Export all data")')).toBeVisible()
+    await expect(settingsPanel.locator('button:has-text("Import from JSON")')).toBeVisible()
 
     await closeDialogs()
-    expect(hasExport || hasImport || true).toBe(true)
   })
 })
 

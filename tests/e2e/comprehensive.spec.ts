@@ -1069,19 +1069,16 @@ test.describe('Productivity Panel', () => {
     await closeDialogs()
   })
 
-  test('should show karma stats in settings', async () => {
-    const settingsBtn = page.locator('button:has-text("Settings")').first()
-    if (await settingsBtn.isVisible()) {
-      await settingsBtn.click()
-      await page.waitForTimeout(300)
+  test('should show daily goal setting in settings', async () => {
+    await page.keyboard.press('Meta+,')
+    await page.waitForTimeout(500)
 
-      // Look for productivity/karma section
-      const productivitySection = page.locator('text=Productivity, text=Karma, text=Tasks completed').first()
-      const isVisible = await productivitySection.isVisible().catch(() => false)
-      expect(isVisible || true).toBe(true) // Lenient - may not be visible
-    }
+    // Settings panel should show Daily Goal section (karma/productivity related)
+    const settingsPanel = page.locator('.fixed.inset-0')
+    await expect(settingsPanel.locator('text=Daily Goal')).toBeVisible()
+    await expect(settingsPanel.locator('input[type="range"]')).toBeVisible()
+
     await closeDialogs()
-    expect(true).toBe(true)
   })
 })
 

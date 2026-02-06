@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { exportToJSON as realExportToJSON, importFromJSON as realImportFromJSON } from '../../../src/main/services/dataExport'
+import { exportToJSON, importFromJSON, exportToCSV, importFromCSV } from '../../../src/main/services/dataExport'
 
 describe('Data Export', () => {
   describe('exportToJSON', () => {
@@ -9,11 +9,11 @@ describe('Data Export', () => {
         { id: '2', content: 'Task 2', priority: 2, completed: true }
       ]
 
-      const result = exportToJSON({ tasks, projects: [], labels: [] })
+      const result = exportToJSON({ tasks, projects: [], labels: [] } as any)
       const parsed = JSON.parse(result)
 
       expect(parsed.tasks).toHaveLength(2)
-      expect(parsed.version).toBeDefined()
+      expect(parsed.version).toBe(1)
       expect(parsed.exportedAt).toBeDefined()
     })
 
@@ -24,7 +24,7 @@ describe('Data Export', () => {
         labels: [{ id: 'l1', name: 'Label 1' }]
       }
 
-      const result = exportToJSON(data)
+      const result = exportToJSON(data as any)
       const parsed = JSON.parse(result)
 
       expect(parsed.projects).toHaveLength(1)
@@ -39,7 +39,7 @@ describe('Data Export', () => {
         { id: '2', content: 'Task with, comma', priority: 2, completed: true, dueDate: 1704067200000 }
       ]
 
-      const result = exportToCSV(tasks)
+      const result = exportToCSV(tasks as any)
       const lines = result.split('\n')
 
       // Header + 2 data rows
@@ -113,8 +113,8 @@ describe('Data Import', () => {
         ]
       }
 
-      const json = realExportToJSON(exportData)
-      const result = realImportFromJSON(json)
+      const json = exportToJSON(exportData)
+      const result = importFromJSON(json)
 
       expect(result.attachments).toHaveLength(2)
       expect(result.attachments![0].filename).toBe('test.txt')
@@ -134,8 +134,8 @@ describe('Data Import', () => {
         // no attachments field
       }
 
-      const json = realExportToJSON(exportData)
-      const result = realImportFromJSON(json)
+      const json = exportToJSON(exportData)
+      const result = importFromJSON(json)
 
       expect(result.attachments).toEqual([])
     })
@@ -161,8 +161,8 @@ describe('Data Import', () => {
         ] as any[]
       }
 
-      const json = realExportToJSON(exportData)
-      const result = realImportFromJSON(json)
+      const json = exportToJSON(exportData)
+      const result = importFromJSON(json)
 
       // Comments
       expect(result.comments).toHaveLength(2)
@@ -210,105 +210,3 @@ Task 2,2,true,2024-01-01`
     })
   })
 })
-
-// Implementation helpers
-interface ExportData {
-  tasks: any[]
-  projects: any[]
-  labels: any[]
-}
-
-function exportToJSON(data: ExportData): string {
-  return JSON.stringify({
-    version: 1,
-    exportedAt: Date.now(),
-    ...data
-  }, null, 2)
-}
-
-function exportToCSV(tasks: any[]): string {
-  const headers = ['content', 'priority', 'completed', 'dueDate', 'projectId']
-  const rows = tasks.map(task => {
-    return headers.map(h => {
-      const value = task[h]
-      if (value === null || value === undefined) return ''
-      if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-        return `"${value.replace(/"/g, '""')}"`
-      }
-      return String(value)
-    }).join(',')
-  })
-
-  return [headers.join(','), ...rows].join('\n')
-}
-
-function importFromJSON(jsonStr: string): ExportData {
-  const data = JSON.parse(jsonStr)
-
-  if (!data.tasks || !Array.isArray(data.tasks)) {
-    throw new Error('Invalid export format: missing tasks array')
-  }
-
-  return {
-    tasks: data.tasks,
-    projects: data.projects || [],
-    labels: data.labels || []
-  }
-}
-
-function importFromCSV(csv: string): any[] {
-  const lines = csv.trim().split('\n')
-  if (lines.length < 2) return []
-
-  const headers = parseCSVLine(lines[0])
-  const tasks: any[] = []
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i])
-    const task: any = {}
-
-    headers.forEach((header, index) => {
-      let value: any = values[index] || ''
-
-      // Type conversion
-      if (header === 'priority') {
-        value = parseInt(value, 10) || 4
-      } else if (header === 'completed') {
-        value = value === 'true'
-      }
-
-      task[header] = value
-    })
-
-    tasks.push(task)
-  }
-
-  return tasks
-}
-
-function parseCSVLine(line: string): string[] {
-  const result: string[] = []
-  let current = ''
-  let inQuotes = false
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i]
-
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"'
-        i++
-      } else {
-        inQuotes = !inQuotes
-      }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current)
-      current = ''
-    } else {
-      current += char
-    }
-  }
-
-  result.push(current)
-  return result
-}
