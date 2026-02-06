@@ -17,10 +17,28 @@ function getWasmPath(): string | undefined {
   return undefined
 }
 
+// Check if we're in a test environment
+function isTestEnvironment(): boolean {
+  return (
+    process.env.NODE_ENV === 'test' ||
+    process.env.VITEST === 'true' ||
+    process.env.TODOER_TEST_MODE === 'true'
+  )
+}
+
 // Get database path based on environment
 function getDatabasePath(): string {
-  // For tests, use in-memory database
-  if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+  const inTestMode = isTestEnvironment()
+
+  // SAFETY CHECK: In test mode, ALWAYS use in-memory database
+  // This is a hard requirement to prevent test pollution of production data
+  if (inTestMode) {
+    return ':memory:'
+  }
+
+  // SAFETY CHECK: If custom data path is empty string, use in-memory
+  // This catches cases where tests clear this variable as a safeguard
+  if (process.env.TODOER_DATA_PATH === '') {
     return ':memory:'
   }
 
@@ -282,6 +300,15 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
   }
 
   dbPath = getDatabasePath()
+
+  // CRITICAL SAFETY CHECK: Throw hard error if test mode detected but not using in-memory DB
+  // This is the last line of defense against test pollution of production data
+  if (isTestEnvironment() && dbPath !== ':memory:') {
+    throw new Error(
+      `SAFETY VIOLATION: Test environment detected but database path is "${dbPath}" instead of ":memory:". ` +
+        'This would pollute production data. Aborting to protect your data.'
+    )
+  }
 
   if (dbPath === ':memory:') {
     db = new SQL.Database()

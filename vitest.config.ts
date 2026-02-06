@@ -2,7 +2,19 @@ import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
 export default defineConfig({
+  // Enforce test environment at the highest level to prevent production database pollution
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('test'),
+    'process.env.VITEST': JSON.stringify('true'),
+    'process.env.TODOER_TEST_MODE': JSON.stringify('true')
+  },
   test: {
+    // Double-enforce via test env config
+    env: {
+      NODE_ENV: 'test',
+      VITEST: 'true',
+      TODOER_TEST_MODE: 'true'
+    },
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],

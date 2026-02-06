@@ -54,24 +54,28 @@ export function useProjects(): UseProjectsResult {
   const createProject = useCallback(async (data: ProjectCreate): Promise<Project> => {
     const project = await window.api.projects.create(data)
     await fetchProjects()
+    notifyProjectsChanged() // Notify other hook instances
     return project
   }, [fetchProjects])
 
   const updateProject = useCallback(async (id: string, data: ProjectUpdate): Promise<Project | null> => {
     const project = await window.api.projects.update(id, data)
     await fetchProjects()
+    notifyProjectsChanged() // Notify other hook instances
     return project
   }, [fetchProjects])
 
   const deleteProject = useCallback(async (id: string): Promise<boolean> => {
     const result = await window.api.projects.delete(id)
     await fetchProjects()
+    notifyProjectsChanged() // Notify other hook instances (e.g., sidebar)
     return result
   }, [fetchProjects])
 
   const duplicateProject = useCallback(async (id: string): Promise<Project | null> => {
     const result = await window.api.projects.duplicate(id)
     await fetchProjects()
+    notifyProjectsChanged() // Notify other hook instances
     return result
   }, [fetchProjects])
 

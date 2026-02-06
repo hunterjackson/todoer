@@ -29,6 +29,29 @@ Added inline autocomplete functionality for both labels and projects when editin
 
 ---
 
+## Bug 3: Sidebar Not Updating After Deleting Project
+**Status:** FIXED
+
+**Description:**
+When deleting a project via the ProjectView menu or ProjectDialog, the project remained visible in the sidebar until the page was manually refreshed.
+
+**Root Cause:**
+The `useProjects()` hook has multiple instances (Sidebar, ProjectView, etc.) that each maintain their own local state. When `deleteProject` was called, it only updated the calling hook's state via `fetchProjects()`, but other instances weren't notified.
+
+**Fix:**
+Updated `useProjects.ts` to call `notifyProjectsChanged()` after all mutation operations (create, update, delete, duplicate). This dispatches a global custom event that all hook instances listen for, triggering a refresh.
+
+```typescript
+const deleteProject = useCallback(async (id: string): Promise<boolean> => {
+  const result = await window.api.projects.delete(id)
+  await fetchProjects()
+  notifyProjectsChanged() // Notify other hook instances (e.g., sidebar)
+  return result
+}, [fetchProjects])
+```
+
+---
+
 ## Bug 2: Sidebar Not Updating After Creating Labels/Projects in Task Edit Dialog
 **Tests:**
 - `Bug Verification: Sidebar Updates > should show new label in sidebar immediately after creation in task edit`

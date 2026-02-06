@@ -23,7 +23,8 @@ test.beforeAll(async () => {
     args: [join(__dirname, '../../out/main/index.js')],
     env: {
       ...process.env,
-      NODE_ENV: 'test'
+      NODE_ENV: 'test',
+      TODOER_TEST_MODE: 'true'
     }
   })
 

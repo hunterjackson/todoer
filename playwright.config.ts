@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
+  // Global setup ensures test environment is enforced before any tests run
+  globalSetup: './tests/e2e/global-setup.ts',
   testDir: './tests/e2e',
   fullyParallel: false, // Tests within a file share an Electron instance, so they run sequentially
   forbidOnly: !!process.env.CI,
