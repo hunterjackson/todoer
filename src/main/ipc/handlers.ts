@@ -777,10 +777,16 @@ export function registerIpcHandlers(): void {
         }
       }
 
-      // Import filters
+      // Import filters (dedupe by name+query)
       let filtersImported = 0
+      const existingFilters = filterRepo.list()
       for (const filter of data.filters) {
         try {
+          const duplicate = existingFilters.find(
+            (f) => f.name === filter.name && f.query === filter.query
+          )
+          if (duplicate) continue
+
           filterRepo.create({
             name: filter.name,
             query: filter.query,
@@ -789,11 +795,11 @@ export function registerIpcHandlers(): void {
           })
           filtersImported++
         } catch {
-          // Skip duplicates
+          // Skip failures
         }
       }
 
-      // Import sections (after projects, before tasks)
+      // Import sections (after projects, before tasks; dedupe by name+projectId)
       let sectionsImported = 0
       for (const section of data.sections || []) {
         try {
@@ -805,6 +811,16 @@ export function registerIpcHandlers(): void {
           // Skip sections without valid project
           if (!remappedProjectId) continue
 
+          // Check for existing section with same name in same project
+          const existingSections = sectionRepo.list(remappedProjectId)
+          const duplicate = existingSections.find(
+            (s) => s.name === section.name
+          )
+          if (duplicate) {
+            sectionIdMap.set(section.id, duplicate.id)
+            continue
+          }
+
           const newSection = sectionRepo.create({
             name: section.name,
             projectId: remappedProjectId
@@ -812,7 +828,7 @@ export function registerIpcHandlers(): void {
           sectionIdMap.set(section.id, newSection.id)
           sectionsImported++
         } catch {
-          // Skip duplicates
+          // Skip failures
         }
       }
 

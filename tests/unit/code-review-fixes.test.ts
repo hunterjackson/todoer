@@ -4,6 +4,7 @@ import { TaskRepository } from '@main/db/repositories/taskRepository'
 import { ProjectRepository } from '@main/db/repositories/projectRepository'
 import { LabelRepository } from '@main/db/repositories/labelRepository'
 import { SectionRepository } from '@main/db/repositories/sectionRepository'
+import { FilterRepository } from '@main/db/repositories/filterRepository'
 import { evaluateFilter, createFilterContext } from '@main/services/filterEngine'
 import { calculateNextDueDate } from '@main/services/recurrenceEngine'
 import { Database as SqlJsDatabase } from 'sql.js'
@@ -20,6 +21,7 @@ describe('CODE_REVIEW Fix Tests', () => {
   let projectRepo: ProjectRepository
   let labelRepo: LabelRepository
   let sectionRepo: SectionRepository
+  let filterRepo: FilterRepository
 
   beforeEach(async () => {
     db = await createTestDatabase()
@@ -27,6 +29,7 @@ describe('CODE_REVIEW Fix Tests', () => {
     projectRepo = new ProjectRepository(db)
     labelRepo = new LabelRepository(db)
     sectionRepo = new SectionRepository(db)
+    filterRepo = new FilterRepository(db)
   })
 
   afterEach(() => {
@@ -319,6 +322,60 @@ describe('CODE_REVIEW Fix Tests', () => {
       const today = new Date(2026, 1, 6)
       expect(isOverdue(2026, 1, 7, today)).toBe(false)
       expect(isOverdue(2026, 2, 1, today)).toBe(false) // March
+    })
+  })
+
+  // ─── v4 Fix #3: Import dedupe for filters and sections ───
+  describe('v4 Fix #3: Import dedupe for filters/sections', () => {
+    it('should detect duplicate filters by name+query', () => {
+      filterRepo.create({ name: 'My Filter', query: 'p1', color: '#ff0000' })
+
+      // Simulate import dedupe check
+      const existingFilters = filterRepo.list()
+      const incoming = { name: 'My Filter', query: 'p1', color: '#00ff00' }
+      const isDuplicate = existingFilters.some(
+        (f) => f.name === incoming.name && f.query === incoming.query
+      )
+
+      expect(isDuplicate).toBe(true)
+    })
+
+    it('should not flag filter as duplicate when query differs', () => {
+      filterRepo.create({ name: 'My Filter', query: 'p1', color: '#ff0000' })
+
+      const existingFilters = filterRepo.list()
+      const incoming = { name: 'My Filter', query: 'p2', color: '#00ff00' }
+      const isDuplicate = existingFilters.some(
+        (f) => f.name === incoming.name && f.query === incoming.query
+      )
+
+      expect(isDuplicate).toBe(false)
+    })
+
+    it('should detect duplicate sections by name+projectId', () => {
+      const project = projectRepo.create({ name: 'Test' })
+      sectionRepo.create({ name: 'Section A', projectId: project.id })
+
+      // Simulate import dedupe check
+      const existingSections = sectionRepo.list(project.id)
+      const isDuplicate = existingSections.some(
+        (s) => s.name === 'Section A'
+      )
+
+      expect(isDuplicate).toBe(true)
+    })
+
+    it('should not flag section as duplicate in a different project', () => {
+      const project1 = projectRepo.create({ name: 'P1' })
+      const project2 = projectRepo.create({ name: 'P2' })
+      sectionRepo.create({ name: 'Section A', projectId: project1.id })
+
+      const existingSections = sectionRepo.list(project2.id)
+      const isDuplicate = existingSections.some(
+        (s) => s.name === 'Section A'
+      )
+
+      expect(isDuplicate).toBe(false)
     })
   })
 
