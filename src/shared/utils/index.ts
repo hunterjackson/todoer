@@ -232,6 +232,7 @@ export function topologicalSort<T extends { id: string; parentId?: string | null
 export {
   parseInlineTaskContent,
   findProjectByName,
+  findLabelByName,
   findSectionByName
 } from './inlineTaskParser'
 export type { ParsedTaskContent } from './inlineTaskParser'

@@ -6,7 +6,7 @@ import { useLabels, notifyLabelsChanged } from '@hooks/useLabels'
 import { TaskContentAutocomplete } from '@renderer/components/ui/TaskContentAutocomplete'
 import type { Priority, Label, Section, Project } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
-import { parseInlineTaskContent, findProjectByName, findSectionByName } from '@shared/utils'
+import { parseInlineTaskContent, findProjectByName, findLabelByName, findSectionByName } from '@shared/utils'
 
 interface QuickAddModalProps {
   open: boolean
@@ -136,6 +136,17 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
         }
       }
 
+      // Resolve labels from inline @labelname
+      const finalLabelIds = [...labelIds]
+      if (parsed.labelNames) {
+        for (const labelName of parsed.labelNames) {
+          const matchedLabel = findLabelByName(labelName, labels)
+          if (matchedLabel && !finalLabelIds.includes(matchedLabel.id)) {
+            finalLabelIds.push(matchedLabel.id)
+          }
+        }
+      }
+
       // Use inline priority if specified
       if (parsed.priority) {
         finalPriority = parsed.priority
@@ -163,7 +174,7 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
         sectionId: finalSectionId || undefined,
         duration: finalDuration || undefined,
         deadline: finalDeadline,
-        labelIds: labelIds.length > 0 ? labelIds : undefined
+        labelIds: finalLabelIds.length > 0 ? finalLabelIds : undefined
       })
 
       // Notify parent that task was created
@@ -235,6 +246,17 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
             }
           }
 
+          // Resolve labels from inline @labelname
+          const pastedLabelIds = [...labelIds]
+          if (parsed.labelNames) {
+            for (const labelName of parsed.labelNames) {
+              const matchedLabel = findLabelByName(labelName, labels)
+              if (matchedLabel && !pastedLabelIds.includes(matchedLabel.id)) {
+                pastedLabelIds.push(matchedLabel.id)
+              }
+            }
+          }
+
           if (parsed.priority) {
             finalPriority = parsed.priority
           }
@@ -258,7 +280,7 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
             sectionId: finalSectionId,
             duration: finalDuration,
             deadline: finalDeadline,
-            labelIds: labelIds.length > 0 ? labelIds : undefined
+            labelIds: pastedLabelIds.length > 0 ? pastedLabelIds : undefined
           })
 
           // Create reminder from inline !datetime syntax

@@ -4,6 +4,7 @@ export interface ParsedTaskContent {
   content: string
   projectName?: string
   sectionName?: string
+  labelNames?: string[]
   priority?: Priority
   duration?: number  // in minutes
   reminderText?: string  // Raw reminder text to be parsed by date parser
@@ -38,6 +39,17 @@ export function parseInlineTaskContent(input: string): ParsedTaskContent {
   if (sectionMatch) {
     result.sectionName = sectionMatch[1] || sectionMatch[2]
     content = content.replace(sectionMatch[0], '').trim()
+  }
+
+  // Parse labels (@labelname or @"quoted label name") - supports multiple
+  const labelMatches: string[] = []
+  let labelMatch: RegExpMatchArray | null
+  while ((labelMatch = content.match(/@(?:"([^"]+)"|(\S+))/)) !== null) {
+    labelMatches.push(labelMatch[1] || labelMatch[2])
+    content = content.replace(labelMatch[0], '').trim()
+  }
+  if (labelMatches.length > 0) {
+    result.labelNames = labelMatches
   }
 
   // Parse priority (p1, p2, p3, p4)
@@ -105,6 +117,27 @@ export function findProjectByName(
 
   // Finally try contains match
   return projects.find(p => p.name.toLowerCase().includes(lowerName))
+}
+
+/**
+ * Find a label by name (case-insensitive partial match)
+ */
+export function findLabelByName(
+  labelName: string,
+  labels: { id: string; name: string }[]
+): { id: string; name: string } | undefined {
+  const lowerName = labelName.toLowerCase()
+
+  // First try exact match (case-insensitive)
+  const exactMatch = labels.find(l => l.name.toLowerCase() === lowerName)
+  if (exactMatch) return exactMatch
+
+  // Then try prefix match
+  const prefixMatch = labels.find(l => l.name.toLowerCase().startsWith(lowerName))
+  if (prefixMatch) return prefixMatch
+
+  // Finally try contains match
+  return labels.find(l => l.name.toLowerCase().includes(lowerName))
 }
 
 /**

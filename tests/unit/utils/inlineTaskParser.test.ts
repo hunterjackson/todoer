@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   parseInlineTaskContent,
   findProjectByName,
-  findSectionByName
+  findSectionByName,
+  findLabelByName
 } from '../../../src/shared/utils/inlineTaskParser'
 
 describe('Inline Task Parser', () => {
@@ -144,6 +145,37 @@ describe('Inline Task Parser', () => {
       expect(result.deadlineText).toBe('friday')
       expect(result.duration).toBe(120)
     })
+
+    it('should parse single @label', () => {
+      const result = parseInlineTaskContent('Buy milk @groceries')
+      expect(result.content).toBe('Buy milk')
+      expect(result.labelNames).toEqual(['groceries'])
+    })
+
+    it('should parse multiple @labels', () => {
+      const result = parseInlineTaskContent('Task @urgent @work')
+      expect(result.content).toBe('Task')
+      expect(result.labelNames).toEqual(['urgent', 'work'])
+    })
+
+    it('should parse quoted @label with spaces', () => {
+      const result = parseInlineTaskContent('Task @"follow up"')
+      expect(result.content).toBe('Task')
+      expect(result.labelNames).toEqual(['follow up'])
+    })
+
+    it('should parse @label with other modifiers', () => {
+      const result = parseInlineTaskContent('Report #Work @urgent p1')
+      expect(result.content).toBe('Report')
+      expect(result.projectName).toBe('Work')
+      expect(result.labelNames).toEqual(['urgent'])
+      expect(result.priority).toBe(1)
+    })
+
+    it('should return undefined labelNames when no @labels present', () => {
+      const result = parseInlineTaskContent('Simple task')
+      expect(result.labelNames).toBeUndefined()
+    })
   })
 
   describe('findProjectByName', () => {
@@ -202,6 +234,32 @@ describe('Inline Task Parser', () => {
 
     it('should return undefined if not found', () => {
       expect(findSectionByName('Nonexistent', sections, 'proj1')).toBeUndefined()
+    })
+  })
+
+  describe('findLabelByName', () => {
+    const labels = [
+      { id: '1', name: 'urgent' },
+      { id: '2', name: 'follow up' },
+      { id: '3', name: 'Work' }
+    ]
+
+    it('should find exact match (case-insensitive)', () => {
+      expect(findLabelByName('urgent', labels)?.id).toBe('1')
+      expect(findLabelByName('URGENT', labels)?.id).toBe('1')
+      expect(findLabelByName('Work', labels)?.id).toBe('3')
+    })
+
+    it('should find prefix match', () => {
+      expect(findLabelByName('fol', labels)?.id).toBe('2')
+    })
+
+    it('should find contains match', () => {
+      expect(findLabelByName('up', labels)?.id).toBe('2')
+    })
+
+    it('should return undefined if not found', () => {
+      expect(findLabelByName('nonexistent', labels)).toBeUndefined()
     })
   })
 })
