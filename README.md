@@ -136,6 +136,8 @@ Create custom filters using these operators:
 | `no date` | Tasks without due date |
 | `p1`, `p2`, `p3`, `p4` | Filter by priority |
 | `#project` | Filter by project name |
+| `@label` | Filter by label name |
+| `search:text` | Search task content |
 | `&` | AND (combine conditions) |
 | `|` | OR (either condition) |
 
@@ -147,13 +149,16 @@ Todoer includes an embedded MCP (Model Context Protocol) server for AI assistant
 
 ### Available MCP Tools
 
-- `todoer_list_tasks` - List tasks with filters
+- `todoer_list_tasks` - List tasks with filters (today, upcoming, overdue, inbox, by project/label)
 - `todoer_create_task` - Create a new task (supports NLP dates)
 - `todoer_complete_task` - Mark task as complete
+- `todoer_uncomplete_task` - Mark a completed task as incomplete
 - `todoer_update_task` - Update task properties
-- `todoer_delete_task` - Delete a task
+- `todoer_delete_task` - Delete a task (soft delete)
 - `todoer_list_projects` - List all projects
+- `todoer_create_project` - Create a new project
 - `todoer_search` - Full-text search
+- `todoer_get_stats` - Get productivity statistics (karma, streaks)
 
 ### Connecting to Claude Code
 

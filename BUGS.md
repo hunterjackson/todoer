@@ -10,8 +10,8 @@ All 80 E2E tests now pass (42 comprehensive + 9 inline-autocomplete + 14 feature
 
 **Description:**
 Added inline autocomplete functionality for both labels and projects when editing task titles:
-- Type `#` to trigger label autocomplete dropdown
-- Type `@` to trigger project autocomplete dropdown
+- Type `@` to trigger label autocomplete dropdown
+- Type `#` to trigger project autocomplete dropdown
 - Both work in Quick Add modal and Task Edit dialog
 - Can select existing items or create new ones from the dropdown
 - Keyboard navigation supported (ArrowUp/Down, Enter, Tab, Escape)
@@ -114,21 +114,21 @@ Added an `onTaskCreated` callback prop to `QuickAddModal` that triggers a view r
 All tests pass:
 
 ### Inline Label/Project Autocomplete (9/9)
-- ✅ should show label dropdown when typing # in Quick Add
+- ✅ should show label dropdown when typing @ in Quick Add
 - ✅ should select label from dropdown with keyboard in Quick Add
-- ✅ should show label dropdown when typing # in Task Edit Dialog
+- ✅ should show label dropdown when typing @ in Task Edit Dialog
 - ✅ should create new label when selecting "Create" option
-- ✅ should show project dropdown when typing @ in Quick Add
+- ✅ should show project dropdown when typing # in Quick Add
 - ✅ should select project from dropdown with keyboard in Quick Add
-- ✅ should show project dropdown when typing @ in Task Edit Dialog
+- ✅ should show project dropdown when typing # in Task Edit Dialog
 - ✅ should create new project when selecting "Create" option
 - ✅ should handle both # and @ in same task name
 
 ### Quick Add with Inline Parsing (5/5)
 - ✅ should create task with priority using p1-p4 syntax
 - ✅ should create task with due date using natural language
-- ✅ should create task with label using @ syntax
-- ✅ should create task with project using # syntax
+- ✅ should create task with label using @label syntax
+- ✅ should create task with project using #project syntax
 - ✅ should create task with duration using "for X min" syntax
 
 ### Task Edit Dialog (3/3)
@@ -197,8 +197,8 @@ All tests pass:
 - ✅ should show karma stats in settings
 
 ### Feature Coverage Tests (14/15 - 1 skipped)
-- ✅ should attach label to task when created via Quick Add with # autocomplete
-- ✅ should attach project to task when created via Quick Add with @ autocomplete
+- ✅ should attach label to task when created via Quick Add with @ autocomplete
+- ✅ should attach project to task when created via Quick Add with # autocomplete
 - ✅ should show new label in sidebar immediately after creation in task edit
 - ✅ should show new project in sidebar immediately after creation in task edit
 - ✅ should create task with recurring pattern
