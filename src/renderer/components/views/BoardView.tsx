@@ -8,6 +8,8 @@ import { useSections } from '@hooks/useSections'
 import { TaskEditDialog } from '../task/TaskEditDialog'
 import { cn } from '@renderer/lib/utils'
 import type { Task, Section } from '@shared/types'
+import { formatDateByPreference } from '@shared/utils'
+import { useSettings } from '@renderer/hooks/useSettings'
 
 interface BoardViewProps {
   projectId: string
@@ -171,6 +173,7 @@ interface BoardTaskProps {
 }
 
 function BoardTask({ task, onComplete, onEdit, onDelete }: BoardTaskProps): React.ReactElement {
+  const { settings } = useSettings()
   const {
     attributes,
     listeners,
@@ -232,7 +235,7 @@ function BoardTask({ task, onComplete, onEdit, onDelete }: BoardTaskProps): Reac
           </p>
           {task.dueDate && (
             <p className="text-xs text-muted-foreground mt-1">
-              {new Date(task.dueDate).toLocaleDateString()}
+              {formatDateByPreference(new Date(task.dueDate), settings.dateFormat)}
             </p>
           )}
           {task.labels && task.labels.length > 0 && (

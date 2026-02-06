@@ -6,7 +6,8 @@ import { TaskSortOptions, sortTasks } from '../ui/TaskSortOptions'
 import { CompletedTasksSection } from '../task/CompletedTasksSection'
 import { useStore } from '@renderer/stores/useStore'
 import { useTasks } from '@hooks/useTasks'
-import { startOfDay } from '@shared/utils'
+import { startOfDay, formatDateHeader as formatDateHeaderUtil } from '@shared/utils'
+import { useSettings } from '@renderer/hooks/useSettings'
 import type { Task, Priority } from '@shared/types'
 
 export function UpcomingView(): React.ReactElement {
@@ -20,6 +21,7 @@ export function UpcomingView(): React.ReactElement {
   const viewSettings = useStore((s) => s.getViewSettings(viewKey))
   const setViewSettings = useStore((s) => s.setViewSettings)
 
+  const { settings } = useSettings()
   const { sortField, sortDirection, groupBy, showCompleted } = viewSettings
 
   // Group tasks by date, with optional sorting within each group
@@ -80,7 +82,7 @@ export function UpcomingView(): React.ReactElement {
             {Object.entries(tasksByDate).map(([dateKey, dateTasks]) => (
               <div key={dateKey}>
                 <h2 className="text-sm font-medium text-muted-foreground mb-2 sticky top-0 bg-background py-2">
-                  {formatDateHeader(dateKey)}
+                  {formatDateHeader(dateKey, settings.dateFormat)}
                   <span className="ml-2 text-xs">({dateTasks.length})</span>
                 </h2>
                 <TaskList
@@ -155,7 +157,7 @@ function groupTasksByDate(tasks: Task[], sortField?: string, sortDirection?: str
   )
 }
 
-function formatDateHeader(timestamp: string): string {
+function formatDateHeader(timestamp: string, dateFormat: 'mdy' | 'dmy' | 'ymd' = 'mdy'): string {
   const date = new Date(parseInt(timestamp))
   const today = new Date()
   const tomorrow = new Date(today)
@@ -172,9 +174,5 @@ function formatDateHeader(timestamp: string): string {
     return 'Tomorrow'
   }
 
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric'
-  })
+  return formatDateHeaderUtil(date, dateFormat)
 }

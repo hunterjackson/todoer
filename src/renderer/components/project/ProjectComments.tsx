@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { MessageSquare, Send, Trash2, Edit2, X, Check } from 'lucide-react'
 import { RichTextEditor } from '@renderer/components/ui/RichTextEditor'
 import type { Comment } from '@shared/types'
-import { sanitizeHtml } from '@shared/utils'
+import { sanitizeHtml, formatDateByPreference, formatTime } from '@shared/utils'
+import { useSettings } from '@renderer/hooks/useSettings'
 
 interface ProjectCommentsProps {
   projectId: string
 }
 
 export function ProjectComments({ projectId }: ProjectCommentsProps): React.ReactElement {
+  const { settings } = useSettings()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
@@ -98,7 +100,8 @@ export function ProjectComments({ projectId }: ProjectCommentsProps): React.Reac
     if (diffHours < 24) return `${diffHours}h ago`
     if (diffDays < 7) return `${diffDays}d ago`
 
-    return date.toLocaleDateString()
+    const timeStr = formatTime(date, settings.timeFormat)
+    return `${formatDateByPreference(date, settings.dateFormat)} ${timeStr}`
   }
 
   const isHtml = (str: string) => /<[a-z][\s\S]*>/i.test(str)

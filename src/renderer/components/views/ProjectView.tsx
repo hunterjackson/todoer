@@ -10,7 +10,7 @@ import { BoardView } from './BoardView'
 import { useStore } from '@renderer/stores/useStore'
 import { useTasks } from '@hooks/useTasks'
 import { useProject, useProjects } from '@hooks/useProjects'
-import { useConfirmDelete } from '@hooks/useSettings'
+import { useConfirmDelete, useSettings } from '@hooks/useSettings'
 import { cn } from '@renderer/lib/utils'
 import type { Task, Priority } from '@shared/types'
 
@@ -27,6 +27,7 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
     completed: false
   })
   const confirmDelete = useConfirmDelete()
+  const { settings } = useSettings()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editProjectOpen, setEditProjectOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -49,8 +50,8 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
 
   const groupedTasks = useMemo(() => {
     if (groupBy === 'none') return null
-    return groupTasks(sortedTasks, groupBy, projects)
-  }, [sortedTasks, groupBy, projects])
+    return groupTasks(sortedTasks, groupBy, projects, settings.dateFormat)
+  }, [sortedTasks, groupBy, projects, settings.dateFormat])
 
   // Close menu on outside click
   useEffect(() => {

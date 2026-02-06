@@ -237,3 +237,4 @@ export {
 } from './inlineTaskParser'
 export type { ParsedTaskContent } from './inlineTaskParser'
 export { sanitizeHtml } from './sanitizeHtml'
+export { formatDateByPreference, formatDateHeader, formatDateGroupLabel, formatTime } from './formatDate'

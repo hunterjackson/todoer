@@ -6,6 +6,7 @@ import { TaskSortOptions, sortTasks, groupTasks } from '../ui/TaskSortOptions'
 import { useStore } from '@renderer/stores/useStore'
 import { useTaskSearch, useTasks } from '@hooks/useTasks'
 import { useProjects } from '@hooks/useProjects'
+import { useSettings } from '@hooks/useSettings'
 import type { Task, Priority } from '@shared/types'
 
 interface SearchViewProps {
@@ -18,6 +19,7 @@ export function SearchView({ initialQuery = '' }: SearchViewProps): React.ReactE
   const { tasks, loading, refresh: refreshSearch } = useTaskSearch(query)
   const { completeTask, uncompleteTask, updateTask, deleteTask, createTask } = useTasks()
   const { projects } = useProjects()
+  const { settings } = useSettings()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [allExpanded, setAllExpanded] = useState(true)
 
@@ -37,8 +39,8 @@ export function SearchView({ initialQuery = '' }: SearchViewProps): React.ReactE
 
   const groupedTasks = useMemo(() => {
     if (groupBy === 'none') return null
-    return groupTasks(sortedTasks, groupBy, projects)
-  }, [sortedTasks, groupBy, projects])
+    return groupTasks(sortedTasks, groupBy, projects, settings.dateFormat)
+  }, [sortedTasks, groupBy, projects, settings.dateFormat])
 
   const handleComplete = useCallback(async (id: string) => {
     await completeTask(id)

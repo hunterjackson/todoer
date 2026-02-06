@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { ArrowUpDown, Check, ChevronDown, CheckCircle2, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { formatDateGroupLabel } from '@shared/utils'
 import type { Task } from '@shared/types'
 
 export type SortField = 'default' | 'priority' | 'dueDate' | 'alphabetical' | 'dateAdded'
@@ -222,7 +223,8 @@ export function sortTasks(tasks: Task[], sortField: SortField, sortDirection: So
 export function groupTasks(
   tasks: Task[],
   groupBy: GroupBy,
-  projects?: { id: string; name: string; color: string }[]
+  projects?: { id: string; name: string; color: string }[],
+  dateFormat: 'mdy' | 'dmy' | 'ymd' = 'mdy'
 ): { key: string; label: string; tasks: Task[]; color?: string }[] {
   if (groupBy === 'none') {
     return [{ key: 'all', label: '', tasks }]
@@ -310,11 +312,7 @@ export function groupTasks(
           } else if (date.toDateString() === tomorrow.toDateString()) {
             label = 'Tomorrow'
           } else {
-            label = date.toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric'
-            })
+            label = formatDateGroupLabel(date, dateFormat)
           }
         }
         break

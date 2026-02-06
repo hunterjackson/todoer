@@ -5,6 +5,7 @@ import { TaskEditDialog } from '../task/TaskEditDialog'
 import { TaskSortOptions, sortTasks, groupTasks } from '../ui/TaskSortOptions'
 import { useStore } from '@renderer/stores/useStore'
 import { useProjects } from '@hooks/useProjects'
+import { useSettings } from '@hooks/useSettings'
 import type { Task, TaskUpdate, Filter as FilterType, Priority } from '@shared/types'
 
 interface FilterViewProps {
@@ -18,6 +19,7 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [allExpanded, setAllExpanded] = useState(true)
   const { projects } = useProjects()
+  const { settings } = useSettings()
 
   const viewKey = `filter-${filterId}`
   const viewSettings = useStore((s) => s.getViewSettings(viewKey))
@@ -64,8 +66,8 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
 
   const groupedTasks = useMemo(() => {
     if (groupBy === 'none') return null
-    return groupTasks(sortedTasks, groupBy, projects)
-  }, [sortedTasks, groupBy, projects])
+    return groupTasks(sortedTasks, groupBy, projects, settings.dateFormat)
+  }, [sortedTasks, groupBy, projects, settings.dateFormat])
 
   const handleCompleteTask = async (id: string) => {
     await window.api.tasks.complete(id)

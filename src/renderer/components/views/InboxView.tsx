@@ -7,6 +7,7 @@ import { CompletedTasksSection } from '../task/CompletedTasksSection'
 import { useStore } from '@renderer/stores/useStore'
 import { useTasks } from '@hooks/useTasks'
 import { useProjects } from '@hooks/useProjects'
+import { useSettings } from '@hooks/useSettings'
 import { INBOX_PROJECT_ID } from '@shared/constants'
 import type { Task, Priority } from '@shared/types'
 
@@ -16,6 +17,7 @@ export function InboxView(): React.ReactElement {
     completed: false
   })
   const { projects } = useProjects()
+  const { settings } = useSettings()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [allExpanded, setAllExpanded] = useState(true)
 
@@ -31,8 +33,8 @@ export function InboxView(): React.ReactElement {
 
   const groupedTasks = useMemo(() => {
     if (groupBy === 'none') return null
-    return groupTasks(sortedTasks, groupBy, projects)
-  }, [sortedTasks, groupBy, projects])
+    return groupTasks(sortedTasks, groupBy, projects, settings.dateFormat)
+  }, [sortedTasks, groupBy, projects, settings.dateFormat])
 
   const handleSaveTask = async (id: string, data: Parameters<typeof updateTask>[1]) => {
     await updateTask(id, data)

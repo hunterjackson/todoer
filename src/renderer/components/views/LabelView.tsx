@@ -8,6 +8,7 @@ import { CompletedTasksSection } from '../task/CompletedTasksSection'
 import { useStore } from '@renderer/stores/useStore'
 import { useLabels } from '@hooks/useLabels'
 import { useProjects } from '@hooks/useProjects'
+import { useSettings } from '@hooks/useSettings'
 import type { Task, TaskCreate, TaskUpdate, Priority } from '@shared/types'
 
 interface LabelViewProps {
@@ -17,6 +18,7 @@ interface LabelViewProps {
 export function LabelView({ labelId }: LabelViewProps): React.ReactElement {
   const { labels } = useLabels()
   const { projects } = useProjects()
+  const { settings } = useSettings()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -53,8 +55,8 @@ export function LabelView({ labelId }: LabelViewProps): React.ReactElement {
 
   const groupedTasks = useMemo(() => {
     if (groupBy === 'none') return null
-    return groupTasks(sortedTasks, groupBy, projects)
-  }, [sortedTasks, groupBy, projects])
+    return groupTasks(sortedTasks, groupBy, projects, settings.dateFormat)
+  }, [sortedTasks, groupBy, projects, settings.dateFormat])
 
   const handleCreateTask = async (content: string, dueDate?: string) => {
     await window.api.tasks.create({

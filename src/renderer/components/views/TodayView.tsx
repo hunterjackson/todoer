@@ -7,7 +7,8 @@ import { CompletedTasksSection } from '../task/CompletedTasksSection'
 import { useStore } from '@renderer/stores/useStore'
 import { useTasks } from '@hooks/useTasks'
 import { useProjects } from '@hooks/useProjects'
-import { startOfDay } from '@shared/utils'
+import { startOfDay, formatDateHeader } from '@shared/utils'
+import { useSettings } from '@renderer/hooks/useSettings'
 import type { Task, Priority } from '@shared/types'
 
 export function TodayView(): React.ReactElement {
@@ -22,14 +23,11 @@ export function TodayView(): React.ReactElement {
   const viewSettings = useStore((s) => s.getViewSettings(viewKey))
   const setViewSettings = useStore((s) => s.setViewSettings)
 
+  const { settings } = useSettings()
   const { sortField, sortDirection, groupBy, showCompleted } = viewSettings
 
   const today = new Date()
-  const dateStr = today.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  })
+  const dateStr = formatDateHeader(today, settings.dateFormat)
 
   const overdueTasks = useMemo(() => {
     const overdue = tasks.filter((t) => t.dueDate && t.dueDate < startOfDay(today))
@@ -43,8 +41,8 @@ export function TodayView(): React.ReactElement {
 
   const groupedTasks = useMemo(() => {
     if (groupBy === 'none') return null
-    return groupTasks(todayTasks, groupBy, projects)
-  }, [todayTasks, groupBy, projects])
+    return groupTasks(todayTasks, groupBy, projects, settings.dateFormat)
+  }, [todayTasks, groupBy, projects, settings.dateFormat])
 
   const handleSaveTask = async (id: string, data: Parameters<typeof updateTask>[1]) => {
     await updateTask(id, data)
