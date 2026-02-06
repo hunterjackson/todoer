@@ -79,9 +79,24 @@ export class ProjectRepository {
     return row ? this.rowToProject(row) : null
   }
 
+  private validateParentProjectExists(parentId: string): void {
+    const result = this.queryOne<{ id: string }>(
+      'SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL',
+      [parentId]
+    )
+    if (!result) {
+      throw new Error(`Parent project not found: ${parentId}`)
+    }
+  }
+
   create(data: ProjectCreate): Project {
     const timestamp = now()
     const id = generateId()
+
+    // Validate FK references
+    if (data.parentId) {
+      this.validateParentProjectExists(data.parentId)
+    }
 
     const result = this.queryOne<{ max_order: number | null }>(
       'SELECT MAX(sort_order) as max_order FROM projects WHERE deleted_at IS NULL'
@@ -110,6 +125,11 @@ export class ProjectRepository {
   update(id: string, data: ProjectUpdate): Project | null {
     const existing = this.get(id)
     if (!existing) return null
+
+    // Validate FK references
+    if (data.parentId !== undefined && data.parentId !== null) {
+      this.validateParentProjectExists(data.parentId)
+    }
 
     const updates: string[] = []
     const params: unknown[] = []
@@ -181,8 +201,11 @@ export class ProjectRepository {
     return true
   }
 
-  // Collect all descendant project IDs recursively
-  private getDescendantProjectIds(parentId: string): string[] {
+  // Collect all descendant project IDs recursively with cycle detection
+  private getDescendantProjectIds(parentId: string, visited: Set<string> = new Set()): string[] {
+    if (visited.has(parentId)) return [] // cycle detected
+    visited.add(parentId)
+
     const ids: string[] = []
     const childIds = this.queryAll<{ id: string }>(
       'SELECT id FROM projects WHERE parent_id = ? AND deleted_at IS NULL',
@@ -190,8 +213,10 @@ export class ProjectRepository {
     ).map(r => r.id)
 
     for (const childId of childIds) {
-      ids.push(childId)
-      ids.push(...this.getDescendantProjectIds(childId))
+      if (!visited.has(childId)) {
+        ids.push(childId)
+        ids.push(...this.getDescendantProjectIds(childId, visited))
+      }
     }
     return ids
   }

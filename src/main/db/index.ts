@@ -105,9 +105,9 @@ function initSchema(database: SqlJsDatabase): void {
       id TEXT PRIMARY KEY,
       content TEXT NOT NULL,
       description TEXT,
-      project_id TEXT,
-      section_id TEXT,
-      parent_id TEXT,
+      project_id TEXT REFERENCES projects(id),
+      section_id TEXT REFERENCES sections(id),
+      parent_id TEXT REFERENCES tasks(id),
       due_date INTEGER,
       deadline INTEGER,
       duration INTEGER,
@@ -127,7 +127,7 @@ function initSchema(database: SqlJsDatabase): void {
       name TEXT NOT NULL,
       description TEXT,
       color TEXT NOT NULL DEFAULT '#808080',
-      parent_id TEXT,
+      parent_id TEXT REFERENCES projects(id),
       sort_order REAL NOT NULL,
       view_mode TEXT NOT NULL DEFAULT 'list',
       is_favorite INTEGER NOT NULL DEFAULT 0,
@@ -140,7 +140,7 @@ function initSchema(database: SqlJsDatabase): void {
     CREATE TABLE IF NOT EXISTS sections (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      project_id TEXT NOT NULL,
+      project_id TEXT NOT NULL REFERENCES projects(id),
       sort_order REAL NOT NULL,
       is_collapsed INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
@@ -158,8 +158,8 @@ function initSchema(database: SqlJsDatabase): void {
 
     -- Task-Label junction table
     CREATE TABLE IF NOT EXISTS task_labels (
-      task_id TEXT NOT NULL,
-      label_id TEXT NOT NULL,
+      task_id TEXT NOT NULL REFERENCES tasks(id),
+      label_id TEXT NOT NULL REFERENCES labels(id),
       PRIMARY KEY (task_id, label_id)
     );
 
@@ -177,8 +177,8 @@ function initSchema(database: SqlJsDatabase): void {
     -- Comments table (supports both task and project comments)
     CREATE TABLE IF NOT EXISTS comments (
       id TEXT PRIMARY KEY,
-      task_id TEXT,
-      project_id TEXT,
+      task_id TEXT REFERENCES tasks(id),
+      project_id TEXT REFERENCES projects(id),
       content TEXT NOT NULL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
@@ -188,7 +188,7 @@ function initSchema(database: SqlJsDatabase): void {
     -- Attachments table
     CREATE TABLE IF NOT EXISTS attachments (
       id TEXT PRIMARY KEY,
-      comment_id TEXT NOT NULL,
+      comment_id TEXT NOT NULL REFERENCES comments(id),
       name TEXT NOT NULL,
       mime_type TEXT NOT NULL,
       size INTEGER NOT NULL,
@@ -198,7 +198,7 @@ function initSchema(database: SqlJsDatabase): void {
     -- Reminders table
     CREATE TABLE IF NOT EXISTS reminders (
       id TEXT PRIMARY KEY,
-      task_id TEXT NOT NULL,
+      task_id TEXT NOT NULL REFERENCES tasks(id),
       remind_at INTEGER NOT NULL,
       notified INTEGER NOT NULL DEFAULT 0
     );

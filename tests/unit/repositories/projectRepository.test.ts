@@ -442,4 +442,33 @@ describe('ProjectRepository', () => {
       expect(inboxTasks.some(t => t.content === 'Task in grandchild')).toBe(true)
     })
   })
+
+  describe('referential integrity', () => {
+    it('should reject create with non-existent parentId', () => {
+      expect(() => projectRepo.create({ name: 'Sub', parentId: 'nonexistent' }))
+        .toThrow(/parent project.*not found/i)
+    })
+
+    it('should reject update with non-existent parentId', () => {
+      const project = projectRepo.create({ name: 'Test' })
+      expect(() => projectRepo.update(project.id, { parentId: 'nonexistent' }))
+        .toThrow(/parent project.*not found/i)
+    })
+
+    it('should allow null parentId (root project)', () => {
+      const project = projectRepo.create({ name: 'Root' })
+      expect(project.parentId).toBeNull()
+    })
+
+    it('should survive cyclic data in getDescendantProjectIds without infinite recursion', () => {
+      const p1 = projectRepo.create({ name: 'P1' })
+      const p2 = projectRepo.create({ name: 'P2', parentId: p1.id })
+
+      // Manually introduce cycle via raw SQL
+      db.run('UPDATE projects SET parent_id = ? WHERE id = ?', [p2.id, p1.id])
+
+      // Delete should not hang - cycle detection stops it
+      expect(() => projectRepo.delete(p1.id)).not.toThrow()
+    })
+  })
 })

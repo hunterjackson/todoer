@@ -36,6 +36,27 @@ interface TaskRow {
 export class TaskRepository {
   constructor(private db: SqlJsDatabase) {}
 
+  private validateProjectExists(projectId: string): void {
+    if (projectId === INBOX_PROJECT_ID) return // inbox always exists
+    const result = this.queryOne<{ id: string }>(
+      'SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL',
+      [projectId]
+    )
+    if (!result) {
+      throw new Error(`Project not found: ${projectId}`)
+    }
+  }
+
+  private validateParentTaskExists(parentId: string): void {
+    const result = this.queryOne<{ id: string }>(
+      'SELECT id FROM tasks WHERE id = ? AND deleted_at IS NULL',
+      [parentId]
+    )
+    if (!result) {
+      throw new Error(`Parent task not found: ${parentId}`)
+    }
+  }
+
   private rowToTask(row: TaskRow): Task {
     return {
       id: row.id,
@@ -153,6 +174,12 @@ export class TaskRepository {
     // Determine actual project ID
     const actualProjectId = data.projectId ?? INBOX_PROJECT_ID
 
+    // Validate FK references
+    this.validateProjectExists(actualProjectId)
+    if (data.parentId) {
+      this.validateParentTaskExists(data.parentId)
+    }
+
     // Calculate sort order - match on actual project/section/parent
     let sql = 'SELECT MAX(sort_order) as max_order FROM tasks WHERE deleted_at IS NULL'
     const orderParams: unknown[] = []
@@ -223,6 +250,14 @@ export class TaskRepository {
     const existing = this.get(id)
     if (!existing) return null
 
+    // Validate FK references
+    if (data.projectId !== undefined && data.projectId !== null) {
+      this.validateProjectExists(data.projectId)
+    }
+    if (data.parentId !== undefined && data.parentId !== null) {
+      this.validateParentTaskExists(data.parentId)
+    }
+
     const timestamp = now()
     const updates: string[] = ['updated_at = ?']
     const params: unknown[] = [timestamp]
@@ -289,8 +324,11 @@ export class TaskRepository {
     return this.get(id)
   }
 
-  // Collect all descendant task IDs recursively
-  private getDescendantIds(parentId: string): string[] {
+  // Collect all descendant task IDs recursively with cycle detection
+  private getDescendantIds(parentId: string, visited: Set<string> = new Set()): string[] {
+    if (visited.has(parentId)) return [] // cycle detected
+    visited.add(parentId)
+
     const ids: string[] = []
     const childIds = this.queryAll<{ id: string }>(
       'SELECT id FROM tasks WHERE parent_id = ?',
@@ -298,8 +336,10 @@ export class TaskRepository {
     ).map(r => r.id)
 
     for (const childId of childIds) {
-      ids.push(childId)
-      ids.push(...this.getDescendantIds(childId))
+      if (!visited.has(childId)) {
+        ids.push(childId)
+        ids.push(...this.getDescendantIds(childId, visited))
+      }
     }
     return ids
   }

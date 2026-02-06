@@ -575,4 +575,45 @@ describe('TaskRepository', () => {
       expect(all).toHaveLength(0)
     })
   })
+
+  describe('referential integrity', () => {
+    it('should reject create with non-existent projectId', () => {
+      expect(() => repo.create({ content: 'Test', projectId: 'nonexistent-project' }))
+        .toThrow(/project.*not found/i)
+    })
+
+    it('should reject update with non-existent projectId', () => {
+      const task = repo.create({ content: 'Test' })
+      expect(() => repo.update(task.id, { projectId: 'nonexistent-project' }))
+        .toThrow(/project.*not found/i)
+    })
+
+    it('should allow create with valid projectId', () => {
+      // inbox project is seeded in test DB
+      const task = repo.create({ content: 'Test', projectId: 'inbox' })
+      expect(task.projectId).toBe('inbox')
+    })
+
+    it('should allow null projectId (defaults to inbox)', () => {
+      const task = repo.create({ content: 'Test' })
+      expect(task.projectId).toBe('inbox')
+    })
+
+    it('should reject create with non-existent parentId', () => {
+      expect(() => repo.create({ content: 'Subtask', parentId: 'nonexistent-task' }))
+        .toThrow(/parent task.*not found/i)
+    })
+
+    it('should survive cyclic data in getDescendantIds without infinite recursion', () => {
+      // Create two tasks normally
+      const t1 = repo.create({ content: 'Task A' })
+      const t2 = repo.create({ content: 'Task B', parentId: t1.id })
+
+      // Manually introduce cycle via raw SQL (bypassing validations)
+      db.run('UPDATE tasks SET parent_id = ? WHERE id = ?', [t2.id, t1.id])
+
+      // Delete should not hang or throw stack overflow - cycle detection should stop it
+      expect(() => repo.delete(t1.id)).not.toThrow()
+    })
+  })
 })
