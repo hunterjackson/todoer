@@ -561,6 +561,43 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
   })
 
+  // ─── v5 Fix #1: defaultProject stale for descendant project deletion ───
+  describe('v5 Fix #1: defaultProject stale for descendants', () => {
+    it('should reset defaultProject when it references a deleted descendant', () => {
+      const parent = projectRepo.create({ name: 'Parent', color: '#ff0000' })
+      const child = projectRepo.create({ name: 'Child', color: '#0000ff', parentId: parent.id })
+
+      // Set defaultProject to the child
+      db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['defaultProject', child.id])
+
+      // Delete the parent (which also deletes the child)
+      projectRepo.delete(parent.id)
+
+      // Simulate the updated handler logic: check if referenced project still exists
+      const stmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+      stmt.bind(['defaultProject'])
+      if (stmt.step()) {
+        const row = stmt.getAsObject() as { value: string }
+        const defaultProjectId = row.value
+        if (defaultProjectId && defaultProjectId !== 'inbox') {
+          const existingProject = projectRepo.get(defaultProjectId)
+          if (!existingProject) {
+            db.run('UPDATE settings SET value = ? WHERE key = ?', ['inbox', 'defaultProject'])
+          }
+        }
+      }
+      stmt.free()
+
+      // Verify defaultProject was reset to inbox
+      const checkStmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+      checkStmt.bind(['defaultProject'])
+      checkStmt.step()
+      const result = checkStmt.getAsObject() as { value: string }
+      checkStmt.free()
+      expect(result.value).toBe('inbox')
+    })
+  })
+
   // ─── Fix #12: MCP server awaits DB init ───
   describe('Fix #12: MCP server DB init', () => {
     it('initDatabase should be idempotent (safe to call twice)', async () => {

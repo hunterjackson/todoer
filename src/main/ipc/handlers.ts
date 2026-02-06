@@ -297,15 +297,20 @@ export function registerIpcHandlers(): void {
     const { projectRepo } = getRepositories()
     const result = projectRepo.delete(id)
 
-    // Reset defaultProject setting if it references the deleted project
+    // Reset defaultProject setting if it references the deleted project or any descendant
     const db = getDatabase()
     const stmt = db.prepare('SELECT value FROM settings WHERE key = ?')
     stmt.bind(['defaultProject'])
     if (stmt.step()) {
       const row = stmt.getAsObject() as { value: string }
-      if (row.value === id) {
-        db.run('UPDATE settings SET value = ? WHERE key = ?', ['inbox', 'defaultProject'])
-        saveDatabase()
+      const defaultProjectId = row.value
+      // Check if the referenced project still exists (not soft-deleted)
+      if (defaultProjectId && defaultProjectId !== 'inbox') {
+        const existingProject = projectRepo.get(defaultProjectId)
+        if (!existingProject) {
+          db.run('UPDATE settings SET value = ? WHERE key = ?', ['inbox', 'defaultProject'])
+          saveDatabase()
+        }
       }
     }
     stmt.free()
