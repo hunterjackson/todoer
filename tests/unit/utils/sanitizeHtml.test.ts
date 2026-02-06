@@ -43,6 +43,11 @@ describe('sanitizeHtml', () => {
     expect(sanitizeHtml(html)).toBe('<a href="">Click</a>')
   })
 
+  it('should strip unquoted javascript: URLs from href', () => {
+    const html = '<a href=javascript:alert(1)>Click</a>'
+    expect(sanitizeHtml(html)).toBe('<a href="">Click</a>')
+  })
+
   it('should strip disallowed tags but keep text content', () => {
     const html = '<p>Hello <marquee>scrolling</marquee> world</p>'
     expect(sanitizeHtml(html)).toBe('<p>Hello scrolling world</p>')
@@ -95,6 +100,11 @@ describe('sanitizeHtml', () => {
 
   it('should strip data: URLs', () => {
     const html = '<a href="data:text/html,<script>alert(1)</script>">Click</a>'
+    expect(sanitizeHtml(html)).toBe('<a href="">Click</a>')
+  })
+
+  it('should strip unquoted data: URLs', () => {
+    const html = '<a href=data:text/html,alert(1)>Click</a>'
     expect(sanitizeHtml(html)).toBe('<a href="">Click</a>')
   })
 

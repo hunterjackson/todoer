@@ -43,6 +43,23 @@ export function sanitizeHtml(html: string): string {
   // Handles javascript:, data:, vbscript: with optional whitespace and mixed case
   sanitized = sanitized.replace(/(href|src|action)\s*=\s*"[\s]*(javascript|data|vbscript)\s*:[^"]*"/gi, '$1=""')
   sanitized = sanitized.replace(/(href|src|action)\s*=\s*'[\s]*(javascript|data|vbscript)\s*:[^']*'/gi, '$1=""')
+  sanitized = sanitized.replace(
+    /(href|src|action)\s*=\s*([^\s"'`>]+)/gi,
+    (match, attrName, rawValue) => {
+      const normalized = String(rawValue)
+        .trim()
+        .replace(/\s+/g, '')
+        .toLowerCase()
+      if (
+        normalized.startsWith('javascript:') ||
+        normalized.startsWith('data:') ||
+        normalized.startsWith('vbscript:')
+      ) {
+        return `${attrName}=""`
+      }
+      return match
+    }
+  )
 
   // Remove style attributes that could contain expressions
   sanitized = sanitized.replace(/style\s*=\s*(?:"[^"]*expression\s*\([^"]*"|'[^']*expression\s*\([^']*')/gi, '')

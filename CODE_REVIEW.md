@@ -12,13 +12,6 @@ Re-validation after the latest "all fixes applied" update, plus a fresh architec
 
 ## Open Findings
 
-### 4) [High] `sanitizeHtml` still allows unquoted `javascript:`/`data:` URL payloads
-- Evidence: dangerous protocol stripping only handles quoted attributes in `src/shared/utils/sanitizeHtml.ts:44` and `src/shared/utils/sanitizeHtml.ts:45`.
-- Evidence: attribute allowlist then preserves unquoted `href` in `src/shared/utils/sanitizeHtml.ts:74`.
-- Evidence: sanitized HTML is rendered via `dangerouslySetInnerHTML` in `src/renderer/components/task/TaskComments.tsx:144` and `src/renderer/components/project/ProjectComments.tsx:159`.
-- Concrete example: `<a href=javascript:alert(1)>x</a>` survives current sanitizer.
-- Impact: stored XSS risk remains on comment rendering.
-
 ### 5) [Medium] Recurring redo path regressed for tasks without a due date
 - Evidence: forward completion correctly supports recurrence without `dueDate` using `completedAt` fallback in `src/main/ipc/handlers.ts:160`.
 - Evidence: redo path still requires `taskBeforeComplete.dueDate` in `src/main/ipc/handlers.ts:1288`.
