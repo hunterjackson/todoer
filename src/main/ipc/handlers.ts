@@ -1048,6 +1048,19 @@ export function registerIpcHandlers(): void {
         }
       }
 
+      // Apply imported notification settings to runtime service
+      if (data.settings && typeof data.settings === 'object') {
+        if ('notificationsEnabled' in data.settings) {
+          notificationService.setEnabled(String(data.settings.notificationsEnabled) === 'true')
+        }
+        if ('quietHoursStart' in data.settings && 'quietHoursEnd' in data.settings) {
+          notificationService.setQuietHours(
+            Number(data.settings.quietHoursStart),
+            Number(data.settings.quietHoursEnd)
+          )
+        }
+      }
+
       // Import karma stats
       if (data.karmaStats) {
         try {
