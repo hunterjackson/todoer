@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Circle, CheckCircle2, Calendar, Flag, Trash2, Edit, Tag, Clock, AlertCircle } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { useSettings } from '@renderer/hooks/useSettings'
 import type { Task, Priority, Label } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
 
@@ -51,6 +52,7 @@ export function TaskItem({
   const [isCompleting, setIsCompleting] = useState(false)
   const [labels, setLabels] = useState<Label[]>([])
   const [projectName, setProjectName] = useState<string | null>(null)
+  const { settings } = useSettings()
 
   useEffect(() => {
     // Fetch labels for this task
@@ -132,7 +134,7 @@ export function TaskItem({
               )}
             >
               <Calendar className="w-3 h-3" />
-              {formatDueDate(task.dueDate)}
+              {formatDueDate(task.dueDate, settings.dateFormat)}
             </span>
           )}
 
@@ -145,7 +147,7 @@ export function TaskItem({
               title="Deadline"
             >
               <AlertCircle className="w-3 h-3" />
-              {formatDueDate(task.deadline)}
+              {formatDueDate(task.deadline, settings.dateFormat)}
             </span>
           )}
 
@@ -215,7 +217,7 @@ export function TaskItem({
   )
 }
 
-function formatDueDate(timestamp: number): string {
+function formatDueDate(timestamp: number, dateFormat: 'mdy' | 'dmy' | 'ymd' = 'mdy'): string {
   const date = new Date(timestamp)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -236,7 +238,17 @@ function formatDueDate(timestamp: number): string {
   }
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  return `${months[date.getMonth()]} ${date.getDate()}`
+  const day = date.getDate()
+  const mon = months[date.getMonth()]
+
+  switch (dateFormat) {
+    case 'dmy':
+      return `${day} ${mon}`
+    case 'ymd':
+      return `${mon} ${day}`
+    default: // mdy
+      return `${mon} ${day}`
+  }
 }
 
 function formatDuration(minutes: number): string {

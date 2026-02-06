@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Circle, CheckCircle2 } from 'lucide-react'
 import { useTasks } from '@hooks/useTasks'
+import { useSettings } from '@renderer/hooks/useSettings'
 import { cn } from '@renderer/lib/utils'
 import type { Task } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const ALL_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
@@ -13,8 +14,14 @@ const MONTHS = [
 
 export function CalendarView(): React.ReactElement {
   const { tasks, completeTask, uncompleteTask } = useTasks()
+  const { settings } = useSettings()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+
+  const weekStart = settings.weekStart ?? 0 // 0 = Sunday, 1 = Monday
+  const DAYS = useMemo(() => {
+    return [...ALL_DAYS.slice(weekStart), ...ALL_DAYS.slice(0, weekStart)]
+  }, [weekStart])
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -22,7 +29,8 @@ export function CalendarView(): React.ReactElement {
   // Get first day of month and total days
   const firstDayOfMonth = new Date(year, month, 1)
   const lastDayOfMonth = new Date(year, month + 1, 0)
-  const firstDayWeekday = firstDayOfMonth.getDay()
+  // Adjust for week start: getDay() returns 0=Sun, shift by weekStart
+  const firstDayWeekday = (firstDayOfMonth.getDay() - weekStart + 7) % 7
   const daysInMonth = lastDayOfMonth.getDate()
 
   // Group tasks by date

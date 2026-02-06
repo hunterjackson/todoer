@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Check, Archive, ArchiveRestore, Copy } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { useConfirmDelete } from '@renderer/hooks/useSettings'
 import type { Project, ProjectCreate, ProjectUpdate } from '@shared/types'
 import { PROJECT_COLORS } from '@shared/types'
 
@@ -32,6 +33,7 @@ export function ProjectDialog({
   const [isFavorite, setIsFavorite] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const confirmDelete = useConfirmDelete()
 
   const isEditing = !!project
 
@@ -104,7 +106,7 @@ export function ProjectDialog({
   const handleDelete = async () => {
     if (!project || !onDelete) return
 
-    if (confirm(`Are you sure you want to delete "${project.name}"?`)) {
+    if (await confirmDelete(`Are you sure you want to delete "${project.name}"?`)) {
       await onDelete(project.id)
       onOpenChange(false)
     }

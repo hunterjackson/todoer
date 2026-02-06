@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Check, HelpCircle } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { useConfirmDelete } from '@renderer/hooks/useSettings'
 import { FilterQueryAutocomplete } from '@renderer/components/ui/FilterQueryAutocomplete'
 import type { Filter, FilterCreate, FilterUpdate } from '@shared/types'
 import { PROJECT_COLORS } from '@shared/types'
@@ -26,6 +27,7 @@ export function FilterDialog({
   const [isFavorite, setIsFavorite] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const confirmDelete = useConfirmDelete()
 
   const isEditing = !!filter
 
@@ -77,7 +79,7 @@ export function FilterDialog({
   const handleDelete = async () => {
     if (!filter || !onDelete) return
 
-    if (confirm(`Are you sure you want to delete "${filter.name}"?`)) {
+    if (await confirmDelete(`Are you sure you want to delete "${filter.name}"?`)) {
       await onDelete(filter.id)
       onOpenChange(false)
     }

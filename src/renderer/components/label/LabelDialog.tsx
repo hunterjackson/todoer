@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Check } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { useConfirmDelete } from '@renderer/hooks/useSettings'
 import type { Label, LabelCreate, LabelUpdate } from '@shared/types'
 import { LABEL_COLORS } from '@shared/types'
 
@@ -23,6 +24,7 @@ export function LabelDialog({
   const [color, setColor] = useState(LABEL_COLORS[0])
   const [isFavorite, setIsFavorite] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const confirmDelete = useConfirmDelete()
 
   const isEditing = !!label
 
@@ -71,7 +73,7 @@ export function LabelDialog({
   const handleDelete = async () => {
     if (!label || !onDelete) return
 
-    if (confirm(`Are you sure you want to delete "${label.name}"?`)) {
+    if (await confirmDelete(`Are you sure you want to delete "${label.name}"?`)) {
       await onDelete(label.id)
       onOpenChange(false)
     }
