@@ -5,6 +5,7 @@ import { TaskEditDialog } from '../task/TaskEditDialog'
 import { TaskSortOptions, sortTasks, groupTasks } from '../ui/TaskSortOptions'
 import { CompletedTasksSection } from '../task/CompletedTasksSection'
 import { ProjectComments } from '../project/ProjectComments'
+import { ProjectDialog } from '../project/ProjectDialog'
 import { BoardView } from './BoardView'
 import { useStore } from '@renderer/stores/useStore'
 import { useTasks } from '@hooks/useTasks'
@@ -27,6 +28,7 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
   })
   const confirmDelete = useConfirmDelete()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [editProjectOpen, setEditProjectOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [allExpanded, setAllExpanded] = useState(true)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -140,8 +142,7 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
             <button
               onClick={() => {
                 setMenuOpen(false)
-                // Navigate to edit - reuse project dialog by triggering edit on sidebar
-                // For now, toggle edit mode inline
+                setEditProjectOpen(true)
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-left"
             >
@@ -342,6 +343,19 @@ export function ProjectView({ projectId }: ProjectViewProps): React.ReactElement
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
         onEditTask={setEditingTask}
+      />
+
+      <ProjectDialog
+        open={editProjectOpen}
+        onOpenChange={setEditProjectOpen}
+        project={project}
+        projects={projects}
+        onSave={async (data) => {
+          if (project) {
+            await updateProject(project.id, data)
+            refreshProject()
+          }
+        }}
       />
     </div>
   )
