@@ -12,12 +12,6 @@ Re-validation after the latest "all fixes applied" update, plus a fresh architec
 
 ## Open Findings
 
-### 6) [Medium] Default project can be set to archived/hidden projects
-- Evidence: settings default-project dropdown includes all projects in `src/renderer/components/settings/SettingsPanel.tsx:238`.
-- Evidence: sidebar hides archived projects from main project tree in `src/renderer/components/sidebar/Sidebar.tsx:102`.
-- Evidence: quick add only checks existence, not archived status, before using default project in `src/renderer/components/task/QuickAddModal.tsx:41`.
-- Impact: new tasks can be created into archived projects and appear to "disappear" from normal active-project navigation.
-
 ### 7) [Medium] Attachment re-import silently drops records and overreports success
 - Evidence: JSON import reuses original attachment IDs and increments success count unconditionally in `src/main/ipc/handlers.ts:1009`.
 - Evidence: attachment insert uses `INSERT OR IGNORE` in `src/main/db/repositories/attachmentRepository.ts:109`.

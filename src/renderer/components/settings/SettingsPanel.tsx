@@ -3,6 +3,8 @@ import { X, Settings, Moon, Sun, Monitor, Bell, Trash2, Globe, Clock, Calendar, 
 import { useStore } from '../../stores/useStore'
 import { useProjects } from '@hooks/useProjects'
 import { useSettings } from '@hooks/useSettings'
+import { INBOX_PROJECT_ID } from '@shared/constants'
+import { getSelectableDefaultProjects, resolveDefaultProjectId } from '@renderer/lib/defaultProject'
 
 interface SettingsPanelProps {
   open: boolean
@@ -13,7 +15,7 @@ type ThemeOption = 'light' | 'dark' | 'system'
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.ReactElement | null {
   const { theme, setTheme } = useStore()
-  const { projects, refresh: refreshProjects } = useProjects()
+  const { projects, loading: projectsLoading, refresh: refreshProjects } = useProjects()
   const { settings, updateSetting, refreshSettings } = useSettings()
 
   // Refresh settings and projects when panel opens
@@ -23,6 +25,17 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
       refreshProjects()
     }
   }, [open, refreshProjects, refreshSettings])
+
+  const selectableDefaultProjects = getSelectableDefaultProjects(projects)
+  const resolvedDefaultProjectId = resolveDefaultProjectId(settings.defaultProject, projects)
+
+  // Keep persisted default project aligned with active (non-archived) options.
+  useEffect(() => {
+    if (!open || projectsLoading) return
+    if (settings.defaultProject !== resolvedDefaultProjectId) {
+      updateSetting('defaultProject', resolvedDefaultProjectId)
+    }
+  }, [open, projectsLoading, settings.defaultProject, resolvedDefaultProjectId, updateSetting])
 
   // Handle escape key
   useEffect(() => {
@@ -229,17 +242,20 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
               <FolderKanban className="w-4 h-4" /> Default Project
             </h3>
             <select
-              value={settings.defaultProject}
+              value={resolvedDefaultProjectId}
               onChange={(e) => {
                 updateSetting('defaultProject', e.target.value)
               }}
               className="w-full py-2 px-3 text-sm rounded-lg border border-border bg-background cursor-pointer hover:border-primary/50"
             >
-              {projects.map((p) => (
+              {selectableDefaultProjects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
+              {selectableDefaultProjects.length === 0 && (
+                <option value={INBOX_PROJECT_ID}>Inbox</option>
+              )}
             </select>
             <p className="text-xs text-muted-foreground mt-1">
               New tasks will be created in this project by default

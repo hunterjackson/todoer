@@ -4,6 +4,7 @@ import { cn } from '@renderer/lib/utils'
 import { useProjects, notifyProjectsChanged } from '@hooks/useProjects'
 import { useLabels, notifyLabelsChanged } from '@hooks/useLabels'
 import { TaskContentAutocomplete } from '@renderer/components/ui/TaskContentAutocomplete'
+import { canUseAsDefaultProject } from '@renderer/lib/defaultProject'
 import type { Priority, Label, Section, Project } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
 import { parseInlineTaskContent, findProjectByName, findLabelByName, findSectionByName } from '@shared/utils'
@@ -40,11 +41,15 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
       // Load default project setting, validating project still exists
       window.api.settings.get('defaultProject').then(async (defaultProject) => {
         if (defaultProject && defaultProject !== 'inbox') {
-          // Verify the project still exists before using it
+          // Verify the project is still active before using it.
           const project = await window.api.projects.get(defaultProject)
-          if (project) {
+          if (canUseAsDefaultProject(project)) {
             setProjectId(defaultProject)
+          } else {
+            setProjectId('inbox')
           }
+        } else {
+          setProjectId('inbox')
         }
       }).catch(() => {})
       setTimeout(() => inputRef.current?.focus(), 100)

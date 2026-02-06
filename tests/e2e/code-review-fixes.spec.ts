@@ -64,6 +64,17 @@ async function closeDialogs() {
   await page.waitForTimeout(200)
 }
 
+async function openSettingsPanel() {
+  await closeDialogs()
+  const settingsButton = page.locator('button:has-text("Settings")').first()
+  if (await settingsButton.isVisible().catch(() => false)) {
+    await settingsButton.click()
+  } else {
+    await page.keyboard.press('Meta+,')
+  }
+  await page.locator('h2:has-text("Settings")').first().waitFor({ state: 'visible', timeout: 3000 })
+}
+
 // Helper: create a task in current view using inline Add task
 async function createTask(content: string) {
   const addTaskBtn = page.locator('main button:has-text("Add task")').first()
@@ -379,6 +390,50 @@ test.describe('Fix #11: Project delete moves tasks to Inbox', () => {
     const taskInInbox = page.locator(`.task-item:has-text("${taskName}")`).first()
     const inInbox = await taskInInbox.isVisible().catch(() => false)
     expect(inInbox).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────
+// Fix #14: Archived project should not be used as default for Quick Add
+// ─────────────────────────────────────────────
+test.describe('Fix #14: Archived default project fallback', () => {
+  test('should fall back to Inbox when default project is archived', async () => {
+    const archivedProjectName = `ArchivedDefault${Date.now()}`
+    const taskName = `ArchivedFallbackTask${Date.now()}`
+
+    await page.evaluate(async ({ archivedProjectName }) => {
+      const project = await window.api.projects.create({ name: archivedProjectName, color: '#ff0000' })
+      await window.api.projects.update(project.id, { archivedAt: Date.now() })
+      await window.api.settings.set('defaultProject', project.id)
+    }, { archivedProjectName })
+
+    await goToInbox()
+    await page.keyboard.press('q')
+    await page.waitForTimeout(300)
+
+    const quickAddDialog = page.locator('.fixed.inset-0.z-50').first()
+    await quickAddDialog.waitFor({ state: 'visible', timeout: 3000 })
+    const input = quickAddDialog.locator('input[type="text"]').first()
+    await input.fill(taskName)
+    await page.keyboard.press('Meta+Enter')
+    await page.waitForTimeout(500)
+    await closeDialogs()
+
+    // Task should appear in Inbox rather than disappearing into archived project.
+    const taskInInbox = page.locator(`.task-item:has-text("${taskName}")`).first()
+    expect(await taskInInbox.isVisible().catch(() => false)).toBe(true)
+
+    const createdTask = await page.evaluate(async ({ taskName }) => {
+      const tasks = await window.api.tasks.list({ completed: false })
+      return tasks.find((task) => task.content === taskName) || null
+    }, { taskName })
+    expect(createdTask?.projectId).toBe('inbox')
+
+    // Archived projects should not appear as selectable defaults in Settings.
+    await openSettingsPanel()
+    const archivedOption = page.locator(`select option:has-text("${archivedProjectName}")`)
+    expect(await archivedOption.count()).toBe(0)
+    await closeDialogs()
   })
 })
 
