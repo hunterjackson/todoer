@@ -20,6 +20,7 @@ import { importTaskAttachments } from '../services/attachmentImport'
 import { validateSettingEntry, type SettingKey } from '../services/settingsValidation'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
 import { KarmaEngine } from '../services/karmaEngine'
+import { resolveDialogWindow } from './dialogWindow'
 import {
   taskUndoStack,
   getUndoAction,
@@ -706,8 +707,12 @@ export function registerIpcHandlers(): void {
       karmaHistory
     })
 
-    const window = BrowserWindow.getFocusedWindow()
-    const result = await dialog.showSaveDialog(window!, {
+    const window = resolveDialogWindow(BrowserWindow)
+    if (!window) {
+      return { success: false, error: 'No window available' }
+    }
+
+    const result = await dialog.showSaveDialog(window, {
       title: 'Export Data',
       defaultPath: `todoer-backup-${new Date().toISOString().split('T')[0]}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }]
@@ -726,8 +731,12 @@ export function registerIpcHandlers(): void {
     const tasks = taskRepo.list({})
     const csv = exportToCSV(tasks)
 
-    const window = BrowserWindow.getFocusedWindow()
-    const result = await dialog.showSaveDialog(window!, {
+    const window = resolveDialogWindow(BrowserWindow)
+    if (!window) {
+      return { success: false, error: 'No window available' }
+    }
+
+    const result = await dialog.showSaveDialog(window, {
       title: 'Export Tasks to CSV',
       defaultPath: `todoer-tasks-${new Date().toISOString().split('T')[0]}.csv`,
       filters: [{ name: 'CSV', extensions: ['csv'] }]
@@ -742,8 +751,12 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('data:importJSON', async () => {
-    const window = BrowserWindow.getFocusedWindow()
-    const result = await dialog.showOpenDialog(window!, {
+    const window = resolveDialogWindow(BrowserWindow)
+    if (!window) {
+      return { success: false, error: 'No window available' }
+    }
+
+    const result = await dialog.showOpenDialog(window, {
       title: 'Import Data',
       filters: [{ name: 'JSON', extensions: ['json'] }],
       properties: ['openFile']
@@ -1111,8 +1124,12 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('data:importCSV', async () => {
-    const window = BrowserWindow.getFocusedWindow()
-    const result = await dialog.showOpenDialog(window!, {
+    const window = resolveDialogWindow(BrowserWindow)
+    if (!window) {
+      return { success: false, error: 'No window available' }
+    }
+
+    const result = await dialog.showOpenDialog(window, {
       title: 'Import Tasks from CSV',
       filters: [{ name: 'CSV', extensions: ['csv'] }],
       properties: ['openFile']
