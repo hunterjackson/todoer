@@ -53,18 +53,21 @@ export function useLabels(): UseLabelsResult {
   const createLabel = useCallback(async (data: LabelCreate): Promise<Label> => {
     const label = await window.api.labels.create(data)
     await fetchLabels()
+    notifyLabelsChanged()
     return label
   }, [fetchLabels])
 
   const updateLabel = useCallback(async (id: string, data: LabelUpdate): Promise<Label | null> => {
     const label = await window.api.labels.update(id, data)
     await fetchLabels()
+    notifyLabelsChanged()
     return label
   }, [fetchLabels])
 
   const deleteLabel = useCallback(async (id: string): Promise<boolean> => {
     const result = await window.api.labels.delete(id)
     await fetchLabels()
+    notifyLabelsChanged()
     return result
   }, [fetchLabels])
 
