@@ -1015,23 +1015,24 @@ export function registerIpcHandlers(): void {
         taskIdMap
       )
 
-      // Import settings
+      // Import settings (validated using same rules as settings:set)
       if (data.settings && typeof data.settings === 'object') {
         const db = getDatabase()
         for (const [key, value] of Object.entries(data.settings)) {
           try {
+            const validated = validateSettingEntry(key, String(value))
             const stmt = db.prepare('SELECT key FROM settings WHERE key = ?')
-            stmt.bind([key])
+            stmt.bind([validated.key])
             const exists = stmt.step()
             stmt.free()
 
             if (exists) {
-              db.run('UPDATE settings SET value = ? WHERE key = ?', [value, key])
+              db.run('UPDATE settings SET value = ? WHERE key = ?', [validated.value, validated.key])
             } else {
-              db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, value])
+              db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [validated.key, validated.value])
             }
           } catch {
-            // Skip failures
+            // Skip invalid entries silently
           }
         }
       }

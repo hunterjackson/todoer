@@ -34,4 +34,33 @@ describe('settingsValidation', () => {
     expect(() => validateSettingEntry('quietHoursStart', '24')).toThrow(/invalid value/i)
     expect(() => validateSettingEntry('dailyGoal', '0')).toThrow(/invalid value/i)
   })
+
+  it('trims whitespace from values', () => {
+    expect(validateSettingEntry('confirmDelete', '  true  ')).toEqual({
+      key: 'confirmDelete',
+      value: 'true'
+    })
+  })
+
+  describe('validateSettingEntryForImport', () => {
+    it('should validate imported settings using same rules as settings:set', () => {
+      // Valid entries pass
+      expect(validateSettingEntry('confirmDelete', 'false')).toEqual({
+        key: 'confirmDelete',
+        value: 'false'
+      })
+      expect(validateSettingEntry('dailyGoal', '10')).toEqual({
+        key: 'dailyGoal',
+        value: '10'
+      })
+    })
+
+    it('should reject invalid keys during import', () => {
+      expect(() => validateSettingEntry('hackerKey', 'badValue')).toThrow(/invalid setting key/i)
+    })
+
+    it('should reject invalid values during import', () => {
+      expect(() => validateSettingEntry('timeFormat', 'invalid')).toThrow(/invalid value/i)
+    })
+  })
 })
