@@ -421,6 +421,11 @@ export function registerIpcHandlers(): void {
     return labelRepo.update(id, data)
   })
 
+  ipcMain.handle('labels:getTaskCount', async (_event, id: string) => {
+    const { labelRepo } = getRepositories()
+    return labelRepo.getTaskCount(id)
+  })
+
   ipcMain.handle('labels:delete', async (_event, id: string) => {
     const { labelRepo } = getRepositories()
     return labelRepo.delete(id)

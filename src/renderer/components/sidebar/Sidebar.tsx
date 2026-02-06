@@ -21,7 +21,7 @@ import { ThemeToggle } from '@renderer/components/ui/ThemeToggle'
 import { ProjectDialog } from '@renderer/components/project/ProjectDialog'
 import { LabelDialog } from '@renderer/components/label/LabelDialog'
 import { FilterDialog } from '@renderer/components/filter/FilterDialog'
-import type { ViewType, Project, ProjectCreate, ProjectUpdate, LabelCreate, LabelUpdate, FilterCreate, FilterUpdate } from '@shared/types'
+import type { ViewType, Project, Label, Filter as FilterType, ProjectCreate, ProjectUpdate, LabelCreate, LabelUpdate, FilterCreate, FilterUpdate } from '@shared/types'
 import { INBOX_PROJECT_ID } from '@shared/constants'
 
 interface ProjectNode extends Project {
@@ -89,13 +89,15 @@ function flattenProjectTree(nodes: ProjectNode[]): ProjectNode[] {
 
 export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, onOpenSettings, onOpenProductivity }: SidebarProps): React.ReactElement {
   const { projects, createProject, updateProject, deleteProject, duplicateProject } = useProjects()
-  const { labels, createLabel } = useLabels()
-  const { filters, createFilter } = useFilters()
+  const { labels, createLabel, updateLabel, deleteLabel } = useLabels()
+  const { filters, createFilter, updateFilter, deleteFilter } = useFilters()
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [showArchivedProjects, setShowArchivedProjects] = useState(false)
   const [labelDialogOpen, setLabelDialogOpen] = useState(false)
+  const [editingLabel, setEditingLabel] = useState<Label | null>(null)
   const [filterDialogOpen, setFilterDialogOpen] = useState(false)
+  const [editingFilter, setEditingFilter] = useState<FilterType | null>(null)
   const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set())
 
   // Filter out inbox and optionally archived projects
@@ -154,12 +156,40 @@ export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, 
     setEditingProject(null)
   }
 
-  const handleCreateLabel = async (data: LabelCreate | LabelUpdate) => {
-    await createLabel(data as LabelCreate)
+  const handleSaveLabel = async (data: LabelCreate | LabelUpdate) => {
+    if (editingLabel) {
+      await updateLabel(editingLabel.id, data as LabelUpdate)
+    } else {
+      await createLabel(data as LabelCreate)
+    }
+    setEditingLabel(null)
   }
 
-  const handleCreateFilter = async (data: FilterCreate | FilterUpdate) => {
-    await createFilter(data as FilterCreate)
+  const handleDeleteLabel = async (id: string) => {
+    await deleteLabel(id)
+    setEditingLabel(null)
+    // If we're viewing this label, navigate away
+    if (currentView === 'label' && currentViewId === id) {
+      onViewChange('inbox')
+    }
+  }
+
+  const handleSaveFilter = async (data: FilterCreate | FilterUpdate) => {
+    if (editingFilter) {
+      await updateFilter(editingFilter.id, data as FilterUpdate)
+    } else {
+      await createFilter(data as FilterCreate)
+    }
+    setEditingFilter(null)
+  }
+
+  const handleDeleteFilter = async (id: string) => {
+    await deleteFilter(id)
+    setEditingFilter(null)
+    // If we're viewing this filter, navigate away
+    if (currentView === 'filter' && currentViewId === id) {
+      onViewChange('inbox')
+    }
   }
 
   return (
@@ -238,6 +268,7 @@ export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, 
                 label={filter.name}
                 active={currentView === 'filter' && currentViewId === filter.id}
                 onClick={() => onViewChange('filter', filter.id)}
+                onDoubleClick={() => setEditingFilter(filter)}
               />
             ))}
             {filters.length === 0 && (
@@ -352,6 +383,7 @@ export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, 
                 label={label.name}
                 active={currentView === 'label' && currentViewId === label.id}
                 onClick={() => onViewChange('label', label.id)}
+                onDoubleClick={() => setEditingLabel(label)}
               />
             ))}
             {labels.length === 0 && (
@@ -409,16 +441,30 @@ export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, 
 
       {/* Label Dialog */}
       <LabelDialog
-        open={labelDialogOpen}
-        onOpenChange={setLabelDialogOpen}
-        onSave={handleCreateLabel}
+        open={labelDialogOpen || !!editingLabel}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLabelDialogOpen(false)
+            setEditingLabel(null)
+          }
+        }}
+        label={editingLabel}
+        onSave={handleSaveLabel}
+        onDelete={editingLabel ? handleDeleteLabel : undefined}
       />
 
       {/* Filter Dialog */}
       <FilterDialog
-        open={filterDialogOpen}
-        onOpenChange={setFilterDialogOpen}
-        onSave={handleCreateFilter}
+        open={filterDialogOpen || !!editingFilter}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFilterDialogOpen(false)
+            setEditingFilter(null)
+          }
+        }}
+        filter={editingFilter}
+        onSave={handleSaveFilter}
+        onDelete={editingFilter ? handleDeleteFilter : undefined}
       />
     </aside>
   )
@@ -431,6 +477,7 @@ interface SidebarItemProps {
   shortcut?: string
   count?: number
   onClick: () => void
+  onDoubleClick?: () => void
 }
 
 function SidebarItem({
@@ -439,11 +486,13 @@ function SidebarItem({
   active,
   shortcut,
   count,
-  onClick
+  onClick,
+  onDoubleClick
 }: SidebarItemProps): React.ReactElement {
   return (
     <button
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       className={cn(
         'sidebar-item w-full text-left',
         active && 'active'

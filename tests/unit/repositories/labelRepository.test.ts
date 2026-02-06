@@ -210,6 +210,41 @@ describe('LabelRepository', () => {
     })
   })
 
+  describe('getTaskCount', () => {
+    beforeEach(() => {
+      db.run(`
+        CREATE TABLE IF NOT EXISTS tasks (
+          id TEXT PRIMARY KEY,
+          content TEXT NOT NULL,
+          deleted_at INTEGER
+        )
+      `)
+    })
+
+    it('should return 0 for label with no tasks', () => {
+      const label = labelRepo.create({ name: 'Empty' })
+      expect(labelRepo.getTaskCount(label.id)).toBe(0)
+    })
+
+    it('should count tasks using the label', () => {
+      const label = labelRepo.create({ name: 'Work' })
+      db.run("INSERT INTO tasks (id, content, deleted_at) VALUES ('t1', 'Task 1', NULL)")
+      db.run("INSERT INTO tasks (id, content, deleted_at) VALUES ('t2', 'Task 2', NULL)")
+      db.run('INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)', ['t1', label.id])
+      db.run('INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)', ['t2', label.id])
+      expect(labelRepo.getTaskCount(label.id)).toBe(2)
+    })
+
+    it('should exclude soft-deleted tasks', () => {
+      const label = labelRepo.create({ name: 'Work' })
+      db.run("INSERT INTO tasks (id, content, deleted_at) VALUES ('t1', 'Active', NULL)")
+      db.run("INSERT INTO tasks (id, content, deleted_at) VALUES ('t2', 'Deleted', 1234567890)")
+      db.run('INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)', ['t1', label.id])
+      db.run('INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)', ['t2', label.id])
+      expect(labelRepo.getTaskCount(label.id)).toBe(1)
+    })
+  })
+
   describe('reorder', () => {
     it('should update sort order', () => {
       const label = labelRepo.create({ name: 'Test' })

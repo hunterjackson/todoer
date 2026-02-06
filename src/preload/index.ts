@@ -44,7 +44,8 @@ const api = {
     get: (id: string) => ipcRenderer.invoke('labels:get', id),
     create: (data: LabelCreate) => ipcRenderer.invoke('labels:create', data),
     update: (id: string, data: LabelUpdate) => ipcRenderer.invoke('labels:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('labels:delete', id)
+    delete: (id: string) => ipcRenderer.invoke('labels:delete', id),
+    getTaskCount: (id: string) => ipcRenderer.invoke('labels:getTaskCount', id)
   },
 
   // Section operations

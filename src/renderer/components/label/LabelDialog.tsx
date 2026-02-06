@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { X, Check } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useConfirmDelete } from '@renderer/hooks/useSettings'
@@ -70,14 +70,24 @@ export function LabelDialog({
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!label || !onDelete) return
 
-    if (await confirmDelete(`Are you sure you want to delete "${label.name}"?`)) {
+    let message = `Are you sure you want to delete "${label.name}"?`
+    try {
+      const taskCount = await window.api.labels.getTaskCount(label.id)
+      if (taskCount > 0) {
+        message = `Label "${label.name}" is used on ${taskCount} task${taskCount === 1 ? '' : 's'}. Deleting it will remove the label from all tasks. Continue?`
+      }
+    } catch {
+      // Fall back to basic message
+    }
+
+    if (await confirmDelete(message)) {
       await onDelete(label.id)
       onOpenChange(false)
     }
-  }
+  }, [label, onDelete, confirmDelete, onOpenChange])
 
   if (!open) return null
 

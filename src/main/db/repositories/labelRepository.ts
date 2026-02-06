@@ -125,6 +125,14 @@ export class LabelRepository {
     return this.get(id)
   }
 
+  getTaskCount(id: string): number {
+    const result = this.queryOne<{ count: number }>(
+      'SELECT COUNT(*) as count FROM task_labels tl JOIN tasks t ON t.id = tl.task_id WHERE tl.label_id = ? AND t.deleted_at IS NULL',
+      [id]
+    )
+    return result?.count ?? 0
+  }
+
   delete(id: string): boolean {
     const existing = this.get(id)
     if (!existing) return false
