@@ -16,6 +16,7 @@ import { notificationService } from '../services/notificationService'
 import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
 import { calculateRecurringRescheduleDate } from '../services/recurrenceEngine'
+import { importTaskAttachments } from '../services/attachmentImport'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
 import { KarmaEngine } from '../services/karmaEngine'
 import {
@@ -1000,29 +1001,11 @@ export function registerIpcHandlers(): void {
       }
 
       // Import attachments (after tasks, since they reference task IDs)
-      let attachmentsImported = 0
-      for (const attachment of data.attachments || []) {
-        try {
-          const remappedTaskId = attachment.taskId
-            ? taskIdMap.get(attachment.taskId) || null
-            : null
-          if (!remappedTaskId) continue
-
-          const attachmentRepo = createAttachmentRepository(getDatabase())
-          const dataBuffer = Buffer.from(attachment.dataBase64, 'base64')
-          attachmentRepo.addWithMetadata(
-            attachment.id,
-            remappedTaskId,
-            sanitizeFilename(attachment.filename),
-            attachment.mimeType,
-            dataBuffer,
-            attachment.createdAt || Date.now()
-          )
-          attachmentsImported++
-        } catch {
-          // Skip failures
-        }
-      }
+      const attachmentsImported = importTaskAttachments(
+        getDatabase(),
+        data.attachments || [],
+        taskIdMap
+      )
 
       // Import settings
       if (data.settings && typeof data.settings === 'object') {
