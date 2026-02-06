@@ -67,7 +67,7 @@ export async function startMcpServer(): Promise<void> {
     const taskRepo = new TaskRepository(db)
     const projectRepo = new ProjectRepository(db)
 
-    return handleResourceRead(request.params.uri, { taskRepo, projectRepo })
+    return handleResourceRead(request.params.uri, { taskRepo, projectRepo, db })
   })
 
   // Start the server

@@ -6,6 +6,7 @@ import { Database as SqlJsDatabase } from 'sql.js'
 interface Repositories {
   taskRepo: TaskRepository
   projectRepo: ProjectRepository
+  db: SqlJsDatabase
 }
 
 const STATIC_RESOURCES: Resource[] = [
@@ -84,7 +85,7 @@ export function handleResourceRead(
   uri: string,
   repos: Repositories
 ): { contents: Array<{ uri: string; mimeType: string; text: string }> } {
-  const { taskRepo, projectRepo } = repos
+  const { taskRepo, projectRepo, db } = repos
 
   // Parse project-specific URIs like todoer://project/abc123
   const projectMatch = uri.match(/^todoer:\/\/project\/(.+)$/)
@@ -218,8 +219,6 @@ export function handleResourceRead(
     }
 
     case 'todoer://stats': {
-      // Access the database from the repository (it has a private db property)
-      const db = (taskRepo as unknown as { db: SqlJsDatabase }).db
       const stats = getKarmaStats(db)
       const pendingTasks = taskRepo.list({ completed: false })
       const overdueTasks = taskRepo.getOverdue()

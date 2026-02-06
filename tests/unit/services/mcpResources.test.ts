@@ -99,7 +99,7 @@ describe('MCP Resources', () => {
       const project = projectRepo.create({ name: 'ReadTest', color: '#ff0000' })
       taskRepo.create({ content: 'Task in project', projectId: project.id })
 
-      const result = handleResourceRead(`todoer://project/${project.id}`, { taskRepo, projectRepo })
+      const result = handleResourceRead(`todoer://project/${project.id}`, { taskRepo, projectRepo, db })
       const data = JSON.parse(result.contents[0].text)
       expect(data.project.name).toBe('ReadTest')
       expect(data.tasks).toHaveLength(1)
@@ -107,9 +107,21 @@ describe('MCP Resources', () => {
     })
 
     it('should return error for non-existent project', () => {
-      const result = handleResourceRead('todoer://project/nonexistent', { taskRepo, projectRepo })
+      const result = handleResourceRead('todoer://project/nonexistent', { taskRepo, projectRepo, db })
       const data = JSON.parse(result.contents[0].text)
       expect(data.error).toBe('Project not found')
+    })
+
+    it('should not rely on a private taskRepo db field for stats resource', () => {
+      const lightweightTaskRepo = {
+        list: () => [],
+        getOverdue: () => [],
+        getToday: () => []
+      } as unknown as TaskRepository
+
+      expect(() =>
+        handleResourceRead('todoer://stats', { taskRepo: lightweightTaskRepo, projectRepo, db })
+      ).not.toThrow()
     })
   })
 })
