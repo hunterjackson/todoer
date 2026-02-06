@@ -141,7 +141,7 @@ export function TaskEditDialog({
     const shouldClearSection = projectId !== task.projectId
     return {
       content: content.trim(),
-      description: description.trim() || undefined,
+      description: description.trim() || null,
       dueDate: dueDate ? dueDate.getTime() : null,
       deadline: deadline ? deadline.getTime() : null,
       priority,

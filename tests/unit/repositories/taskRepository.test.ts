@@ -265,6 +265,21 @@ describe('TaskRepository', () => {
       expect(updated!.description).toBe('New description')
     })
 
+    it('should clear description when set to null', () => {
+      const task = repo.create({ content: 'Task', description: 'Has a description' })
+      expect(task.description).toBe('Has a description')
+
+      const updated = repo.update(task.id, { description: null })
+      expect(updated!.description).toBeNull()
+    })
+
+    it('should not clear description when undefined is passed', () => {
+      const task = repo.create({ content: 'Task', description: 'Keep me' })
+
+      const updated = repo.update(task.id, { content: 'New content' })
+      expect(updated!.description).toBe('Keep me')
+    })
+
     it('should return null for non-existent task', () => {
       const result = repo.update('non-existent', { content: 'Test' })
       expect(result).toBeNull()
