@@ -321,11 +321,13 @@ export function handleToolCall(
         }
 
         // Handle recurring tasks - create next occurrence
-        if (taskBeforeComplete.recurrenceRule && taskBeforeComplete.dueDate) {
+        // Use existing dueDate or today as base when no dueDate is set
+        if (taskBeforeComplete.recurrenceRule) {
           const completedAt = Date.now()
+          const baseDueDate = taskBeforeComplete.dueDate ?? completedAt
           const nextDueDate = calculateNextDueDate(
             taskBeforeComplete.recurrenceRule,
-            taskBeforeComplete.dueDate,
+            baseDueDate,
             completedAt
           )
 

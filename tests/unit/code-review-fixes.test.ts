@@ -639,4 +639,50 @@ describe('CODE_REVIEW Fix Tests', () => {
       db1.close()
     })
   })
+
+  // ─── v6 Fix #4: Recurring task completion without dueDate ───
+  describe('v6 Fix #4: Recurrence without dueDate', () => {
+    it('should reschedule recurring task that has no dueDate using today as base', () => {
+      // Create a recurring task without a due date (simulating "every day" parse result)
+      const task = taskRepo.create({
+        content: 'Daily recurring',
+        recurrenceRule: 'FREQ=DAILY'
+      })
+      expect(task.dueDate).toBeNull()
+      expect(task.recurrenceRule).toBe('FREQ=DAILY')
+
+      // Simulate completion logic: when recurrenceRule exists but dueDate is null,
+      // use today as base date
+      const baseDueDate = task.dueDate ?? Date.now()
+      const nextDueDate = calculateNextDueDate(
+        task.recurrenceRule!,
+        baseDueDate,
+        Date.now()
+      )
+
+      expect(nextDueDate).not.toBeNull()
+      // Next due date should be in the future
+      expect(nextDueDate!).toBeGreaterThan(Date.now() - 1000)
+    })
+
+    it('should still use existing dueDate when present for recurring tasks', () => {
+      const tomorrow = Date.now() + 86400000
+      const task = taskRepo.create({
+        content: 'Weekly recurring',
+        dueDate: tomorrow,
+        recurrenceRule: 'FREQ=WEEKLY'
+      })
+      expect(task.dueDate).toBe(tomorrow)
+
+      const nextDueDate = calculateNextDueDate(
+        task.recurrenceRule!,
+        task.dueDate!,
+        Date.now()
+      )
+
+      expect(nextDueDate).not.toBeNull()
+      // Next should be after the current due date
+      expect(nextDueDate!).toBeGreaterThan(tomorrow)
+    })
+  })
 })
