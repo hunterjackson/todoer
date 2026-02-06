@@ -1,6 +1,7 @@
 import { Database as SqlJsDatabase } from 'sql.js'
 import { generateId, now } from '@shared/utils'
 import type { Section, SectionCreate, SectionUpdate } from '@shared/types'
+import { saveDatabase } from '../index'
 
 interface SectionRow {
   id: string
@@ -45,6 +46,7 @@ export class SectionRepository {
 
   private run(sql: string, params: unknown[] = []): void {
     this.db.run(sql, params)
+    saveDatabase()
   }
 
   list(projectId: string): Section[] {

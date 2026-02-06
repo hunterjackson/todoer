@@ -3,6 +3,7 @@ import { join } from 'path'
 
 let electronApp: ElectronApplication
 let page: Page
+const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
   electronApp = await electron.launch({
@@ -16,6 +17,13 @@ test.beforeAll(async () => {
   page = await electronApp.firstWindow()
   await page.waitForLoadState('domcontentloaded')
   await page.waitForTimeout(1000)
+
+  // Collect console errors
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text())
+    }
+  })
 })
 
 test.afterAll(async () => {
@@ -62,12 +70,12 @@ async function goToInbox() {
   await page.waitForTimeout(300)
 }
 
-test.describe('Inline Label Autocomplete with # symbol', () => {
+test.describe('Inline Label Autocomplete with @ symbol', () => {
   test.beforeEach(async () => {
     await closeDialogs()
   })
 
-  test('should show label dropdown when typing # in Quick Add', async () => {
+  test('should show label dropdown when typing @ in Quick Add', async () => {
     // First create a label
     await ensureSidebarVisible()
     const addLabelBtn = page.locator('button[title="Add label"]').first()
@@ -94,8 +102,8 @@ test.describe('Inline Label Autocomplete with # symbol', () => {
 
     if (await input.isVisible().catch(() => false)) {
       await input.click()
-      // Type task name followed by #
-      await page.keyboard.type('Test task #', { delay: 20 })
+      // Type task name followed by @ (@ = label after Fix #10)
+      await page.keyboard.type('Test task @', { delay: 20 })
       await page.waitForTimeout(300)
 
       // Should show dropdown with label suggestions
@@ -124,7 +132,7 @@ test.describe('Inline Label Autocomplete with # symbol', () => {
 
     if (await input.isVisible().catch(() => false)) {
       await input.click()
-      await page.keyboard.type('Test with label #urg', { delay: 20 })
+      await page.keyboard.type('Test with label @urg', { delay: 20 })
       await page.waitForTimeout(300)
 
       // Press Enter or Tab to select the first matching label
@@ -145,7 +153,7 @@ test.describe('Inline Label Autocomplete with # symbol', () => {
     await closeDialogs()
   })
 
-  test('should show label dropdown when typing # in Task Edit Dialog', async () => {
+  test('should show label dropdown when typing @ in Task Edit Dialog', async () => {
     await goToInbox()
 
     // Create a task first
@@ -167,10 +175,10 @@ test.describe('Inline Label Autocomplete with # symbol', () => {
       // Find the task name input in the edit dialog
       const editInput = page.locator('.fixed.inset-0 input[type="text"]').first()
       if (await editInput.isVisible().catch(() => false)) {
-        // Clear and type with # for label
+        // Clear and type with @ for label (@ = label after Fix #10)
         await editInput.clear()
         await editInput.click()
-        await page.keyboard.type('Edited task #', { delay: 20 })
+        await page.keyboard.type('Edited task @', { delay: 20 })
         await page.waitForTimeout(300)
 
         // Should show dropdown with label suggestions
@@ -197,7 +205,7 @@ test.describe('Inline Label Autocomplete with # symbol', () => {
     if (await input.isVisible().catch(() => false)) {
       await input.click()
       // Type a label name that doesn't exist
-      await page.keyboard.type('Test task #newuniquelabel', { delay: 20 })
+      await page.keyboard.type('Test task @newuniquelabel', { delay: 20 })
       await page.waitForTimeout(300)
 
       // Should show "Create" option in dropdown
@@ -211,12 +219,12 @@ test.describe('Inline Label Autocomplete with # symbol', () => {
   })
 })
 
-test.describe('Inline Project Autocomplete with @ symbol', () => {
+test.describe('Inline Project Autocomplete with # symbol', () => {
   test.beforeEach(async () => {
     await closeDialogs()
   })
 
-  test('should show project dropdown when typing @ in Quick Add', async () => {
+  test('should show project dropdown when typing # in Quick Add', async () => {
     // First create a project
     await ensureSidebarVisible()
     const addProjectBtn = page.locator('button[title="Add project"]').first()
@@ -242,8 +250,8 @@ test.describe('Inline Project Autocomplete with @ symbol', () => {
 
     if (await input.isVisible().catch(() => false)) {
       await input.click()
-      // Type task name followed by @
-      await page.keyboard.type('Test task @', { delay: 20 })
+      // Type task name followed by # (# = project after Fix #10)
+      await page.keyboard.type('Test task #', { delay: 20 })
       await page.waitForTimeout(300)
 
       // Should show dropdown with project suggestions
@@ -272,7 +280,7 @@ test.describe('Inline Project Autocomplete with @ symbol', () => {
 
     if (await input.isVisible().catch(() => false)) {
       await input.click()
-      await page.keyboard.type('Test with project @Work', { delay: 20 })
+      await page.keyboard.type('Test with project #Work', { delay: 20 })
       await page.waitForTimeout(300)
 
       // Press Enter or Tab to select the first matching project
@@ -289,7 +297,7 @@ test.describe('Inline Project Autocomplete with @ symbol', () => {
     await closeDialogs()
   })
 
-  test('should show project dropdown when typing @ in Task Edit Dialog', async () => {
+  test('should show project dropdown when typing # in Task Edit Dialog', async () => {
     await goToInbox()
 
     // Create a task first
@@ -311,10 +319,10 @@ test.describe('Inline Project Autocomplete with @ symbol', () => {
       // Find the task name input in the edit dialog
       const editInput = page.locator('.fixed.inset-0 input[type="text"]').first()
       if (await editInput.isVisible().catch(() => false)) {
-        // Clear and type with @ for project
+        // Clear and type with # for project (# = project after Fix #10)
         await editInput.clear()
         await editInput.click()
-        await page.keyboard.type('Edited task @', { delay: 20 })
+        await page.keyboard.type('Edited task #', { delay: 20 })
         await page.waitForTimeout(300)
 
         // Should show dropdown with project suggestions
@@ -341,7 +349,7 @@ test.describe('Inline Project Autocomplete with @ symbol', () => {
     if (await input.isVisible().catch(() => false)) {
       await input.click()
       // Type a project name that doesn't exist
-      await page.keyboard.type('Test task @NewUniqueProject', { delay: 20 })
+      await page.keyboard.type('Test task #NewUniqueProject', { delay: 20 })
       await page.waitForTimeout(300)
 
       // Should show "Create" option in dropdown
@@ -373,14 +381,14 @@ test.describe('Combined Label and Project Autocomplete', () => {
     if (await input.isVisible().catch(() => false)) {
       await input.click()
 
-      // Type task with label
-      await page.keyboard.type('Complex task #urg', { delay: 20 })
+      // Type task with label (@ = label after Fix #10)
+      await page.keyboard.type('Complex task @urg', { delay: 20 })
       await page.waitForTimeout(200)
       await page.keyboard.press('Escape') // dismiss label dropdown
       await page.waitForTimeout(100)
 
-      // Continue typing with project
-      await page.keyboard.type(' @Work', { delay: 20 })
+      // Continue typing with project (# = project after Fix #10)
+      await page.keyboard.type(' #Work', { delay: 20 })
       await page.waitForTimeout(300)
 
       // Should show project dropdown now
@@ -393,4 +401,9 @@ test.describe('Combined Label and Project Autocomplete', () => {
 
     await closeDialogs()
   })
+})
+
+// Final check: no console errors during entire test run
+test('should have no console errors throughout test run', () => {
+  expect(consoleErrors).toHaveLength(0)
 })

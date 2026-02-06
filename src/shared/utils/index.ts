@@ -54,6 +54,18 @@ export function formatDate(timestamp: number, format: string = 'MMM d'): string 
     .replace('mm', date.getMinutes().toString().padStart(2, '0'))
 }
 
+/**
+ * Get a consistent local date key in YYYY-MM-DD format
+ * Uses local timezone, not UTC, for consistent streak/history tracking
+ */
+export function getLocalDateKey(date: Date | number = Date.now()): string {
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Check if a date is today
 export function isToday(timestamp: number): boolean {
   const today = startOfDay()

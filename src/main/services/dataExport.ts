@@ -1,4 +1,4 @@
-import type { Task, Project, Label, Filter } from '@shared/types'
+import type { Task, Project, Label, Filter, Section } from '@shared/types'
 
 export interface ExportData {
   version: number
@@ -7,6 +7,7 @@ export interface ExportData {
   projects: Project[]
   labels: Label[]
   filters: Filter[]
+  sections?: Section[]
 }
 
 /**
@@ -88,7 +89,8 @@ export function importFromJSON(jsonStr: string): Omit<ExportData, 'version' | 'e
     tasks,
     projects: data.projects || [],
     labels: data.labels || [],
-    filters: data.filters || []
+    filters: data.filters || [],
+    sections: data.sections || []
   }
 }
 

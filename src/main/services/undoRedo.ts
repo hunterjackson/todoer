@@ -1,6 +1,6 @@
 import type { Task, TaskCreate, TaskUpdate } from '@shared/types'
 
-export type OperationType = 'create' | 'update' | 'delete' | 'complete' | 'uncomplete' | 'reorder'
+export type OperationType = 'create' | 'update' | 'delete' | 'complete' | 'uncomplete' | 'reorder' | 'recurring-complete'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface TaskOperation {
@@ -107,9 +107,12 @@ export const taskUndoStack = createUndoRedoStack<TaskOperation>(50)
  * Returns the inverse operation that was performed
  */
 export function getUndoAction(operation: TaskOperation): {
-  action: 'create' | 'update' | 'delete' | 'complete' | 'uncomplete'
+  action: 'create' | 'update' | 'delete' | 'complete' | 'uncomplete' | 'reorder' | 'recurring-complete-undo'
   taskId: string
   data?: Partial<Task>
+  sortOrder?: number
+  parentId?: string | null
+  previousDueDate?: number
 } {
   switch (operation.type) {
     case 'create':
@@ -141,11 +144,20 @@ export function getUndoAction(operation: TaskOperation): {
       return { action: 'complete', taskId: operation.taskId }
 
     case 'reorder':
-      // Undo reorder = restore previous order
+      // Undo reorder = restore previous order using reorder()
       return {
-        action: 'update',
+        action: 'reorder',
         taskId: operation.taskId,
-        data: operation.previousData
+        sortOrder: operation.previousData?.sortOrder,
+        parentId: operation.previousData?.parentId
+      }
+
+    case 'recurring-complete':
+      // Undo recurring complete = restore previous due date AND reverse karma
+      return {
+        action: 'recurring-complete-undo',
+        taskId: operation.taskId,
+        previousDueDate: operation.data.previousDueDate
       }
 
     default:
@@ -158,9 +170,11 @@ export function getUndoAction(operation: TaskOperation): {
  * Returns the original operation that needs to be performed
  */
 export function getRedoAction(operation: TaskOperation): {
-  action: 'create' | 'update' | 'delete' | 'complete' | 'uncomplete'
+  action: 'create' | 'update' | 'delete' | 'complete' | 'uncomplete' | 'reorder' | 'recurring-complete-redo'
   taskId: string
   data?: Partial<Task>
+  sortOrder?: number
+  parentId?: string | null
 } {
   switch (operation.type) {
     case 'create':
@@ -187,11 +201,18 @@ export function getRedoAction(operation: TaskOperation): {
       return { action: 'uncomplete', taskId: operation.taskId }
 
     case 'reorder':
+      // Redo reorder = apply new order using reorder()
       return {
-        action: 'update',
+        action: 'reorder',
         taskId: operation.taskId,
-        data: operation.data as Partial<Task>
+        sortOrder: operation.data?.sortOrder,
+        parentId: operation.data?.parentId
       }
+
+    case 'recurring-complete':
+      // Redo recurring-complete = complete the task again (which will reschedule it)
+      // Uses special action to trigger full recurring logic with karma
+      return { action: 'recurring-complete-redo', taskId: operation.taskId }
 
     default:
       throw new Error(`Unknown operation type: ${operation.type}`)

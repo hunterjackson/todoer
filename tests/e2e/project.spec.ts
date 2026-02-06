@@ -3,6 +3,7 @@ import { join } from 'path'
 
 let electronApp: ElectronApplication
 let page: Page
+const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
   // Launch Electron app
@@ -18,6 +19,13 @@ test.beforeAll(async () => {
   await page.waitForLoadState('domcontentloaded')
   // Wait for React to render
   await page.waitForTimeout(1000)
+
+  // Collect console errors
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text())
+    }
+  })
 })
 
 test.afterAll(async () => {
@@ -71,4 +79,9 @@ test.describe('Navigation', () => {
     const heading = await page.locator('main h1, .main-content h1').first().textContent()
     expect(heading?.toLowerCase()).toContain('inbox')
   })
+})
+
+// Final check: no console errors during entire test run
+test('should have no console errors throughout test run', () => {
+  expect(consoleErrors).toHaveLength(0)
 })

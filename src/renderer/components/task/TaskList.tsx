@@ -27,6 +27,8 @@ interface TaskListProps {
   emptyMessage?: string
   showAddInput?: boolean
   draggable?: boolean
+  allExpanded?: boolean
+  onCreateSubtask?: (parentId: string, content: string) => Promise<void>
 }
 
 // Build a tree structure from flat tasks list
@@ -156,10 +158,14 @@ export function TaskList({
   showProject = false,
   emptyMessage = 'No tasks',
   showAddInput = true,
-  draggable = true
+  draggable = true,
+  allExpanded,
+  onCreateSubtask
 }: TaskListProps): React.ReactElement {
   const [focusedIndex, setFocusedIndex] = useState<number>(-1)
   const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set())
+  const [inlineSubtaskParentId, setInlineSubtaskParentId] = useState<string | null>(null)
+  const [inlineSubtaskContent, setInlineSubtaskContent] = useState('')
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [dropPosition, setDropPosition] = useState<DropPosition | null>(null)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
@@ -322,6 +328,23 @@ export function TaskList({
     })
   }, [])
 
+  // Respond to expand/collapse all
+  useEffect(() => {
+    if (allExpanded === undefined) return
+    if (allExpanded) {
+      setCollapsedTasks(new Set())
+    } else {
+      // Collapse all tasks that have children
+      const parentsWithChildren = new Set<string>()
+      for (const task of tasks) {
+        if (task.parentId) {
+          parentsWithChildren.add(task.parentId)
+        }
+      }
+      setCollapsedTasks(parentsWithChildren)
+    }
+  }, [allExpanded])
+
   // Reset focus when tasks change
   useEffect(() => {
     if (focusedIndex >= flattenedTasks.length) {
@@ -429,13 +452,26 @@ export function TaskList({
             }
           }
           break
+        case 's':
+          // Add subtask to focused task
+          if (focusedTask) {
+            e.preventDefault()
+            setInlineSubtaskParentId(focusedTask.id)
+            setInlineSubtaskContent('')
+          }
+          break
         case 'escape':
-          // Clear focus
-          setFocusedIndex(-1)
+          // Clear focus or close inline subtask input
+          if (inlineSubtaskParentId) {
+            setInlineSubtaskParentId(null)
+            setInlineSubtaskContent('')
+          } else {
+            setFocusedIndex(-1)
+          }
           break
       }
     },
-    [focusedIndex, flattenedTasks, collapsedTasks, onComplete, onUncomplete, onEdit, onDelete, onUpdatePriority, toggleTaskCollapse, onReorder, indentTask, outdentTask]
+    [focusedIndex, flattenedTasks, collapsedTasks, onComplete, onUncomplete, onEdit, onDelete, onUpdatePriority, toggleTaskCollapse, onReorder, indentTask, outdentTask, inlineSubtaskParentId]
   )
 
   useEffect(() => {
@@ -495,17 +531,62 @@ export function TaskList({
           </div>
         )
 
-        return draggable && onReorder ? (
-          <DraggableTaskWrapper
-            key={task.id}
-            task={task}
-            isDropTarget={isDropTarget}
-            dropPosition={isDropTarget ? dropPosition : null}
+        const subtaskInput = inlineSubtaskParentId === task.id && (
+          <div
+            className="flex gap-2 mt-1"
+            style={{ paddingLeft: `${(task.depth + 1) * 24 + 24}px` }}
           >
-            {taskItem}
-          </DraggableTaskWrapper>
+            <input
+              type="text"
+              value={inlineSubtaskContent}
+              onChange={(e) => setInlineSubtaskContent(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter' && inlineSubtaskContent.trim()) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (onCreateSubtask) {
+                    await onCreateSubtask(task.id, inlineSubtaskContent.trim())
+                  } else if (onCreate) {
+                    await onCreate({ content: inlineSubtaskContent.trim(), parentId: task.id })
+                  } else {
+                    await window.api.tasks.create({
+                      content: inlineSubtaskContent.trim(),
+                      parentId: task.id,
+                      projectId: task.projectId
+                    })
+                  }
+                  setInlineSubtaskContent('')
+                  setInlineSubtaskParentId(null)
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setInlineSubtaskParentId(null)
+                  setInlineSubtaskContent('')
+                }
+              }}
+              placeholder="Subtask name (Enter to add, Esc to cancel)"
+              className="flex-1 px-3 py-1.5 text-sm bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              autoFocus
+            />
+          </div>
+        )
+
+        return draggable && onReorder ? (
+          <React.Fragment key={task.id}>
+            <DraggableTaskWrapper
+              task={task}
+              isDropTarget={isDropTarget}
+              dropPosition={isDropTarget ? dropPosition : null}
+            >
+              {taskItem}
+            </DraggableTaskWrapper>
+            {subtaskInput}
+          </React.Fragment>
         ) : (
-          <div key={task.id}>{taskItem}</div>
+          <React.Fragment key={task.id}>
+            <div>{taskItem}</div>
+            {subtaskInput}
+          </React.Fragment>
         )
       })}
 

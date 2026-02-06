@@ -3,6 +3,7 @@ import { join } from 'path'
 
 let electronApp: ElectronApplication
 let page: Page
+const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
   // Launch Electron app
@@ -18,6 +19,13 @@ test.beforeAll(async () => {
   await page.waitForLoadState('domcontentloaded')
   // Wait for React to render
   await page.waitForTimeout(1000)
+
+  // Collect console errors
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text())
+    }
+  })
 })
 
 test.afterAll(async () => {
@@ -74,8 +82,9 @@ test.describe('Bug Fixes Validation', () => {
           }
         }
 
-        // Save the task
-        await page.click('button:has-text("Save")')
+        // Wait for autosave then close the dialog
+        await page.waitForTimeout(1200)
+        await page.keyboard.press('Escape')
         await page.waitForTimeout(300)
 
         // Verify task is no longer in Inbox
@@ -242,4 +251,9 @@ test.describe('Bug Fixes Validation', () => {
       expect(true).toBe(true)
     })
   })
+})
+
+// Final check: no console errors during entire test run
+test('should have no console errors throughout test run', () => {
+  expect(consoleErrors).toHaveLength(0)
 })

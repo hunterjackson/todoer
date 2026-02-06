@@ -8,7 +8,7 @@ import type { Label, LabelCreate, LabelUpdate } from '@shared/types'
 const api = {
   // Task operations
   tasks: {
-    list: (filter?: { projectId?: string; labelId?: string; completed?: boolean; dueDate?: string }) =>
+    list: (filter?: { projectId?: string | null; labelId?: string; completed?: boolean; dueDate?: string }) =>
       ipcRenderer.invoke('tasks:list', filter),
     get: (id: string) => ipcRenderer.invoke('tasks:get', id),
     create: (data: TaskCreate) => ipcRenderer.invoke('tasks:create', data),
@@ -103,8 +103,11 @@ const api = {
     evaluate: (query: string) => ipcRenderer.invoke('filters:evaluate', query)
   },
 
-  // Date parsing
-  parseDate: (text: string) => ipcRenderer.invoke('date:parse', text),
+  // Date parsing - returns timestamp number or null
+  parseDate: async (text: string): Promise<number | null> => {
+    const result = await ipcRenderer.invoke('date:parse', text)
+    return result?.date?.timestamp ?? null
+  },
 
   // Settings
   settings: {
@@ -139,6 +142,16 @@ const api = {
     getHistory: (startDate: string, endDate: string) =>
       ipcRenderer.invoke('karma:getHistory', startDate, endDate),
     getProductivitySummary: () => ipcRenderer.invoke('karma:getProductivitySummary')
+  },
+
+  attachments: {
+    list: (taskId: string) => ipcRenderer.invoke('attachments:list', taskId),
+    get: (id: string) => ipcRenderer.invoke('attachments:get', id),
+    add: (taskId: string) => ipcRenderer.invoke('attachments:add', taskId),
+    delete: (id: string) => ipcRenderer.invoke('attachments:delete', id),
+    download: (id: string) => ipcRenderer.invoke('attachments:download', id),
+    open: (id: string) => ipcRenderer.invoke('attachments:open', id),
+    count: (taskId: string) => ipcRenderer.invoke('attachments:count', taskId)
   },
 
   // Event subscriptions

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { ArrowUpDown, Check, ChevronDown } from 'lucide-react'
+import { ArrowUpDown, Check, ChevronDown, CheckCircle2, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import type { Task } from '@shared/types'
 
@@ -13,6 +13,11 @@ interface TaskSortOptionsProps {
   groupBy: GroupBy
   onSortChange: (field: SortField, direction: SortDirection) => void
   onGroupChange: (groupBy: GroupBy) => void
+  showCompleted?: boolean
+  onToggleCompleted?: (show: boolean) => void
+  allExpanded?: boolean
+  onToggleExpandAll?: () => void
+  excludeGroupOptions?: GroupBy[]
 }
 
 const SORT_OPTIONS: { value: SortField; label: string }[] = [
@@ -35,7 +40,12 @@ export function TaskSortOptions({
   sortDirection,
   groupBy,
   onSortChange,
-  onGroupChange
+  onGroupChange,
+  showCompleted,
+  onToggleCompleted,
+  allExpanded,
+  onToggleExpandAll,
+  excludeGroupOptions
 }: TaskSortOptionsProps): React.ReactElement {
   const [sortOpen, setSortOpen] = useState(false)
   const [groupOpen, setGroupOpen] = useState(false)
@@ -61,6 +71,33 @@ export function TaskSortOptions({
 
   return (
     <div className="flex items-center gap-2">
+      {/* Expand/Collapse all toggle */}
+      {onToggleExpandAll && (
+        <button
+          onClick={onToggleExpandAll}
+          className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md border hover:bg-accent"
+          title={allExpanded ? 'Collapse all subtasks' : 'Expand all subtasks'}
+        >
+          <ChevronsUpDown className="w-3 h-3" />
+          {allExpanded ? 'Collapse' : 'Expand'}
+        </button>
+      )}
+
+      {/* Completed toggle */}
+      {onToggleCompleted && (
+        <button
+          onClick={() => onToggleCompleted(!showCompleted)}
+          className={cn(
+            'flex items-center gap-1.5 px-2 py-1 text-xs rounded-md border hover:bg-accent',
+            showCompleted && 'bg-accent'
+          )}
+          title={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
+        >
+          <CheckCircle2 className="w-3 h-3" />
+          Completed
+        </button>
+      )}
+
       {/* Sort dropdown */}
       <div className="relative" ref={sortRef}>
         <button
@@ -124,7 +161,7 @@ export function TaskSortOptions({
         {groupOpen && (
           <div className="absolute z-50 mt-1 w-36 bg-popover border rounded-md shadow-lg">
             <div className="py-1">
-              {GROUP_OPTIONS.map((option) => (
+              {GROUP_OPTIONS.filter((o) => !excludeGroupOptions?.includes(o.value)).map((option) => (
                 <button
                   key={option.value}
                   onClick={() => {

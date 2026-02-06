@@ -1,8 +1,34 @@
-import React, { useState, useEffect } from 'react'
-import { Circle, CheckCircle2, Calendar, Flag, Trash2, Edit, Hash, Clock, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Circle, CheckCircle2, Calendar, Flag, Trash2, Edit, Tag, Clock, AlertCircle } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import type { Task, Priority, Label } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
+
+// Convert URLs in text to clickable links
+function linkifyText(text: string): React.ReactNode[] {
+  const urlRegex = /(https?:\/\/[^\s<>]+)/g
+  const parts = text.split(urlRegex)
+  return parts.map((part, i) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            window.open(part, '_blank')
+          }}
+          className="text-primary underline hover:text-primary/80"
+          title={part}
+        >
+          {part}
+        </a>
+      )
+    }
+    return part
+  })
+}
 
 interface TaskItemProps {
   task: Task
@@ -24,11 +50,21 @@ export function TaskItem({
   const [isHovered, setIsHovered] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [labels, setLabels] = useState<Label[]>([])
+  const [projectName, setProjectName] = useState<string | null>(null)
 
   useEffect(() => {
     // Fetch labels for this task
-    window.api.tasks.getLabels(task.id).then(setLabels).catch(console.error)
+    window.api.tasks.getLabels(task.id).then(setLabels).catch(() => {})
   }, [task.id])
+
+  useEffect(() => {
+    // Fetch project name if showing project info
+    if (showProject && task.projectId && task.projectId !== 'inbox') {
+      window.api.projects.get(task.projectId).then((project) => {
+        if (project) setProjectName(project.name)
+      }).catch(() => {})
+    }
+  }, [showProject, task.projectId])
 
   const handleToggleComplete = () => {
     if (task.completed) {
@@ -83,7 +119,7 @@ export function TaskItem({
           )}
           onClick={() => onEdit(task)}
         >
-          {task.content}
+          {linkifyText(task.content)}
         </div>
 
         {/* Meta info */}
@@ -130,9 +166,9 @@ export function TaskItem({
             </span>
           )}
 
-          {showProject && task.projectId && task.projectId !== 'inbox' && (
+          {showProject && task.projectId && task.projectId !== 'inbox' && projectName && (
             <span className="text-xs text-muted-foreground">
-              #{task.projectId}
+              {projectName}
             </span>
           )}
 
@@ -146,7 +182,7 @@ export function TaskItem({
                 color: label.color
               }}
             >
-              <Hash className="w-2.5 h-2.5" />
+              <Tag className="w-2.5 h-2.5" />
               {label.name}
             </span>
           ))}

@@ -9,6 +9,7 @@ interface CompletedTasksSectionProps {
   onUncomplete: (id: string) => void
   onEdit: (task: Task) => void
   onDelete: (id: string) => void
+  autoExpand?: boolean
 }
 
 export function CompletedTasksSection({
@@ -16,11 +17,16 @@ export function CompletedTasksSection({
   labelId,
   onUncomplete,
   onEdit,
-  onDelete
+  onDelete,
+  autoExpand = false
 }: CompletedTasksSectionProps): React.ReactElement | null {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(autoExpand)
   const [completedTasks, setCompletedTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    setIsExpanded(autoExpand)
+  }, [autoExpand])
 
   useEffect(() => {
     if (isExpanded) {
@@ -31,25 +37,24 @@ export function CompletedTasksSection({
   const fetchCompletedTasks = async () => {
     setLoading(true)
     try {
-      let tasks: Task[]
-      if (labelId) {
-        // For label view, get completed tasks with this label
-        const allTasks = await window.api.tasks.list({ completed: true })
-        // Filter by label - would need to check labels for each task
-        // For now, just get all completed tasks
-        tasks = allTasks
-      } else {
-        tasks = await window.api.tasks.list({
-          projectId: projectId || undefined,
-          completed: true
-        })
+      // Build filter params based on what's passed
+      const filter: { completed: true; projectId?: string; labelId?: string } = {
+        completed: true
       }
+
+      if (labelId) {
+        filter.labelId = labelId
+      } else if (projectId) {
+        filter.projectId = projectId
+      }
+
+      const tasks = await window.api.tasks.list(filter)
       // Sort by completion date, most recent first
-      tasks.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0))
+      tasks.sort((a: Task, b: Task) => (b.completedAt || 0) - (a.completedAt || 0))
       // Limit to most recent 50
       setCompletedTasks(tasks.slice(0, 50))
     } catch (err) {
-      console.error('Failed to fetch completed tasks:', err)
+      // Silently fail - don't log errors to console
     } finally {
       setLoading(false)
     }

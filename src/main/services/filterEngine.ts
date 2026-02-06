@@ -1,4 +1,4 @@
-import type { Task, Label } from '@shared/types'
+import type { Task, TaskLabel } from '@shared/types'
 import { startOfDay, endOfDay, addDays } from '@shared/utils'
 
 /**
@@ -248,10 +248,10 @@ function evaluateCondition(task: Task, condition: string, context: FilterContext
     }
 
     if (hasWildcard) {
-      return task.labels.some((l: Label) => matchWildcard(labelName, l.name.toLowerCase()))
+      return task.labels.some((l: TaskLabel) => matchWildcard(labelName, l.name.toLowerCase()))
     }
 
-    return task.labels.some((l: Label) => l.name.toLowerCase() === labelName)
+    return task.labels.some((l: TaskLabel) => l.name.toLowerCase() === labelName)
   }
 
   // Section (/name) - supports wildcard (*)

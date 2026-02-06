@@ -1,7 +1,7 @@
 import type { Database as SqlJsDatabase } from 'sql.js'
 import type { KarmaStats, KarmaHistory } from '@shared/types'
 import { BaseRepository } from './baseRepository'
-import { generateId } from '@shared/utils'
+import { generateId, getLocalDateKey } from '@shared/utils'
 
 interface KarmaStatsRow {
   id: string
@@ -190,14 +190,13 @@ export class KarmaRepository extends BaseRepository<KarmaStatsRow, KarmaStats> {
     if (rows.length === 0) return 0
 
     let streak = 0
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const now = new Date()
 
-    // Check if there's activity today or yesterday (to allow for "haven't done today yet")
-    const todayStr = today.toISOString().split('T')[0]
-    const yesterday = new Date(today)
+    // Use local date keys consistently
+    const todayStr = getLocalDateKey(now)
+    const yesterday = new Date(now)
     yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = yesterday.toISOString().split('T')[0]
+    const yesterdayStr = getLocalDateKey(yesterday)
 
     const firstDate = rows[0]?.date
     if (firstDate !== todayStr && firstDate !== yesterdayStr) {
@@ -205,11 +204,15 @@ export class KarmaRepository extends BaseRepository<KarmaStatsRow, KarmaStats> {
       return 0
     }
 
-    // Count consecutive days
-    const expectedDate = firstDate === todayStr ? today : yesterday
+    // Count consecutive days - start from the first date in history
+    const expectedDate = new Date(now)
+    if (firstDate !== todayStr) {
+      expectedDate.setDate(expectedDate.getDate() - 1)
+    }
+
     for (const row of rows) {
       const rowDate = row.date
-      const expected = expectedDate.toISOString().split('T')[0]
+      const expected = getLocalDateKey(expectedDate)
 
       if (rowDate === expected) {
         streak++

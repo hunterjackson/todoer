@@ -137,10 +137,10 @@
 |---------|--------|-------|
 | Create labels | ✅ | |
 | Label colors | ✅ | |
-| Add via # symbol | ✅ | TaskContentAutocomplete component |
+| Add via @ symbol | ✅ | TaskContentAutocomplete component |
 | Multiple labels per task | ✅ | |
 | Filter by label | ✅ | |
-| Inline label autocomplete | ✅ | Type # in task title for dropdown |
+| Inline label autocomplete | ✅ | Type @ in task title for dropdown |
 | Create labels inline | ✅ | "Create" option in autocomplete dropdown |
 
 ---
@@ -187,11 +187,11 @@
 |---------|--------|-------|
 | Natural language dates | ✅ | |
 | Priorities (p1-p4) | ✅ | Inline p1-p4 parsing |
-| Projects (@name) | ✅ | @project triggers autocomplete dropdown |
-| Project inline autocomplete | ✅ | Type @ for dropdown, create new option |
+| Projects (#name) | ✅ | #project triggers autocomplete dropdown |
+| Project inline autocomplete | ✅ | Type # for dropdown, create new option |
 | Sections (/name) | ✅ | /sectionname inline parsing |
-| Labels (#name) | ✅ | #label triggers autocomplete dropdown |
-| Label inline autocomplete | ✅ | Type # for dropdown, create new option |
+| Labels (@name) | ✅ | @label triggers autocomplete dropdown |
+| Label inline autocomplete | ✅ | Type @ for dropdown, create new option |
 | Reminders (!) | ✅ | !tomorrow, !10min, !"Dec 25 3pm" in Quick Add |
 | Deadlines ({date}) | ✅ | {tomorrow}, {Dec 31} in Quick Add |
 | Duration (for X min) | ✅ | "for X min/hour" inline parsing |
@@ -203,7 +203,7 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Task comments | ✅ | TaskComments component |
-| File attachments | ❌ | DB schema exists |
+| File attachments | ✅ | Stored as BLOBs in SQLite (10MB per file, 50MB per task limit) |
 | Audio comments | 🚫 | |
 | Project comments | ✅ | CommentRepository updated to support project_id |
 
@@ -294,7 +294,7 @@
 
 ### Lower Priority (Nice to Have)
 9. ❌ Project templates
-16. ❌ File attachments
+16. ✅ File attachments
 
 ---
 

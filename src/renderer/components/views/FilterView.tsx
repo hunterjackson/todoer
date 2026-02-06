@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Filter } from 'lucide-react'
 import { TaskList } from '../task/TaskList'
 import { TaskEditDialog } from '../task/TaskEditDialog'
+import { TaskSortOptions, sortTasks, groupTasks } from '../ui/TaskSortOptions'
+import { useStore } from '@renderer/stores/useStore'
+import { useProjects } from '@hooks/useProjects'
 import type { Task, TaskUpdate, Filter as FilterType, Priority } from '@shared/types'
 
 interface FilterViewProps {
@@ -13,6 +16,14 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [allExpanded, setAllExpanded] = useState(true)
+  const { projects } = useProjects()
+
+  const viewKey = `filter-${filterId}`
+  const viewSettings = useStore((s) => s.getViewSettings(viewKey))
+  const setViewSettings = useStore((s) => s.setViewSettings)
+
+  const { sortField, sortDirection, groupBy } = viewSettings
 
   const fetchFilter = useCallback(async () => {
     try {
@@ -20,8 +31,7 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
       const found = filters.find((f: FilterType) => f.id === filterId)
       setFilter(found || null)
       return found
-    } catch (err) {
-      console.error('Failed to fetch filter:', err)
+    } catch {
       return null
     }
   }, [filterId])
@@ -31,8 +41,8 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
       setLoading(true)
       const filteredTasks = await window.api.filters.evaluate(query)
       setTasks(filteredTasks)
-    } catch (err) {
-      console.error('Failed to evaluate filter:', err)
+    } catch {
+      // Failed to evaluate filter
     } finally {
       setLoading(false)
     }
@@ -47,6 +57,15 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
       }
     })
   }, [fetchFilter, fetchTasks])
+
+  const sortedTasks = useMemo(() => {
+    return sortTasks(tasks, sortField, sortDirection)
+  }, [tasks, sortField, sortDirection])
+
+  const groupedTasks = useMemo(() => {
+    if (groupBy === 'none') return null
+    return groupTasks(sortedTasks, groupBy, projects)
+  }, [sortedTasks, groupBy, projects])
 
   const handleCompleteTask = async (id: string) => {
     await window.api.tasks.complete(id)
@@ -78,6 +97,10 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
     if (filter) fetchTasks(filter.query)
   }
 
+  const handleToggleExpandAll = useCallback(() => {
+    setAllExpanded((prev) => !prev)
+  }, [])
+
   if (!filter && !loading) {
     return (
       <div className="p-6">
@@ -88,25 +111,63 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Filter className="w-6 h-6" style={{ color: filter?.color || '#808080' }} />
-        <div>
-          <h1 className="text-2xl font-bold">{filter?.name || 'Loading...'}</h1>
-          {filter && (
-            <p className="text-sm text-muted-foreground font-mono">
-              {filter.query}
-            </p>
-          )}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Filter className="w-6 h-6" style={{ color: filter?.color || '#808080' }} />
+          <div>
+            <h1 className="text-2xl font-bold">{filter?.name || 'Loading...'}</h1>
+            {filter && (
+              <p className="text-sm text-muted-foreground font-mono">
+                {filter.query}
+              </p>
+            )}
+          </div>
         </div>
+        <TaskSortOptions
+          sortField={sortField}
+          sortDirection={sortDirection}
+          groupBy={groupBy}
+          onSortChange={(field, direction) => setViewSettings(viewKey, { sortField: field, sortDirection: direction })}
+          onGroupChange={(g) => setViewSettings(viewKey, { groupBy: g })}
+          allExpanded={allExpanded}
+          onToggleExpandAll={handleToggleExpandAll}
+        />
       </div>
 
       {loading ? (
         <div className="text-center py-8 text-muted-foreground">Loading...</div>
       ) : (
         <>
-          {tasks.length > 0 ? (
+          {groupedTasks ? (
+            groupedTasks.map((group) => (
+              <div key={group.key} className="mb-4">
+                {group.label && (
+                  <div className="flex items-center gap-2 mb-2">
+                    {group.color && (
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: group.color }} />
+                    )}
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      {group.label} ({group.tasks.length})
+                    </h3>
+                  </div>
+                )}
+                <TaskList
+                  tasks={group.tasks}
+                  onComplete={handleCompleteTask}
+                  onUncomplete={handleUncompleteTask}
+                  onEdit={setEditingTask}
+                  onDelete={handleDeleteTask}
+                  onUpdatePriority={handleUpdatePriority}
+                  onReorder={handleReorderTask}
+                  showProject
+                  showAddInput={false}
+                  allExpanded={allExpanded}
+                />
+              </div>
+            ))
+          ) : sortedTasks.length > 0 ? (
             <TaskList
-              tasks={tasks}
+              tasks={sortedTasks}
               onComplete={handleCompleteTask}
               onUncomplete={handleUncompleteTask}
               onEdit={setEditingTask}
@@ -115,6 +176,7 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
               onReorder={handleReorderTask}
               showProject
               showAddInput={false}
+              allExpanded={allExpanded}
             />
           ) : (
             <div className="text-center py-12 text-muted-foreground">
@@ -132,6 +194,7 @@ export function FilterView({ filterId }: FilterViewProps): React.ReactElement {
         onOpenChange={(open) => !open && setEditingTask(null)}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
+        onEditTask={setEditingTask}
       />
     </div>
   )

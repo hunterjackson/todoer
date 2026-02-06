@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { X, Flag, Clock } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { X, Flag, Clock, Plus, CheckCircle2, Circle, Check, Paperclip, Download, Trash2, FileText } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { DatePicker } from '@renderer/components/ui/DatePicker'
 import { LabelSelector } from '@renderer/components/ui/LabelSelector'
 import { TaskContentAutocomplete } from '@renderer/components/ui/TaskContentAutocomplete'
 import { TaskComments } from './TaskComments'
+import { RichTextEditor } from '@renderer/components/ui/RichTextEditor'
 import { useProjects, notifyProjectsChanged } from '@hooks/useProjects'
 import { useLabels, notifyLabelsChanged } from '@hooks/useLabels'
-import type { Task, TaskUpdate, Priority, Label, Project } from '@shared/types'
+import { useConfirmDelete } from '@hooks/useSettings'
+import type { Task, TaskCreate, TaskUpdate, Priority, Label, Project } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
 
 interface TaskEditDialogProps {
@@ -16,6 +18,8 @@ interface TaskEditDialogProps {
   onOpenChange: (open: boolean) => void
   onSave: (id: string, data: TaskUpdate) => Promise<void>
   onDelete?: (id: string) => Promise<void>
+  onCreateSubtask?: (data: TaskCreate) => Promise<void>
+  onEditTask?: (task: Task) => void
 }
 
 export function TaskEditDialog({
@@ -23,7 +27,9 @@ export function TaskEditDialog({
   open,
   onOpenChange,
   onSave,
-  onDelete
+  onDelete,
+  onCreateSubtask,
+  onEditTask
 }: TaskEditDialogProps): React.ReactElement | null {
   const [content, setContent] = useState('')
   const [description, setDescription] = useState('')
@@ -34,8 +40,19 @@ export function TaskEditDialog({
   const [labelIds, setLabelIds] = useState<string[]>([])
   const [duration, setDuration] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [subtasks, setSubtasks] = useState<Task[]>([])
+  const [showSubtaskInput, setShowSubtaskInput] = useState(false)
+  const [newSubtaskContent, setNewSubtaskContent] = useState('')
+  const [attachments, setAttachments] = useState<{ id: string; filename: string; mimeType: string; size: number }[]>([])
+  const [showNewProjectInput, setShowNewProjectInput] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
   const { projects, refresh: refreshProjects } = useProjects()
   const { createLabel } = useLabels()
+  const confirmDelete = useConfirmDelete()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isInitialLoad = useRef(true)
+  const lastSavedData = useRef<string>('')
 
   // Refresh projects list when dialog opens to catch newly created projects
   useEffect(() => {
@@ -43,6 +60,61 @@ export function TaskEditDialog({
       refreshProjects()
     }
   }, [open, refreshProjects])
+
+  // Fetch subtasks when dialog opens
+  const fetchSubtasks = useCallback(async () => {
+    if (!task) return
+    try {
+      const allTasks = await window.api.tasks.list({ projectId: task.projectId })
+      const children = allTasks.filter((t: Task) => t.parentId === task.id && !t.completedAt)
+      setSubtasks(children)
+    } catch {
+      setSubtasks([])
+    }
+  }, [task])
+
+  const fetchAttachments = useCallback(async () => {
+    if (!task) return
+    try {
+      const list = await window.api.attachments.list(task.id)
+      setAttachments(list)
+    } catch {
+      setAttachments([])
+    }
+  }, [task])
+
+  useEffect(() => {
+    if (open && task) {
+      fetchSubtasks()
+      fetchAttachments()
+    }
+  }, [open, task, fetchSubtasks, fetchAttachments])
+
+  const handleAddSubtask = async () => {
+    if (!task || !newSubtaskContent.trim()) return
+    try {
+      await window.api.tasks.create({
+        content: newSubtaskContent.trim(),
+        parentId: task.id,
+        projectId: task.projectId
+      })
+      setNewSubtaskContent('')
+      setShowSubtaskInput(false)
+      await fetchSubtasks()
+      onCreateSubtask?.({ content: newSubtaskContent.trim(), parentId: task.id, projectId: task.projectId })
+    } catch {
+      // Subtask creation failed silently - UI won't update
+    }
+  }
+
+  const handleCompleteSubtask = async (subtaskId: string) => {
+    try {
+      await window.api.tasks.complete(subtaskId)
+      await fetchSubtasks()
+    } catch {
+      // Subtask completion failed silently
+    }
+  }
 
   useEffect(() => {
     if (task) {
@@ -57,22 +129,104 @@ export function TaskEditDialog({
       // Fetch labels for task
       window.api.tasks.getLabels(task.id).then((labels: Label[]) => {
         setLabelIds(labels.map((l) => l.id))
-      }).catch(console.error)
+      }).catch(() => {
+        // Silently handle label fetch errors - labels will default to empty
+      })
     }
   }, [task])
+
+  // Build save data for comparison and autosave
+  const buildSaveData = useCallback(() => {
+    if (!task) return null
+    const shouldClearSection = projectId !== task.projectId
+    return {
+      content: content.trim(),
+      description: description.trim() || undefined,
+      dueDate: dueDate ? dueDate.getTime() : null,
+      deadline: deadline ? deadline.getTime() : null,
+      priority,
+      projectId,
+      sectionId: shouldClearSection ? null : undefined,
+      labelIds,
+      duration
+    }
+  }, [task, content, description, dueDate, deadline, priority, projectId, labelIds, duration])
+
+  // Autosave with debounce
+  const performAutoSave = useCallback(async () => {
+    if (!task || !content.trim()) return
+    const data = buildSaveData()
+    if (!data) return
+
+    const dataStr = JSON.stringify(data)
+    if (dataStr === lastSavedData.current) return
+
+    setSaveStatus('saving')
+    try {
+      await onSave(task.id, data)
+      lastSavedData.current = dataStr
+      setSaveStatus('saved')
+      // Reset to idle after 2 seconds
+      setTimeout(() => setSaveStatus((s) => s === 'saved' ? 'idle' : s), 2000)
+    } catch {
+      setSaveStatus('idle')
+    }
+  }, [task, content, buildSaveData, onSave])
+
+  // Trigger autosave on field changes (debounced)
+  useEffect(() => {
+    if (isInitialLoad.current || !task || !open) return
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      performAutoSave()
+    }, 800)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [content, description, dueDate, deadline, priority, projectId, labelIds, duration, performAutoSave, task, open])
+
+  // Mark initial load complete after all fields are set
+  useEffect(() => {
+    if (task && open) {
+      // Set initial load flag after a tick to allow all state setters to complete
+      isInitialLoad.current = true
+      const timer = setTimeout(() => {
+        const data = buildSaveData()
+        if (data) lastSavedData.current = JSON.stringify(data)
+        isInitialLoad.current = false
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [task?.id, open])
+
+  // Flush autosave on close
+  useEffect(() => {
+    if (!open && debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+  }, [open])
 
   // Global escape listener
   useEffect(() => {
     if (open) {
       const handleEscape = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
+          // Flush any pending autosave immediately
+          if (debounceRef.current) {
+            clearTimeout(debounceRef.current)
+            debounceRef.current = null
+            performAutoSave()
+          }
           onOpenChange(false)
         }
       }
       window.addEventListener('keydown', handleEscape)
       return () => window.removeEventListener('keydown', handleEscape)
     }
-  }, [open, onOpenChange])
+  }, [open, onOpenChange, performAutoSave])
 
   // Handle label selection from inline autocomplete
   const handleLabelSelect = useCallback((label: Label) => {
@@ -107,23 +261,14 @@ export function TaskEditDialog({
     e.preventDefault()
     if (!task || !content.trim() || isSubmitting) return
 
+    // Flush pending autosave and close
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
     setIsSubmitting(true)
     try {
-      // Clear sectionId when moving to a different project
-      // (sections are project-specific)
-      const shouldClearSection = projectId !== task.projectId
-
-      await onSave(task.id, {
-        content: content.trim(),
-        description: description.trim() || undefined,
-        dueDate: dueDate ? dueDate.getTime() : null,
-        deadline: deadline ? deadline.getTime() : null,
-        priority,
-        projectId,
-        sectionId: shouldClearSection ? null : undefined,
-        labelIds,
-        duration
-      })
+      await performAutoSave()
       onOpenChange(false)
     } finally {
       setIsSubmitting(false)
@@ -133,7 +278,7 @@ export function TaskEditDialog({
   const handleDelete = async () => {
     if (!task || !onDelete) return
 
-    if (confirm(`Are you sure you want to delete "${task.content}"?`)) {
+    if (await confirmDelete(`Are you sure you want to delete "${task.content}"?`)) {
       await onDelete(task.id)
       onOpenChange(false)
     }
@@ -146,7 +291,15 @@ export function TaskEditDialog({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
-        onClick={() => onOpenChange(false)}
+        onClick={() => {
+          // Flush pending autosave before closing
+          if (debounceRef.current) {
+            clearTimeout(debounceRef.current)
+            debounceRef.current = null
+            performAutoSave()
+          }
+          onOpenChange(false)
+        }}
       />
 
       {/* Dialog */}
@@ -173,7 +326,7 @@ export function TaskEditDialog({
               onLabelCreate={handleLabelCreate}
               onProjectSelect={handleProjectSelect}
               onProjectCreate={handleProjectCreate}
-              placeholder="Task name (#label @project)"
+              placeholder="Task name (#project @label)"
               className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               autoFocus
             />
@@ -182,29 +335,90 @@ export function TaskEditDialog({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+            <RichTextEditor
+              content={description}
+              onChange={setDescription}
               placeholder="Add a description..."
-              rows={3}
-              className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              minHeight="60px"
             />
           </div>
 
           {/* Project selector */}
           <div>
             <label className="block text-sm font-medium mb-1">Project</label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md bg-background cursor-pointer"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            {showNewProjectInput ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (newProjectName.trim()) {
+                        const newProject = await handleProjectCreate(newProjectName.trim())
+                        setProjectId(newProject.id)
+                        setNewProjectName('')
+                        setShowNewProjectInput(false)
+                      }
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setNewProjectName('')
+                      setShowNewProjectInput(false)
+                    }
+                  }}
+                  placeholder="New project name"
+                  className="flex-1 px-3 py-2 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (newProjectName.trim()) {
+                      const newProject = await handleProjectCreate(newProjectName.trim())
+                      setProjectId(newProject.id)
+                      setNewProjectName('')
+                      setShowNewProjectInput(false)
+                    }
+                  }}
+                  disabled={!newProjectName.trim()}
+                  className="px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setNewProjectName(''); setShowNewProjectInput(false) }}
+                  className="px-3 py-2 text-sm rounded-md hover:bg-accent"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <select
+                value={projectId}
+                onChange={(e) => {
+                  if (e.target.value === '__create_new__') {
+                    setShowNewProjectInput(true)
+                    // Reset select to current project so it doesn't show "+ Create new project"
+                    e.target.value = projectId
+                  } else {
+                    setProjectId(e.target.value)
+                  }
+                }}
+                className="w-full px-3 py-2 border rounded-md bg-background cursor-pointer"
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+                <option value="__create_new__">+ Create new project</option>
+              </select>
+            )}
           </div>
 
           {/* Labels */}
@@ -282,6 +496,160 @@ export function TaskEditDialog({
             </div>
           </div>
 
+          {/* Subtasks */}
+          <div className="pt-4 border-t">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Subtasks ({subtasks.length})
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowSubtaskInput(true)}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add subtask
+              </button>
+            </div>
+
+            {subtasks.length > 0 && (
+              <div className="space-y-1 mb-2">
+                {subtasks.map((subtask) => (
+                  <div key={subtask.id} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-muted/50 group/subtask">
+                    <button
+                      type="button"
+                      onClick={() => handleCompleteSubtask(subtask.id)}
+                      className="text-muted-foreground hover:text-primary flex-shrink-0"
+                    >
+                      <Circle className="w-4 h-4" />
+                    </button>
+                    <span
+                      className={cn(
+                        "text-sm truncate",
+                        onEditTask && "cursor-pointer hover:text-primary hover:underline"
+                      )}
+                      onClick={() => onEditTask?.(subtask)}
+                      role={onEditTask ? "button" : undefined}
+                      tabIndex={onEditTask ? 0 : undefined}
+                      onKeyDown={(e) => {
+                        if (onEditTask && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault()
+                          onEditTask(subtask)
+                        }
+                      }}
+                    >
+                      {subtask.content}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {showSubtaskInput && (
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={newSubtaskContent}
+                  onChange={(e) => setNewSubtaskContent(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleAddSubtask()
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault()
+                      setShowSubtaskInput(false)
+                      setNewSubtaskContent('')
+                    }
+                  }}
+                  placeholder="Subtask name"
+                  className="flex-1 px-3 py-1.5 text-sm bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={handleAddSubtask}
+                  disabled={!newSubtaskContent.trim()}
+                  className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowSubtaskInput(false); setNewSubtaskContent('') }}
+                  className="px-3 py-1.5 text-sm rounded-md hover:bg-accent"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Attachments */}
+          <div className="pt-4 border-t">
+            <div className="flex items-center justify-between mb-2">
+              <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Paperclip className="w-4 h-4" />
+                Attachments ({attachments.length})
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  const result = await window.api.attachments.add(task.id)
+                  if (result) {
+                    await fetchAttachments()
+                  }
+                }}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Attach file
+              </button>
+            </div>
+            {attachments.length > 0 && (
+              <div className="space-y-1">
+                {attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 group/att cursor-pointer"
+                    onClick={() => window.api.attachments.open(att.id)}
+                    title="Click to open"
+                  >
+                    <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm truncate flex-1">{att.filename}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {att.size < 1024 ? `${att.size}B` : att.size < 1024 * 1024 ? `${Math.round(att.size / 1024)}KB` : `${(att.size / 1024 / 1024).toFixed(1)}MB`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        await window.api.attachments.download(att.id)
+                      }}
+                      className="p-1 rounded hover:bg-accent opacity-0 group-hover/att:opacity-100"
+                      title="Download"
+                    >
+                      <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        await window.api.attachments.delete(att.id)
+                        await fetchAttachments()
+                      }}
+                      className="p-1 rounded hover:bg-destructive/10 opacity-0 group-hover/att:opacity-100"
+                      title="Remove"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Comments */}
           <div className="pt-4 border-t">
             <TaskComments taskId={task.id} />
@@ -300,23 +668,30 @@ export function TaskEditDialog({
             ) : (
               <div />
             )}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              {/* Autosave status indicator */}
+              {saveStatus === 'saving' && (
+                <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>
+              )}
+              {saveStatus === 'saved' && (
+                <span className="flex items-center gap-1 text-xs text-green-600">
+                  <Check className="w-3 h-3" />
+                  Saved
+                </span>
+              )}
               <button
                 type="button"
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  if (debounceRef.current) {
+                    clearTimeout(debounceRef.current)
+                    debounceRef.current = null
+                    performAutoSave()
+                  }
+                  onOpenChange(false)
+                }}
                 className="px-4 py-2 text-sm rounded-md hover:bg-accent"
               >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!content.trim() || isSubmitting}
-                className={cn(
-                  'px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground',
-                  (!content.trim() || isSubmitting) && 'opacity-50 cursor-not-allowed'
-                )}
-              >
-                {isSubmitting ? 'Saving...' : 'Save'}
+                Close
               </button>
             </div>
           </div>

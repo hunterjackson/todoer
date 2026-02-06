@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Calendar, Flag, X, Hash, Clock, FolderKanban } from 'lucide-react'
+import { Calendar, Flag, X, Tag, Clock, FolderKanban } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useProjects, notifyProjectsChanged } from '@hooks/useProjects'
 import { useLabels, notifyLabelsChanged } from '@hooks/useLabels'
@@ -36,13 +36,13 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
       refreshProjects()
       refreshLabels()
       // Fetch all sections for inline parsing
-      window.api.sections.listAll().then(setAllSections).catch(console.error)
+      window.api.sections.listAll().then(setAllSections).catch(() => {})
       // Load default project setting
       window.api.settings.get('defaultProject').then((defaultProject) => {
         if (defaultProject) {
           setProjectId(defaultProject)
         }
-      }).catch(console.error)
+      }).catch(() => {})
       setTimeout(() => inputRef.current?.focus(), 100)
 
       // Add global escape listener
@@ -182,7 +182,7 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
 
       onOpenChange(false)
     } catch (error) {
-      console.error('[QuickAdd] Error creating task:', error)
+      // Task creation failed - silently handle
     } finally {
       setIsSubmitting(false)
     }
@@ -315,7 +315,7 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
             onProjectSelect={handleProjectSelect}
             onProjectCreate={handleProjectCreate}
             onPaste={handlePaste}
-            placeholder="Task name (#label @project /section p1-p4 for X min)"
+            placeholder="Task name (#project @label /section p1-p4 for X min)"
             className="w-full text-lg bg-transparent border-none outline-none placeholder:text-muted-foreground"
             autoFocus
           />
@@ -332,7 +332,7 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
                     color: label.color
                   }}
                 >
-                  <Hash className="w-3 h-3" />
+                  <Tag className="w-3 h-3" />
                   {label.name}
                   <button
                     type="button"

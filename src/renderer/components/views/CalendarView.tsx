@@ -86,10 +86,12 @@ export function CalendarView(): React.ReactElement {
     calendarDays.push(day)
   }
 
-  // Selected day tasks
-  const selectedDayTasks = selectedDate
-    ? getTasksForDay(selectedDate.getDate())
-    : []
+  // Selected day tasks - use the selected date's year/month/day, not the current view month
+  const selectedDayTasks = useMemo(() => {
+    if (!selectedDate) return []
+    const key = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`
+    return tasksByDate.get(key) || []
+  }, [selectedDate, tasksByDate])
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

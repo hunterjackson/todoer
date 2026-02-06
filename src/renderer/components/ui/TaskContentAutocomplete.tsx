@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Hash, FolderKanban, Plus } from 'lucide-react'
+import { Tag, FolderKanban, Plus } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useLabels, notifyLabelsChanged } from '@hooks/useLabels'
 import { useProjects, notifyProjectsChanged } from '@hooks/useProjects'
@@ -16,6 +16,7 @@ interface TaskContentAutocompleteProps {
   onProjectSelect?: (project: Project) => void
   onProjectCreate?: (name: string) => Promise<Project>
   onPaste?: (e: React.ClipboardEvent) => void
+  onKeyDown?: (e: React.KeyboardEvent) => void
   placeholder?: string
   className?: string
   autoFocus?: boolean
@@ -29,6 +30,7 @@ export function TaskContentAutocomplete({
   onProjectSelect,
   onProjectCreate,
   onPaste,
+  onKeyDown: externalOnKeyDown,
   placeholder = 'Task name',
   className,
   autoFocus
@@ -94,12 +96,12 @@ export function TaskContentAutocomplete({
     let detectedMode: AutocompleteMode = null
 
     for (let i = cursorPos - 1; i >= 0; i--) {
-      if (newValue[i] === '#') {
+      if (newValue[i] === '@') {
         triggerPos = i
         detectedMode = 'label'
         break
       }
-      if (newValue[i] === '@') {
+      if (newValue[i] === '#') {
         triggerPos = i
         detectedMode = 'project'
         break
@@ -125,7 +127,11 @@ export function TaskContentAutocomplete({
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!showDropdown) return
+    // If dropdown is not showing, pass through to external handler
+    if (!showDropdown) {
+      externalOnKeyDown?.(e)
+      return
+    }
 
     switch (e.key) {
       case 'ArrowDown':
@@ -177,7 +183,7 @@ export function TaskContentAutocomplete({
         }
         break
     }
-  }, [showDropdown, selectedIndex, totalOptions, filteredLabels, filteredProjects, mode, showCreateOption])
+  }, [showDropdown, selectedIndex, totalOptions, filteredLabels, filteredProjects, mode, showCreateOption, externalOnKeyDown])
 
   const selectLabel = useCallback((label: Label) => {
     if (triggerPosition === null) return
@@ -301,7 +307,7 @@ export function TaskContentAutocomplete({
                 selectedIndex === index && 'bg-accent'
               )}
             >
-              <Hash className="w-4 h-4" style={{ color: label.color }} />
+              <Tag className="w-4 h-4" style={{ color: label.color }} />
               <span>{label.name}</span>
             </button>
           ))}

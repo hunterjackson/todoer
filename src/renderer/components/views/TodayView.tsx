@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { TaskList } from '../task/TaskList'
 import { TaskEditDialog } from '../task/TaskEditDialog'
 import { TaskSortOptions, sortTasks, groupTasks } from '../ui/TaskSortOptions'
-import type { SortField, SortDirection, GroupBy } from '../ui/TaskSortOptions'
+import { CompletedTasksSection } from '../task/CompletedTasksSection'
+import { useStore } from '@renderer/stores/useStore'
 import { useTasks } from '@hooks/useTasks'
 import { useProjects } from '@hooks/useProjects'
 import { startOfDay } from '@shared/utils'
@@ -15,9 +16,13 @@ export function TodayView(): React.ReactElement {
   })
   const { projects } = useProjects()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [sortField, setSortField] = useState<SortField>('default')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const [groupBy, setGroupBy] = useState<GroupBy>('none')
+  const [allExpanded, setAllExpanded] = useState(true)
+
+  const viewKey = 'today'
+  const viewSettings = useStore((s) => s.getViewSettings(viewKey))
+  const setViewSettings = useStore((s) => s.setViewSettings)
+
+  const { sortField, sortDirection, groupBy, showCompleted } = viewSettings
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -53,6 +58,10 @@ export function TodayView(): React.ReactElement {
     await updateTask(id, { priority })
   }
 
+  const handleToggleExpandAll = useCallback(() => {
+    setAllExpanded((prev) => !prev)
+  }, [])
+
   return (
     <div className="max-w-3xl mx-auto p-6">
       {/* Header */}
@@ -68,11 +77,12 @@ export function TodayView(): React.ReactElement {
           sortField={sortField}
           sortDirection={sortDirection}
           groupBy={groupBy}
-          onSortChange={(field, direction) => {
-            setSortField(field)
-            setSortDirection(direction)
-          }}
-          onGroupChange={setGroupBy}
+          onSortChange={(field, direction) => setViewSettings(viewKey, { sortField: field, sortDirection: direction })}
+          onGroupChange={(g) => setViewSettings(viewKey, { groupBy: g })}
+          showCompleted={showCompleted}
+          onToggleCompleted={(show) => setViewSettings(viewKey, { showCompleted: show })}
+          allExpanded={allExpanded}
+          onToggleExpandAll={handleToggleExpandAll}
         />
       </div>
 
@@ -99,6 +109,7 @@ export function TodayView(): React.ReactElement {
                 }}
                 showProject
                 showAddInput={false}
+                allExpanded={allExpanded}
               />
             </div>
           )}
@@ -132,6 +143,7 @@ export function TodayView(): React.ReactElement {
                     onReorder={reorderTask}
                     showProject
                     showAddInput={false}
+                    allExpanded={allExpanded}
                   />
                 </div>
               ))
@@ -159,10 +171,21 @@ export function TodayView(): React.ReactElement {
                   }}
                   showProject
                   emptyMessage="No tasks for today. Enjoy your day!"
+                  allExpanded={allExpanded}
                 />
               </>
             )}
           </div>
+
+          {/* Completed tasks section */}
+          {showCompleted && (
+            <CompletedTasksSection
+              onUncomplete={uncompleteTask}
+              onEdit={setEditingTask}
+              onDelete={deleteTask}
+              autoExpand
+            />
+          )}
         </>
       )}
 
@@ -173,6 +196,7 @@ export function TodayView(): React.ReactElement {
         onOpenChange={(open) => !open && setEditingTask(null)}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
+        onEditTask={setEditingTask}
       />
     </div>
   )

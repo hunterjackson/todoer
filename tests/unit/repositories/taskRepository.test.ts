@@ -390,6 +390,41 @@ describe('TaskRepository', () => {
       const todayTasks = repo.getToday()
       expect(todayTasks).toHaveLength(0)
     })
+
+    it('should include subtasks whose parent is due today', () => {
+      const today = new Date()
+      today.setHours(12, 0, 0, 0)
+
+      const parent = repo.create({ content: 'Parent due today', dueDate: today.getTime() })
+      repo.create({ content: 'Subtask no date', parentId: parent.id })
+
+      const todayTasks = repo.getToday()
+      expect(todayTasks.some((t) => t.content === 'Parent due today')).toBe(true)
+      expect(todayTasks.some((t) => t.content === 'Subtask no date')).toBe(true)
+    })
+
+    it('should include subtasks whose parent is overdue', () => {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+
+      const parent = repo.create({ content: 'Parent overdue', dueDate: yesterday.getTime() })
+      repo.create({ content: 'Subtask of overdue', parentId: parent.id })
+
+      const todayTasks = repo.getToday()
+      expect(todayTasks.some((t) => t.content === 'Parent overdue')).toBe(true)
+      expect(todayTasks.some((t) => t.content === 'Subtask of overdue')).toBe(true)
+    })
+
+    it('should not include subtasks of tasks due in the future', () => {
+      const nextWeek = new Date()
+      nextWeek.setDate(nextWeek.getDate() + 7)
+
+      const parent = repo.create({ content: 'Parent future', dueDate: nextWeek.getTime() })
+      repo.create({ content: 'Subtask of future', parentId: parent.id })
+
+      const todayTasks = repo.getToday()
+      expect(todayTasks.some((t) => t.content === 'Subtask of future')).toBe(false)
+    })
   })
 
   describe('getUpcoming', () => {

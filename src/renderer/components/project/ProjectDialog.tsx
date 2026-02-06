@@ -176,24 +176,28 @@ export function ProjectDialog({
             />
           </div>
 
-          {/* Parent project selector */}
-          {availableParents.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Parent project</label>
-              <select
-                value={parentId || ''}
-                onChange={(e) => setParentId(e.target.value || null)}
-                className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">None (top-level)</option>
-                {availableParents.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Parent project selector - always visible for discoverability */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Parent project</label>
+            <select
+              value={parentId || ''}
+              onChange={(e) => setParentId(e.target.value || null)}
+              className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={availableParents.length === 0}
+            >
+              <option value="">None (top-level project)</option>
+              {availableParents.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {availableParents.length === 0 && !isEditing && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Create a project first to make this a sub-project.
+              </p>
+            )}
+          </div>
 
           {/* Color picker */}
           <div>

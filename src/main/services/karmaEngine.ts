@@ -1,5 +1,6 @@
 import type { KarmaStats, KarmaHistory, Task } from '@shared/types'
 import type { KarmaRepository } from '../db/repositories/karmaRepository'
+import { getLocalDateKey } from '@shared/utils'
 
 interface TodayStats {
   tasksCompleted: number
@@ -52,7 +53,7 @@ export class KarmaEngine {
    * Record a task completion and award points
    */
   recordTaskCompletion(task: Task): { points: number; stats: KarmaStats; history: KarmaHistory } {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateKey()
     let points = POINTS.TASK_COMPLETED
 
     // Bonus for completing on time
@@ -95,7 +96,7 @@ export class KarmaEngine {
    * Record a task uncompletion (undo) - subtract points
    */
   recordTaskUncompletion(task: Task): { points: number; stats: KarmaStats } {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateKey()
     let points = POINTS.TASK_COMPLETED
 
     // Same calculation as completion
@@ -152,7 +153,7 @@ export class KarmaEngine {
    * Get today's history
    */
   getTodayHistory(): KarmaHistory | null {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateKey()
     return this.karmaRepo.getHistoryForDate(today)
   }
 

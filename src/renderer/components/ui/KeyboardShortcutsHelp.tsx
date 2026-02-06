@@ -11,7 +11,7 @@ const shortcuts = [
     category: 'General',
     items: [
       { keys: ['Q'], description: 'Quick add task' },
-      { keys: ['/', 'Cmd+K'], description: 'Search' },
+      { keys: ['/'], description: 'Search' },
       { keys: ['M'], description: 'Toggle sidebar' },
       { keys: ['?'], description: 'Show keyboard shortcuts' },
       { keys: ['Esc'], description: 'Close modal/dialog' },
@@ -30,11 +30,15 @@ const shortcuts = [
     ]
   },
   {
-    category: 'Task Actions',
+    category: 'Task List (hover over list)',
     items: [
-      { keys: ['E'], description: 'Complete task (coming soon)' },
-      { keys: ['1-4'], description: 'Set priority (coming soon)' },
-      { keys: ['J/K'], description: 'Navigate tasks (coming soon)' }
+      { keys: ['J / K'], description: 'Move focus down / up' },
+      { keys: ['Tab / Shift+Tab'], description: 'Move focus down / up' },
+      { keys: ['E'], description: 'Complete/uncomplete focused task' },
+      { keys: ['1-4'], description: 'Set priority' },
+      { keys: ['Enter'], description: 'Edit focused task' },
+      { keys: ['H / L'], description: 'Collapse / expand subtasks' },
+      { keys: ['Cmd+Delete'], description: 'Delete focused task' }
     ]
   }
 ]

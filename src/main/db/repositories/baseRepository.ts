@@ -1,4 +1,5 @@
 import type { Database as SqlJsDatabase } from 'sql.js'
+import { saveDatabase } from '../index'
 
 /**
  * Base repository class providing common database operations.
@@ -36,6 +37,7 @@ export abstract class BaseRepository<TRow, TEntity> {
    */
   protected run(sql: string, params: unknown[] = []): void {
     this.db.run(sql, params)
+    saveDatabase()
   }
 
   /**

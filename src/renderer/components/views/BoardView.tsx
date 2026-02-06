@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react'
 import { DndContext, DragEndEvent, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, MoreHorizontal, GripVertical } from 'lucide-react'
+import { Plus, MoreHorizontal, GripVertical, ChevronRight } from 'lucide-react'
 import { useTasks } from '@hooks/useTasks'
 import { useSections } from '@hooks/useSections'
 import { TaskEditDialog } from '../task/TaskEditDialog'
@@ -22,6 +22,7 @@ interface BoardColumnProps {
   onCreate: (sectionId: string | null) => void
   onEditSection?: () => void
   onDeleteSection?: () => void
+  onToggleCollapse?: () => void
 }
 
 function BoardColumn({
@@ -32,7 +33,8 @@ function BoardColumn({
   onDelete,
   onCreate,
   onEditSection,
-  onDeleteSection
+  onDeleteSection,
+  onToggleCollapse
 }: BoardColumnProps): React.ReactElement {
   const [showMenu, setShowMenu] = useState(false)
   const {
@@ -72,6 +74,20 @@ function BoardColumn({
               className="cursor-grab hover:bg-accent rounded p-1"
             >
               <GripVertical className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+          {section && (
+            <button
+              onClick={onToggleCollapse}
+              className="p-0.5 rounded hover:bg-accent"
+              title={section.isCollapsed ? 'Expand section' : 'Collapse section'}
+            >
+              <ChevronRight
+                className={cn(
+                  'w-4 h-4 text-muted-foreground transition-transform',
+                  !section.isCollapsed && 'rotate-90'
+                )}
+              />
             </button>
           )}
           <h3 className="font-medium text-sm">
@@ -115,32 +131,34 @@ function BoardColumn({
         )}
       </div>
 
-      {/* Tasks */}
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-200px)]">
-        <SortableContext
-          items={tasks.map((t) => t.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {tasks.map((task) => (
-            <BoardTask
-              key={task.id}
-              task={task}
-              onComplete={onComplete}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
-        </SortableContext>
+      {/* Tasks - hidden when collapsed */}
+      {(!section || !section.isCollapsed) && (
+        <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-200px)]">
+          <SortableContext
+            items={tasks.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {tasks.map((task) => (
+              <BoardTask
+                key={task.id}
+                task={task}
+                onComplete={onComplete}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            ))}
+          </SortableContext>
 
-        {/* Add Task Button */}
-        <button
-          onClick={() => onCreate(section?.id || null)}
-          className="w-full flex items-center gap-2 p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded"
-        >
-          <Plus className="w-4 h-4" />
-          Add task
-        </button>
-      </div>
+          {/* Add Task Button */}
+          <button
+            onClick={() => onCreate(section?.id || null)}
+            className="w-full flex items-center gap-2 p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded"
+          >
+            <Plus className="w-4 h-4" />
+            Add task
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -250,7 +268,8 @@ export function BoardView({ projectId }: BoardViewProps): React.ReactElement {
     loading: sectionsLoading,
     createSection,
     updateSection,
-    deleteSection
+    deleteSection,
+    reorderSection
   } = useSections(projectId)
 
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -296,23 +315,87 @@ export function BoardView({ projectId }: BoardViewProps): React.ReactElement {
     const activeData = active.data.current
     const overData = over.data.current
 
+    // Handle section drag (column reordering)
+    if (activeData?.type === 'column' && overData?.type === 'column') {
+      const activeSection = activeData.section as Section | null
+      const overSection = overData.section as Section | null
+
+      // Only reorder if dragging a real section (not no-section)
+      if (activeSection && activeSection.id !== overSection?.id) {
+        // Find the target position
+        const overIndex = overSection
+          ? sections.findIndex((s) => s.id === overSection.id)
+          : 0 // Place before first section if dropping on "no-section"
+
+        // Calculate new sort order
+        let newSortOrder: number
+        if (overIndex === 0) {
+          // Place before first section
+          const firstSection = sections[0]
+          newSortOrder = firstSection ? firstSection.sortOrder - 1 : 0
+        } else if (overSection) {
+          // Place between sections
+          const prevSection = sections[overIndex - 1]
+          newSortOrder = (prevSection.sortOrder + overSection.sortOrder) / 2
+        } else {
+          // Place at end
+          const lastSection = sections[sections.length - 1]
+          newSortOrder = lastSection ? lastSection.sortOrder + 1 : 0
+        }
+
+        await reorderSection(activeSection.id, newSortOrder)
+      }
+      return
+    }
+
     // Handle task drag
     if (activeData?.type === 'task' && overData) {
       const task = activeData.task as Task
       let newSectionId: string | null = null
+      let newSortOrder: number | undefined
 
       if (overData.type === 'task') {
-        // Dropped on another task - get that task's section
+        // Dropped on another task - get that task's section and calculate sort order
         const overTask = overData.task as Task
         newSectionId = overTask.sectionId
+
+        // Calculate a unique sort order: find position between target and its neighbors
+        const sectionKey = overTask.sectionId || 'no-section'
+        const sectionTasks = grouped[sectionKey] || []
+
+        // Find the index of the over task
+        const overIndex = sectionTasks.findIndex((t) => t.id === overTask.id)
+
+        if (overIndex >= 0) {
+          // Get the sortOrder of the task before and after the drop target
+          const prevTask = overIndex > 0 ? sectionTasks[overIndex - 1] : null
+          const prevOrder = prevTask ? prevTask.sortOrder : 0
+
+          // Place the task just before the target (between prev and target)
+          newSortOrder = (prevOrder + overTask.sortOrder) / 2
+        }
       } else if (overData.type === 'column') {
-        // Dropped on column
+        // Dropped on column - place at the end
         newSectionId = overData.section?.id || null
+
+        // Calculate max sort order for this section and add 1
+        const sectionKey = newSectionId || 'no-section'
+        const sectionTasks = grouped[sectionKey] || []
+        const maxOrder = sectionTasks.reduce((max, t) => Math.max(max, t.sortOrder), 0)
+        newSortOrder = maxOrder + 1
       }
 
-      // Only update if section changed
+      // Update section and/or sort order
+      const updates: Record<string, unknown> = {}
       if (task.sectionId !== newSectionId) {
-        await updateTask(task.id, { sectionId: newSectionId })
+        updates.sectionId = newSectionId
+      }
+      if (newSortOrder !== undefined) {
+        updates.sortOrder = newSortOrder
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await updateTask(task.id, updates)
       }
     }
   }
@@ -375,22 +458,30 @@ export function BoardView({ projectId }: BoardViewProps): React.ReactElement {
               />
 
               {/* Section Columns */}
-              {sections.map((section) => (
-                <BoardColumn
-                  key={section.id}
-                  section={section}
-                  tasks={grouped[section.id] || []}
-                  onComplete={completeTask}
-                  onEdit={setEditingTask}
-                  onDelete={deleteTask}
-                  onCreate={handleCreateTask}
-                  onEditSection={() => {
-                    setEditingSection(section)
-                    setEditSectionName(section.name)
-                  }}
-                  onDeleteSection={() => deleteSection(section.id)}
-                />
-              ))}
+              <SortableContext
+                items={sections.map((s) => s.id)}
+                strategy={horizontalListSortingStrategy}
+              >
+                {sections.map((section) => (
+                  <BoardColumn
+                    key={section.id}
+                    section={section}
+                    tasks={grouped[section.id] || []}
+                    onComplete={completeTask}
+                    onEdit={setEditingTask}
+                    onDelete={deleteTask}
+                    onCreate={handleCreateTask}
+                    onEditSection={() => {
+                      setEditingSection(section)
+                      setEditSectionName(section.name)
+                    }}
+                    onDeleteSection={() => deleteSection(section.id)}
+                    onToggleCollapse={async () => {
+                      await updateSection(section.id, { isCollapsed: !section.isCollapsed })
+                    }}
+                  />
+                ))}
+              </SortableContext>
 
               {/* Add Section Column */}
               <div className="w-72 min-w-72">
@@ -453,6 +544,7 @@ export function BoardView({ projectId }: BoardViewProps): React.ReactElement {
           await updateTask(id, data)
         }}
         onDelete={async (id) => { await deleteTask(id) }}
+        onEditTask={setEditingTask}
       />
 
       {/* Edit Section Dialog */}

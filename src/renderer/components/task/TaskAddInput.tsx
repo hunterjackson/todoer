@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react'
-import { Plus, Flag } from 'lucide-react'
+import React, { useState, useRef, useCallback } from 'react'
+import { Plus, Flag, X, Tag, FolderKanban } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { DatePicker } from '@renderer/components/ui/DatePicker'
-import type { TaskCreate, Priority } from '@shared/types'
+import { TaskContentAutocomplete } from '@renderer/components/ui/TaskContentAutocomplete'
+import type { TaskCreate, Priority, Label, Project } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
 
 interface TaskAddInputProps {
@@ -18,16 +19,18 @@ export function TaskAddInput({
   onCreate,
   onSubmit,
   onCancel,
-  projectId,
+  projectId: initialProjectId,
   autoFocus = false,
-  placeholder = 'Task name'
+  placeholder = 'Task name (#project @label)'
 }: TaskAddInputProps): React.ReactElement {
   const [isExpanded, setIsExpanded] = useState(autoFocus)
   const [content, setContent] = useState('')
   const [dueDate, setDueDate] = useState<Date | null>(null)
   const [priority, setPriority] = useState<Priority>(4)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [selectedLabels, setSelectedLabels] = useState<Label[]>([])
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const handleSubmit = async () => {
     if (!content.trim() || isSubmitting) return
@@ -41,12 +44,15 @@ export function TaskAddInput({
           content: content.trim(),
           dueDate: dueDate ? dueDate.getTime() : undefined,
           priority,
-          projectId
+          projectId: selectedProject?.id || initialProjectId,
+          labelIds: selectedLabels.map((l) => l.id)
         })
       }
       setContent('')
       setDueDate(null)
       setPriority(4)
+      setSelectedLabels([])
+      setSelectedProject(null)
       if (!autoFocus) {
         setIsExpanded(false)
       }
@@ -79,12 +85,15 @@ export function TaskAddInput({
           await onCreate({
             content: line,
             priority,
-            projectId
+            projectId: selectedProject?.id || initialProjectId,
+            labelIds: selectedLabels.map((l) => l.id)
           })
         }
         setContent('')
         setDueDate(null)
         setPriority(4)
+        setSelectedLabels([])
+        setSelectedProject(null)
         if (!autoFocus) {
           setIsExpanded(false)
         }
@@ -100,15 +109,36 @@ export function TaskAddInput({
     setContent('')
     setDueDate(null)
     setPriority(4)
+    setSelectedLabels([])
+    setSelectedProject(null)
     onCancel?.()
   }
+
+  const handleLabelSelect = useCallback((label: Label) => {
+    setSelectedLabels((prev) => {
+      // Don't add duplicate
+      if (prev.some((l) => l.id === label.id)) return prev
+      return [...prev, label]
+    })
+  }, [])
+
+  const handleLabelRemove = useCallback((labelId: string) => {
+    setSelectedLabels((prev) => prev.filter((l) => l.id !== labelId))
+  }, [])
+
+  const handleProjectSelect = useCallback((project: Project) => {
+    setSelectedProject(project)
+  }, [])
+
+  const handleProjectRemove = useCallback(() => {
+    setSelectedProject(null)
+  }, [])
 
   if (!isExpanded && !autoFocus) {
     return (
       <button
         onClick={() => {
           setIsExpanded(true)
-          setTimeout(() => inputRef.current?.focus(), 0)
         }}
         className="flex items-center gap-2 px-3 py-2 w-full text-left text-muted-foreground hover:text-foreground transition-colors group"
       >
@@ -119,19 +149,58 @@ export function TaskAddInput({
   }
 
   return (
-    <div className="border rounded-lg p-3 space-y-3 bg-background shadow-sm">
-      {/* Content input */}
-      <input
-        ref={inputRef}
-        type="text"
+    <div ref={containerRef} className="border rounded-lg p-3 space-y-3 bg-background shadow-sm">
+      {/* Content input with autocomplete */}
+      <TaskContentAutocomplete
         value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onChange={setContent}
+        onLabelSelect={handleLabelSelect}
+        onProjectSelect={handleProjectSelect}
         onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="w-full text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground"
         autoFocus={autoFocus || isExpanded}
       />
+
+      {/* Selected labels and project chips */}
+      {(selectedLabels.length > 0 || selectedProject) && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedProject && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
+              style={{ backgroundColor: `${selectedProject.color}20`, color: selectedProject.color }}
+            >
+              <FolderKanban className="w-3 h-3" />
+              {selectedProject.name}
+              <button
+                type="button"
+                onClick={handleProjectRemove}
+                className="ml-0.5 hover:bg-black/10 rounded-full p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {selectedLabels.map((label) => (
+            <span
+              key={label.id}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
+              style={{ backgroundColor: `${label.color}20`, color: label.color }}
+            >
+              <Tag className="w-3 h-3" />
+              {label.name}
+              <button
+                type="button"
+                onClick={() => handleLabelRemove(label.id)}
+                className="ml-0.5 hover:bg-black/10 rounded-full p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Options row */}
       <div className="flex items-center gap-2">

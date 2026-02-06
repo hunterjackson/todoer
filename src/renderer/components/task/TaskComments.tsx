@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { MessageSquare, Send, Trash2, Edit2, X, Check } from 'lucide-react'
 import { useComments } from '../../hooks/useComments'
+import { RichTextEditor } from '@renderer/components/ui/RichTextEditor'
 import type { Comment } from '@shared/types'
 
 interface TaskCommentsProps {
@@ -8,16 +9,22 @@ interface TaskCommentsProps {
 }
 
 export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement {
-  const { comments, loading, addComment, updateComment, deleteComment } = useComments(taskId)
+  const { comments, loading, error, addComment, updateComment, deleteComment } = useComments(taskId)
   const [newComment, setNewComment] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (newComment.trim()) {
-      await addComment(newComment)
-      setNewComment('')
+      setSubmitError(null)
+      const result = await addComment(newComment)
+      if (result) {
+        setNewComment('')
+      } else {
+        setSubmitError('Failed to add comment. Please try again.')
+      }
     }
   }
 
@@ -58,6 +65,9 @@ export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement 
     return date.toLocaleDateString()
   }
 
+  // Check if content contains HTML tags
+  const isHtml = (str: string) => /<[a-z][\s\S]*>/i.test(str)
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -75,26 +85,36 @@ export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement 
           comments.map((comment) => (
             <div
               key={comment.id}
-              className="p-3 rounded-lg bg-muted/50 border border-border"
+              className="group p-3 rounded-lg bg-muted/50 border border-border"
             >
               {editingId === comment.id ? (
                 <div className="space-y-2">
-                  <textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    className="w-full p-2 text-sm bg-background border rounded resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                    rows={3}
-                    autoFocus
+                  <RichTextEditor
+                    content={editContent}
+                    onChange={setEditContent}
+                    placeholder="Edit comment..."
+                    minHeight="40px"
+                    compact
                   />
                   <div className="flex gap-2">
                     <button
-                      onClick={() => saveEdit(comment.id)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        saveEdit(comment.id)
+                      }}
                       className="p-1.5 rounded bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                       <Check className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={cancelEditing}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        cancelEditing()
+                      }}
                       className="p-1.5 rounded hover:bg-accent"
                     >
                       <X className="w-4 h-4" />
@@ -103,7 +123,14 @@ export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement 
                 </div>
               ) : (
                 <>
-                  <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                  {isHtml(comment.content) ? (
+                    <div
+                      className="text-sm rich-text-content"
+                      dangerouslySetInnerHTML={{ __html: comment.content }}
+                    />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                  )}
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-xs text-muted-foreground">
                       {formatDate(comment.createdAt)}
@@ -111,14 +138,20 @@ export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement 
                     </span>
                     <div className="flex gap-1">
                       <button
-                        onClick={() => startEditing(comment)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          startEditing(comment)
+                        }}
                         className="p-1 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Edit comment"
                       >
                         <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
                       </button>
                       <button
-                        onClick={() => handleDelete(comment.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(comment.id)
+                        }}
                         className="p-1 rounded hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Delete comment"
                       >
@@ -133,23 +166,38 @@ export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement 
         )}
       </div>
 
-      {/* Add comment form */}
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      {/* Error display */}
+      {(error || submitError) && (
+        <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
+          {submitError || error}
+        </div>
+      )}
+
+      {/* Add comment - use div instead of form to avoid nested form issues */}
+      <div className="flex gap-2">
         <input
           type="text"
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              e.stopPropagation()
+              handleSubmit(e as unknown as React.FormEvent)
+            }
+          }}
           placeholder="Add a comment..."
           className="flex-1 px-3 py-2 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button
-          type="submit"
+          type="button"
+          onClick={(e) => handleSubmit(e as unknown as React.FormEvent)}
           disabled={!newComment.trim()}
           className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Send className="w-4 h-4" />
         </button>
-      </form>
+      </div>
     </div>
   )
 }

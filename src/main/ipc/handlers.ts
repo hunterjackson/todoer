@@ -1,6 +1,8 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
-import { readFileSync, writeFileSync } from 'fs'
-import { getDatabase } from '../db'
+import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
+import { getDatabase, saveDatabase } from '../db'
 import { TaskRepository } from '../db/repositories/taskRepository'
 import { ProjectRepository } from '../db/repositories/projectRepository'
 import { LabelRepository } from '../db/repositories/labelRepository'
@@ -9,9 +11,11 @@ import { FilterRepository } from '../db/repositories/filterRepository'
 import { CommentRepository } from '../db/repositories/commentRepository'
 import { ReminderRepository } from '../db/repositories/reminderRepository'
 import { KarmaRepository } from '../db/repositories/karmaRepository'
+import { createAttachmentRepository } from '../db/repositories/attachmentRepository'
 import { notificationService } from '../services/notificationService'
 import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
+import { calculateNextDueDate } from '../services/recurrenceEngine'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
 import { KarmaEngine } from '../services/karmaEngine'
 import {
@@ -139,11 +143,44 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('tasks:complete', async (_event, id: string, recordUndo: boolean = true) => {
     const { taskRepo, karmaEngine } = getRepositories()
+
+    // Get task before completing to check for recurrence
+    const taskBeforeComplete = taskRepo.get(id)
+
     const task = taskRepo.complete(id)
 
     // Track karma points for task completion
     if (task) {
       karmaEngine.recordTaskCompletion(task)
+    }
+
+    // Handle recurring tasks - create next occurrence
+    if (taskBeforeComplete?.recurrenceRule && taskBeforeComplete.dueDate) {
+      const completedAt = Date.now()
+      const nextDueDate = calculateNextDueDate(
+        taskBeforeComplete.recurrenceRule,
+        taskBeforeComplete.dueDate,
+        completedAt
+      )
+
+      if (nextDueDate) {
+        // Uncomplete the task and set the next due date
+        taskRepo.uncomplete(id)
+        taskRepo.update(id, { dueDate: nextDueDate })
+
+        // Record undo for recurring completion with previous due date
+        if (recordUndo) {
+          taskUndoStack.push({
+            type: 'recurring-complete',
+            taskId: id,
+            data: { previousDueDate: taskBeforeComplete.dueDate },
+            timestamp: Date.now()
+          })
+        }
+
+        // Return the updated (uncompleted, rescheduled) task
+        return taskRepo.get(id)
+      }
     }
 
     if (recordUndo) {
@@ -464,9 +501,15 @@ export function registerIpcHandlers(): void {
     // Get all sections from all projects
     const allSections = projects.flatMap((p) => sectionRepo.list(p.id))
 
+    // Populate labels for each task so @label and has:labels filters work
+    const tasksWithLabels = tasks.map((t) => ({
+      ...t,
+      labels: taskRepo.getLabels(t.id)
+    }))
+
     // Create context and evaluate filter
     const context = createFilterContext(projects, labels, allSections)
-    return evaluateFilter(tasks, query, context)
+    return evaluateFilter(tasksWithLabels, query, context)
   })
 
   // Date parsing handler
@@ -544,19 +587,28 @@ export function registerIpcHandlers(): void {
       db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, value])
     }
 
+    saveDatabase()
     return true
   })
 
   // Data export/import handlers
   ipcMain.handle('data:exportJSON', async () => {
-    const { taskRepo, projectRepo, labelRepo, filterRepo } = getRepositories()
+    const { taskRepo, projectRepo, labelRepo, filterRepo, sectionRepo } = getRepositories()
 
     const tasks = taskRepo.list({})
     const projects = projectRepo.list()
     const labels = labelRepo.list()
     const filters = filterRepo.list()
+    // Get all sections by querying each project
+    const sections = projects.flatMap((p) => sectionRepo.list(p.id))
 
-    const json = exportToJSON({ tasks, projects, labels, filters })
+    // Populate labels for each task so export includes label relationships
+    const tasksWithLabels = tasks.map((t) => ({
+      ...t,
+      labels: taskRepo.getLabels(t.id)
+    }))
+
+    const json = exportToJSON({ tasks: tasksWithLabels, projects, labels, filters, sections })
 
     const window = BrowserWindow.getFocusedWindow()
     const result = await dialog.showSaveDialog(window!, {
@@ -609,20 +661,40 @@ export function registerIpcHandlers(): void {
       const content = readFileSync(result.filePaths[0], 'utf-8')
       const data = importFromJSON(content)
 
-      const { taskRepo, projectRepo, labelRepo, filterRepo } = getRepositories()
+      const { taskRepo, projectRepo, labelRepo, filterRepo, sectionRepo } = getRepositories()
+
+      // Build old ID -> new ID maps for relational integrity
+      const projectIdMap = new Map<string, string>()
+      const labelIdMap = new Map<string, string>()
+      const sectionIdMap = new Map<string, string>()
+      const taskIdMap = new Map<string, string>()
 
       // Import projects first (tasks may reference them)
+      // Sort so parents come before children
+      const sortedProjects = [...data.projects].sort((a, b) => {
+        if (!a.parentId && b.parentId) return -1
+        if (a.parentId && !b.parentId) return 1
+        return 0
+      })
+
       let projectsImported = 0
-      for (const project of data.projects) {
+      for (const project of sortedProjects) {
         try {
-          projectRepo.create({
+          const newProject = projectRepo.create({
             name: project.name,
+            description: project.description ?? null,
             color: project.color,
-            parentId: project.parentId,
-            isFavorite: project.isFavorite
+            parentId: project.parentId ? projectIdMap.get(project.parentId) || null : null,
+            viewMode: project.viewMode ?? 'list',
+            isFavorite: project.isFavorite ?? false
           })
+          // Handle archived status if it was archived
+          if (project.archivedAt) {
+            projectRepo.update(newProject.id, { archivedAt: project.archivedAt })
+          }
+          projectIdMap.set(project.id, newProject.id)
           projectsImported++
-        } catch (e) {
+        } catch {
           // Skip duplicates
         }
       }
@@ -631,12 +703,14 @@ export function registerIpcHandlers(): void {
       let labelsImported = 0
       for (const label of data.labels) {
         try {
-          labelRepo.create({
+          const newLabel = labelRepo.create({
             name: label.name,
-            color: label.color
+            color: label.color,
+            isFavorite: label.isFavorite ?? false
           })
+          labelIdMap.set(label.id, newLabel.id)
           labelsImported++
-        } catch (e) {
+        } catch {
           // Skip duplicates
         }
       }
@@ -648,34 +722,105 @@ export function registerIpcHandlers(): void {
           filterRepo.create({
             name: filter.name,
             query: filter.query,
-            color: filter.color
+            color: filter.color,
+            isFavorite: filter.isFavorite ?? false
           })
           filtersImported++
-        } catch (e) {
+        } catch {
           // Skip duplicates
         }
       }
 
-      // Import tasks
-      let tasksImported = 0
-      for (const task of data.tasks) {
+      // Import sections (after projects, before tasks)
+      let sectionsImported = 0
+      for (const section of data.sections || []) {
         try {
-          // Extract label IDs from labels array if present
-          const labelIds = task.labels?.map((l) => l.id) || []
+          // Remap project ID for section
+          const remappedProjectId = section.projectId
+            ? projectIdMap.get(section.projectId) || section.projectId
+            : null
 
-          taskRepo.create({
+          // Skip sections without valid project
+          if (!remappedProjectId) continue
+
+          const newSection = sectionRepo.create({
+            name: section.name,
+            projectId: remappedProjectId
+          })
+          sectionIdMap.set(section.id, newSection.id)
+          sectionsImported++
+        } catch {
+          // Skip duplicates
+        }
+      }
+
+      // Import tasks - use topological sort for proper parent ordering
+      // Build a dependency map and sort topologically
+      const taskMap = new Map(data.tasks.map((t: Task) => [t.id, t]))
+      const sortedTasks: Task[] = []
+      const visited = new Set<string>()
+
+      function visitTask(task: Task) {
+        if (visited.has(task.id)) return
+        visited.add(task.id)
+
+        // Visit parent first if it exists
+        if (task.parentId && taskMap.has(task.parentId)) {
+          visitTask(taskMap.get(task.parentId)!)
+        }
+
+        sortedTasks.push(task)
+      }
+
+      for (const task of data.tasks) {
+        visitTask(task)
+      }
+
+      let tasksImported = 0
+      for (const task of sortedTasks) {
+        try {
+          // Remap label IDs using the old->new map
+          const remappedLabelIds = (task.labels?.map((l: { id: string }) =>
+            labelIdMap.get(l.id) || l.id
+          ) || []).filter(Boolean)
+
+          // Remap project ID
+          const remappedProjectId = task.projectId
+            ? projectIdMap.get(task.projectId) || task.projectId
+            : null
+
+          // Remap parent task ID
+          const remappedParentId = task.parentId
+            ? taskIdMap.get(task.parentId) || null
+            : null
+
+          // Remap section ID (or null if section wasn't imported)
+          const remappedSectionId = task.sectionId
+            ? sectionIdMap.get(task.sectionId) || null
+            : null
+
+          const newTask = taskRepo.create({
             content: task.content,
             description: task.description,
-            projectId: task.projectId,
-            sectionId: task.sectionId,
-            parentId: task.parentId,
+            projectId: remappedProjectId,
+            sectionId: remappedSectionId,
+            parentId: remappedParentId,
             dueDate: task.dueDate,
+            deadline: task.deadline ?? null,
+            duration: task.duration ?? null,
             priority: task.priority,
             recurrenceRule: task.recurrenceRule,
-            labelIds
+            labelIds: remappedLabelIds
           })
+
+          // Handle completed state
+          if (task.completed) {
+            taskRepo.complete(newTask.id)
+          }
+
+          taskIdMap.set(task.id, newTask.id)
           tasksImported++
-        } catch (e) {
+        } catch {
           // Skip duplicates
         }
       }
@@ -686,7 +831,8 @@ export function registerIpcHandlers(): void {
           tasks: tasksImported,
           projects: projectsImported,
           labels: labelsImported,
-          filters: filtersImported
+          filters: filtersImported,
+          sections: sectionsImported
         }
       }
     } catch (error) {
@@ -755,7 +901,7 @@ export function registerIpcHandlers(): void {
     const operation = taskUndoStack.undo()
     if (!operation) return { success: false, reason: 'Nothing to undo' }
 
-    const { taskRepo } = getRepositories()
+    const { taskRepo, karmaEngine } = getRepositories()
 
     try {
       // Handle single operation or batch
@@ -766,19 +912,8 @@ export function registerIpcHandlers(): void {
 
         switch (action.action) {
           case 'create':
-            // Recreate deleted task
-            if (action.data) {
-              taskRepo.create({
-                content: (action.data as Task).content,
-                description: (action.data as Task).description,
-                projectId: (action.data as Task).projectId,
-                sectionId: (action.data as Task).sectionId,
-                parentId: (action.data as Task).parentId,
-                dueDate: (action.data as Task).dueDate,
-                priority: (action.data as Task).priority,
-                recurrenceRule: (action.data as Task).recurrenceRule
-              })
-            }
+            // Undo delete = restore the soft-deleted task
+            taskRepo.restore(action.taskId)
             break
 
           case 'delete':
@@ -791,13 +926,44 @@ export function registerIpcHandlers(): void {
             }
             break
 
-          case 'complete':
-            taskRepo.complete(action.taskId)
+          case 'complete': {
+            // Undo uncomplete = complete the task and award karma
+            const task = taskRepo.complete(action.taskId)
+            if (task) {
+              karmaEngine.recordTaskCompletion(task)
+            }
+            break
+          }
+
+          case 'uncomplete': {
+            // Undo complete = uncomplete the task and reverse karma
+            const taskBefore = taskRepo.get(action.taskId)
+            taskRepo.uncomplete(action.taskId)
+            if (taskBefore) {
+              karmaEngine.recordTaskUncompletion(taskBefore)
+            }
+            break
+          }
+
+          case 'reorder':
+            // Use reorder() for proper sort order handling
+            if (action.sortOrder !== undefined) {
+              taskRepo.reorder(action.taskId, action.sortOrder, action.parentId)
+            }
             break
 
-          case 'uncomplete':
-            taskRepo.uncomplete(action.taskId)
+          case 'recurring-complete-undo': {
+            // Undo recurring complete = restore previous due date AND reverse karma
+            const taskBefore = taskRepo.get(action.taskId)
+            if (action.previousDueDate !== undefined) {
+              taskRepo.update(action.taskId, { dueDate: action.previousDueDate })
+            }
+            // Reverse karma for the completion that happened
+            if (taskBefore) {
+              karmaEngine.recordTaskUncompletion(taskBefore)
+            }
             break
+          }
         }
       }
 
@@ -814,7 +980,7 @@ export function registerIpcHandlers(): void {
     const operation = taskUndoStack.redo()
     if (!operation) return { success: false, reason: 'Nothing to redo' }
 
-    const { taskRepo } = getRepositories()
+    const { taskRepo, karmaEngine } = getRepositories()
 
     try {
       // Handle single operation or batch
@@ -825,18 +991,8 @@ export function registerIpcHandlers(): void {
 
         switch (action.action) {
           case 'create':
-            if (action.data) {
-              taskRepo.create({
-                content: (action.data as Task).content || '',
-                description: (action.data as Task).description,
-                projectId: (action.data as Task).projectId,
-                sectionId: (action.data as Task).sectionId,
-                parentId: (action.data as Task).parentId,
-                dueDate: (action.data as Task).dueDate,
-                priority: (action.data as Task).priority,
-                recurrenceRule: (action.data as Task).recurrenceRule
-              })
-            }
+            // Redo create = restore the task
+            taskRepo.restore(action.taskId)
             break
 
           case 'delete':
@@ -849,13 +1005,59 @@ export function registerIpcHandlers(): void {
             }
             break
 
-          case 'complete':
-            taskRepo.complete(action.taskId)
+          case 'complete': {
+            // Redo complete = complete the task and award karma
+            const task = taskRepo.complete(action.taskId)
+            if (task) {
+              karmaEngine.recordTaskCompletion(task)
+            }
+            break
+          }
+
+          case 'uncomplete': {
+            // Redo uncomplete = uncomplete the task and reverse karma
+            const taskBefore = taskRepo.get(action.taskId)
+            taskRepo.uncomplete(action.taskId)
+            if (taskBefore) {
+              karmaEngine.recordTaskUncompletion(taskBefore)
+            }
+            break
+          }
+
+          case 'reorder':
+            // Use reorder() for proper sort order handling
+            if (action.sortOrder !== undefined) {
+              taskRepo.reorder(action.taskId, action.sortOrder, action.parentId)
+            }
             break
 
-          case 'uncomplete':
-            taskRepo.uncomplete(action.taskId)
+          case 'recurring-complete-redo': {
+            // Redo recurring complete = complete and reschedule with karma
+            const taskBeforeComplete = taskRepo.get(action.taskId)
+            const task = taskRepo.complete(action.taskId)
+
+            // Award karma
+            if (task) {
+              karmaEngine.recordTaskCompletion(task)
+            }
+
+            // Handle recurring logic
+            if (taskBeforeComplete?.recurrenceRule && taskBeforeComplete.dueDate) {
+              const completedAt = Date.now()
+              const nextDueDate = calculateNextDueDate(
+                taskBeforeComplete.recurrenceRule,
+                taskBeforeComplete.dueDate,
+                completedAt
+              )
+
+              if (nextDueDate) {
+                // Uncomplete the task and set the next due date
+                taskRepo.uncomplete(action.taskId)
+                taskRepo.update(action.taskId, { dueDate: nextDueDate })
+              }
+            }
             break
+          }
         }
       }
 
@@ -902,5 +1104,96 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('karma:getProductivitySummary', async () => {
     const { karmaEngine } = getRepositories()
     return karmaEngine.getProductivitySummary()
+  })
+
+  // Attachment handlers
+  ipcMain.handle('attachments:list', async (_event, taskId: string) => {
+    const db = getDatabase()
+    const repo = createAttachmentRepository(db)
+    return repo.listByTask(taskId)
+  })
+
+  ipcMain.handle('attachments:get', async (_event, id: string) => {
+    const db = getDatabase()
+    const repo = createAttachmentRepository(db)
+    return repo.get(id)
+  })
+
+  ipcMain.handle('attachments:add', async (_event, taskId: string) => {
+    const db = getDatabase()
+    const repo = createAttachmentRepository(db)
+
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        { name: 'All Files', extensions: ['*'] },
+        { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
+        { name: 'Documents', extensions: ['pdf', 'doc', 'docx', 'txt', 'md'] }
+      ]
+    })
+
+    if (result.canceled || result.filePaths.length === 0) return null
+
+    const filePath = result.filePaths[0]
+    const filename = filePath.split('/').pop() || filePath.split('\\').pop() || 'unnamed'
+    const data = readFileSync(filePath)
+
+    // Detect mime type from extension
+    const ext = filename.split('.').pop()?.toLowerCase() || ''
+    const mimeTypes: Record<string, string> = {
+      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+      webp: 'image/webp', pdf: 'application/pdf', doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      txt: 'text/plain', md: 'text/markdown', csv: 'text/csv', json: 'application/json'
+    }
+    const mimeType = mimeTypes[ext] || 'application/octet-stream'
+
+    return repo.add(taskId, filename, mimeType, Buffer.from(data))
+  })
+
+  ipcMain.handle('attachments:delete', async (_event, id: string) => {
+    const db = getDatabase()
+    const repo = createAttachmentRepository(db)
+    return repo.delete(id)
+  })
+
+  ipcMain.handle('attachments:download', async (_event, id: string) => {
+    const db = getDatabase()
+    const repo = createAttachmentRepository(db)
+    const attachment = repo.get(id)
+    if (!attachment) return false
+
+    const result = await dialog.showSaveDialog({
+      defaultPath: attachment.filename
+    })
+
+    if (result.canceled || !result.filePath) return false
+
+    writeFileSync(result.filePath, attachment.data)
+    return true
+  })
+
+  ipcMain.handle('attachments:open', async (_event, id: string) => {
+    const db = getDatabase()
+    const repo = createAttachmentRepository(db)
+    const attachment = repo.get(id)
+    if (!attachment) return false
+
+    // Save to temp directory and open with system default application
+    const tempDir = join(tmpdir(), 'todoer-attachments')
+    if (!existsSync(tempDir)) {
+      mkdirSync(tempDir, { recursive: true })
+    }
+    const tempPath = join(tempDir, attachment.filename)
+    writeFileSync(tempPath, attachment.data)
+
+    await shell.openPath(tempPath)
+    return true
+  })
+
+  ipcMain.handle('attachments:count', async (_event, taskId: string) => {
+    const db = getDatabase()
+    const repo = createAttachmentRepository(db)
+    return repo.count(taskId)
   })
 }

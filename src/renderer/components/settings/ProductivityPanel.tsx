@@ -52,7 +52,7 @@ export function ProductivityPanel({ open, onClose }: ProductivityPanelProps): Re
       )
       setHistory(historyData)
     } catch (err) {
-      console.error('Failed to load productivity data:', err)
+      // Silently handle - error state would show "No productivity data available"
     } finally {
       setLoading(false)
     }

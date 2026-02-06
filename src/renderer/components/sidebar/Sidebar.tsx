@@ -6,7 +6,7 @@ import {
   CalendarRange,
   Search,
   Plus,
-  Hash,
+  Tag,
   Filter,
   Settings,
   ChevronRight
@@ -30,6 +30,7 @@ interface ProjectNode extends Project {
 
 interface SidebarProps {
   currentView: ViewType
+  currentViewId?: string
   onViewChange: (view: ViewType, id?: string) => void
   onQuickAdd: () => void
   onOpenSettings?: () => void
@@ -84,7 +85,7 @@ function flattenProjectTree(nodes: ProjectNode[]): ProjectNode[] {
   return result
 }
 
-export function Sidebar({ currentView, onViewChange, onQuickAdd, onOpenSettings }: SidebarProps): React.ReactElement {
+export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, onOpenSettings }: SidebarProps): React.ReactElement {
   const { projects, createProject, updateProject, deleteProject, duplicateProject } = useProjects()
   const { labels, createLabel } = useLabels()
   const { filters, createFilter } = useFilters()
@@ -233,7 +234,7 @@ export function Sidebar({ currentView, onViewChange, onQuickAdd, onOpenSettings 
                 key={filter.id}
                 icon={<Filter className="w-4 h-4" style={{ color: filter.color }} />}
                 label={filter.name}
-                active={currentView === 'filter'}
+                active={currentView === 'filter' && currentViewId === filter.id}
                 onClick={() => onViewChange('filter', filter.id)}
               />
             ))}
@@ -276,7 +277,7 @@ export function Sidebar({ currentView, onViewChange, onQuickAdd, onOpenSettings 
                     />
                   }
                   label={project.name}
-                  active={currentView === 'project'}
+                  active={currentView === 'project' && currentViewId === project.id}
                   onClick={() => onViewChange('project', project.id)}
                   onDoubleClick={() => setEditingProject(project)}
                   depth={project.depth}
@@ -345,9 +346,9 @@ export function Sidebar({ currentView, onViewChange, onQuickAdd, onOpenSettings 
             {labels.map((label) => (
               <SidebarItem
                 key={label.id}
-                icon={<Hash className="w-4 h-4" style={{ color: label.color }} />}
+                icon={<Tag className="w-4 h-4" style={{ color: label.color }} />}
                 label={label.name}
-                active={currentView === 'label'}
+                active={currentView === 'label' && currentViewId === label.id}
                 onClick={() => onViewChange('label', label.id)}
               />
             ))}

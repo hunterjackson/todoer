@@ -1,5 +1,6 @@
 import type { Database } from 'sql.js'
 import type { Reminder } from '@shared/types'
+import { saveDatabase } from '../index'
 
 interface ReminderCreate {
   taskId: string
@@ -9,10 +10,15 @@ interface ReminderCreate {
 export class ReminderRepository {
   constructor(private db: Database) {}
 
+  private run(sql: string, params: unknown[] = []): void {
+    this.db.run(sql, params)
+    saveDatabase()
+  }
+
   create(data: ReminderCreate): Reminder {
     const id = `reminder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
-    this.db.run(
+    this.run(
       `INSERT INTO reminders (id, task_id, remind_at, notified) VALUES (?, ?, ?, 0)`,
       [id, data.taskId, data.remindAt]
     )
@@ -126,14 +132,14 @@ export class ReminderRepository {
   }
 
   markNotified(id: string): void {
-    this.db.run('UPDATE reminders SET notified = 1 WHERE id = ?', [id])
+    this.run('UPDATE reminders SET notified = 1 WHERE id = ?', [id])
   }
 
   delete(id: string): void {
-    this.db.run('DELETE FROM reminders WHERE id = ?', [id])
+    this.run('DELETE FROM reminders WHERE id = ?', [id])
   }
 
   deleteByTask(taskId: string): void {
-    this.db.run('DELETE FROM reminders WHERE task_id = ?', [taskId])
+    this.run('DELETE FROM reminders WHERE task_id = ?', [taskId])
   }
 }

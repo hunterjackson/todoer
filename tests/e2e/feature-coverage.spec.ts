@@ -4,6 +4,7 @@ import path from 'path'
 
 let electronApp: ElectronApplication
 let page: Page
+const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
   electronApp = await electron.launch({
@@ -16,6 +17,13 @@ test.beforeAll(async () => {
   page = await electronApp.firstWindow()
   await page.waitForLoadState('domcontentloaded')
   await page.waitForTimeout(1000)
+
+  // Collect console errors
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text())
+    }
+  })
 })
 
 test.afterAll(async () => {
@@ -50,7 +58,7 @@ async function closeDialogs() {
 }
 
 test.describe('Bug Verification: Labels and Projects in Quick Add', () => {
-  test('should attach label to task when created via Quick Add with # autocomplete', async () => {
+  test('should attach label to task when created via Quick Add with @ autocomplete', async () => {
     await goToInbox()
 
     // First create a label to use
@@ -77,7 +85,7 @@ test.describe('Bug Verification: Labels and Projects in Quick Add', () => {
 
     if (await input.isVisible().catch(() => false)) {
       await input.click()
-      await page.keyboard.type('Task with label #quickadd', { delay: 30 })
+      await page.keyboard.type('Task with label @quickadd', { delay: 30 })
       await page.waitForTimeout(400)
 
       // Select the label from dropdown
@@ -130,7 +138,7 @@ test.describe('Bug Verification: Labels and Projects in Quick Add', () => {
 
     if (await input.isVisible().catch(() => false)) {
       await input.click()
-      await page.keyboard.type('Task for project @QuickAddTest', { delay: 30 })
+      await page.keyboard.type('Task for project #QuickAddTest', { delay: 30 })
       await page.waitForTimeout(400)
 
       // Select the project from dropdown
@@ -188,7 +196,7 @@ test.describe('Bug Verification: Sidebar Updates', () => {
         await editInput.clear()
         // Use a unique label name based on timestamp to avoid conflicts
         const labelName = `SidebarLbl${Date.now()}`
-        await page.keyboard.type(`Task for sidebar label test #${labelName.slice(0, 10)}`, { delay: 25 })
+        await page.keyboard.type(`Task for sidebar label test @${labelName.slice(0, 10)}`, { delay: 25 })
         await page.waitForTimeout(600)
 
         // The dropdown should show "Create" option - click it
@@ -199,12 +207,10 @@ test.describe('Bug Verification: Sidebar Updates', () => {
           await page.waitForTimeout(500)
         }
 
-        // Save the task
-        const saveBtn = page.locator('button:has-text("Save")').first()
-        if (await saveBtn.isVisible()) {
-          await saveBtn.click()
-        }
-        await page.waitForTimeout(700)
+        // Wait for autosave then close
+        await page.waitForTimeout(1200)
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(300)
       }
     }
 
@@ -247,7 +253,7 @@ test.describe('Bug Verification: Sidebar Updates', () => {
         await editInput.clear()
         // Use unique project name
         const projName = `SidebarPrj${Date.now()}`.slice(0, 12)
-        await page.keyboard.type(`Task for sidebar project test @${projName}`, { delay: 25 })
+        await page.keyboard.type(`Task for sidebar project test #${projName}`, { delay: 25 })
         await page.waitForTimeout(600)
 
         // The dropdown should show "Create" option - click it
@@ -257,12 +263,10 @@ test.describe('Bug Verification: Sidebar Updates', () => {
           await page.waitForTimeout(500)
         }
 
-        // Save the task
-        const saveBtn = page.locator('button:has-text("Save")').first()
-        if (await saveBtn.isVisible()) {
-          await saveBtn.click()
-        }
-        await page.waitForTimeout(700)
+        // Wait for autosave then close
+        await page.waitForTimeout(1200)
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(300)
       }
     }
 
@@ -580,12 +584,10 @@ test.describe('Feature Coverage: Task Description', () => {
       if (await descriptionField.isVisible()) {
         await descriptionField.fill('This is a detailed description for the task')
 
-        // Save
-        const saveBtn = page.locator('.fixed.inset-0 button:has-text("Save")').first()
-        if (await saveBtn.isVisible()) {
-          await saveBtn.click()
-          await page.waitForTimeout(300)
-        }
+        // Wait for autosave then close
+        await page.waitForTimeout(1200)
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(300)
       }
     }
 
@@ -598,10 +600,57 @@ test.describe('Feature Coverage: Task Description', () => {
 })
 
 test.describe('Feature Coverage: Sub-projects', () => {
-  test.skip('should display nested projects in sidebar', async () => {
-    // Sub-projects drag-to-indent is not implemented
-    // This test is skipped as per FEATURE_AUDIT.md
+  test('should create and display nested projects in sidebar', async () => {
     await ensureSidebarVisible()
-    expect(true).toBe(true)
+
+    // Create a parent project
+    const parentName = `FCSub-Parent-${Date.now()}`
+    const addProjectBtn = page.locator('button[title="Add project"]').first()
+    await addProjectBtn.click()
+    await page.waitForTimeout(300)
+
+    const nameInput = page.locator('input[placeholder="Project name"]')
+    await nameInput.fill(parentName)
+    const addBtn = page.locator('.fixed.inset-0 button:has-text("Add")')
+    await addBtn.click()
+    await page.waitForTimeout(500)
+
+    // Close and reopen to create child
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    await ensureSidebarVisible()
+
+    // Create a child project with parent
+    const childName = `FCSub-Child-${Date.now()}`
+    await addProjectBtn.click()
+    await page.waitForTimeout(500)
+
+    const nameInput2 = page.locator('input[placeholder="Project name"]')
+    await nameInput2.fill(childName)
+
+    // Select parent project
+    const parentSelect = page.locator('select').last()
+    await parentSelect.selectOption({ label: parentName })
+    await page.waitForTimeout(200)
+
+    const addBtn2 = page.locator('.fixed.inset-0 button:has-text("Add")')
+    await addBtn2.click()
+    await page.waitForTimeout(500)
+
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    await ensureSidebarVisible()
+
+    // Verify both projects visible in sidebar
+    const parentBtn = page.locator(`button:has-text("${parentName}")`).first()
+    expect(await parentBtn.isVisible()).toBe(true)
+
+    const childBtn = page.locator(`button:has-text("${childName}")`).first()
+    expect(await childBtn.isVisible()).toBe(true)
   })
+})
+
+// Final check: no console errors during entire test run
+test('should have no console errors throughout test run', () => {
+  expect(consoleErrors).toHaveLength(0)
 })

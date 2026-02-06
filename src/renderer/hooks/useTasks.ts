@@ -145,6 +145,11 @@ export function useTaskSearch(query: string) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1)
+  }, [])
 
   useEffect(() => {
     if (!query || query.length < 2) {
@@ -167,7 +172,7 @@ export function useTaskSearch(query: string) {
 
     const debounce = setTimeout(search, 300)
     return () => clearTimeout(debounce)
-  }, [query])
+  }, [query, refreshKey])
 
-  return { tasks, loading, error }
+  return { tasks, loading, error, refresh }
 }

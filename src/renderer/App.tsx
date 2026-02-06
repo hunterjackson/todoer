@@ -8,6 +8,7 @@ import {
   useSensors,
   PointerSensor
 } from '@dnd-kit/core'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Sidebar } from './components/sidebar/Sidebar'
 import { TodayView } from './components/views/TodayView'
 import { InboxView } from './components/views/InboxView'
@@ -25,7 +26,7 @@ import { useStore } from './stores/useStore'
 import type { Task } from '@shared/types'
 
 export default function App(): React.ReactElement {
-  const { currentView, currentViewId, setView, searchQuery, theme, sidebarCollapsed, toggleSidebar } = useStore()
+  const { currentView, currentViewId, setView, searchQuery, theme, sidebarCollapsed, toggleSidebar, goBack, goForward, canGoBack, canGoForward } = useStore()
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -62,7 +63,8 @@ export default function App(): React.ReactElement {
       if (task.projectId === newProjectId) return
 
       try {
-        await window.api.tasks.update(task.id, { projectId: newProjectId })
+        // Clear sectionId when moving to a different project, since sections belong to projects
+        await window.api.tasks.update(task.id, { projectId: newProjectId, sectionId: null })
         // Trigger refresh of views
         setRefreshKey((k) => k + 1)
       } catch (err) {
@@ -150,10 +152,39 @@ export default function App(): React.ReactElement {
     }
   }, [])
 
+  // Mouse back/forward buttons (button 3 = back, button 4 = forward)
+  useEffect(() => {
+    const handleMouseButton = (e: MouseEvent) => {
+      if (e.button === 3) {
+        e.preventDefault()
+        goBack()
+      } else if (e.button === 4) {
+        e.preventDefault()
+        goForward()
+      }
+    }
+    window.addEventListener('mouseup', handleMouseButton)
+    return () => window.removeEventListener('mouseup', handleMouseButton)
+  }, [goBack, goForward])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       const isInput = isInputFocused()
+
+      // Navigate back: Alt+Left
+      if (e.key === 'ArrowLeft' && e.altKey && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        goBack()
+        return
+      }
+
+      // Navigate forward: Alt+Right
+      if (e.key === 'ArrowRight' && e.altKey && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        goForward()
+        return
+      }
 
       // Undo: Cmd/Ctrl+Z
       if (e.key === 'z' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
@@ -242,7 +273,7 @@ export default function App(): React.ReactElement {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setView, toggleSidebar])
+  }, [setView, toggleSidebar, goBack, goForward])
 
   const renderView = () => {
     switch (currentView) {
@@ -278,14 +309,36 @@ export default function App(): React.ReactElement {
         {!sidebarCollapsed && (
           <Sidebar
             currentView={currentView}
+            currentViewId={currentViewId ?? undefined}
             onViewChange={setView}
             onQuickAdd={() => setQuickAddOpen(true)}
             onOpenSettings={() => setShowSettings(true)}
           />
         )}
-        <main className="flex-1 overflow-auto" key={refreshKey}>
-          {renderView()}
-        </main>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Navigation bar */}
+          <div className="flex items-center gap-1 px-4 py-1.5 border-b bg-background/95 backdrop-blur-sm flex-shrink-0">
+            <button
+              onClick={goBack}
+              disabled={!canGoBack()}
+              className="p-1 rounded hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Go back (Alt+Left)"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={goForward}
+              disabled={!canGoForward()}
+              className="p-1 rounded hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Go forward (Alt+Right)"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <main className="flex-1 overflow-auto" key={refreshKey}>
+            {renderView()}
+          </main>
+        </div>
         <QuickAddModal
           open={quickAddOpen}
           onOpenChange={setQuickAddOpen}

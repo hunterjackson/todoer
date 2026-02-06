@@ -2,6 +2,7 @@ import { Database as SqlJsDatabase } from 'sql.js'
 import { generateId, now, startOfDay, endOfDay, addDays } from '@shared/utils'
 import type { Task, TaskCreate, TaskUpdate, Priority } from '@shared/types'
 import { INBOX_PROJECT_ID } from '@shared/constants'
+import { saveDatabase } from '../index'
 
 export interface TaskFilter {
   projectId?: string | null
@@ -77,6 +78,7 @@ export class TaskRepository {
 
   private run(sql: string, params: unknown[] = []): void {
     this.db.run(sql, params)
+    saveDatabase()
   }
 
   list(filter: TaskFilter = {}): Task[] {
@@ -265,6 +267,10 @@ export class TaskRepository {
       updates.push('priority = ?')
       params.push(data.priority)
     }
+    if (data.sortOrder !== undefined) {
+      updates.push('sort_order = ?')
+      params.push(data.sortOrder)
+    }
 
     params.push(id)
     this.run(`UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`, params)
@@ -300,6 +306,22 @@ export class TaskRepository {
     )
 
     return true
+  }
+
+  restore(id: string): Task | null {
+    const timestamp = now()
+    this.run(
+      'UPDATE tasks SET deleted_at = NULL, updated_at = ? WHERE id = ?',
+      [timestamp, id]
+    )
+
+    // Also restore subtasks
+    this.run(
+      'UPDATE tasks SET deleted_at = NULL, updated_at = ? WHERE parent_id = ?',
+      [timestamp, id]
+    )
+
+    return this.get(id)
   }
 
   complete(id: string): Task | null {
@@ -356,9 +378,18 @@ export class TaskRepository {
       `SELECT * FROM tasks
        WHERE deleted_at IS NULL
          AND completed = 0
-         AND ((due_date >= ? AND due_date <= ?) OR due_date <= ?)
+         AND (
+           (due_date >= ? AND due_date <= ?)
+           OR due_date <= ?
+           OR (parent_id IS NOT NULL AND parent_id IN (
+             SELECT id FROM tasks
+             WHERE deleted_at IS NULL
+               AND completed = 0
+               AND ((due_date >= ? AND due_date <= ?) OR due_date <= ?)
+           ))
+         )
        ORDER BY due_date ASC, priority ASC, sort_order ASC`,
-      [todayStart, todayEnd, todayStart]
+      [todayStart, todayEnd, todayStart, todayStart, todayEnd, todayStart]
     )
 
     return rows.map((row) => this.rowToTask(row))

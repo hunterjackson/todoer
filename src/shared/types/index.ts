@@ -1,3 +1,10 @@
+// Lightweight label info for task display (minimal fields for rendering)
+export interface TaskLabel {
+  id: string
+  name: string
+  color: string
+}
+
 // Task types
 export interface Task {
   id: string
@@ -18,7 +25,7 @@ export interface Task {
   updatedAt: number
   deletedAt: number | null
   // Virtual fields (populated from joins)
-  labels?: Label[]
+  labels?: TaskLabel[]
   subtasks?: Task[]
   project?: Project
 }
@@ -49,6 +56,7 @@ export interface TaskUpdate {
   recurrenceRule?: string | null
   priority?: Priority
   labelIds?: string[]
+  sortOrder?: number
 }
 
 // Priority levels (1 = highest, 4 = lowest/default)

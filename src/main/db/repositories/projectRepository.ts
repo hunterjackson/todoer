@@ -1,6 +1,8 @@
 import { Database as SqlJsDatabase } from 'sql.js'
 import { generateId, now } from '@shared/utils'
 import type { Project, ProjectCreate, ProjectUpdate } from '@shared/types'
+import { saveDatabase } from '../index'
+import { INBOX_PROJECT_ID } from '@shared/constants'
 
 interface ProjectRow {
   id: string
@@ -55,6 +57,7 @@ export class ProjectRepository {
 
   private run(sql: string, params: unknown[] = []): void {
     this.db.run(sql, params)
+    saveDatabase()
   }
 
   list(includeDeleted: boolean = false): Project[] {
@@ -158,11 +161,29 @@ export class ProjectRepository {
       [timestamp, id]
     )
 
-    // Also delete subprojects
+    // Move tasks from deleted project to Inbox
+    this.run(
+      'UPDATE tasks SET project_id = ?, updated_at = ? WHERE project_id = ? AND deleted_at IS NULL',
+      [INBOX_PROJECT_ID, timestamp, id]
+    )
+
+    // Also delete subprojects and move their tasks to Inbox
+    const subprojectIds = this.queryAll<{ id: string }>(
+      'SELECT id FROM projects WHERE parent_id = ? AND deleted_at IS NULL',
+      [id]
+    )
+
     this.run(
       'UPDATE projects SET deleted_at = ? WHERE parent_id = ?',
       [timestamp, id]
     )
+
+    for (const sub of subprojectIds) {
+      this.run(
+        'UPDATE tasks SET project_id = ?, updated_at = ? WHERE project_id = ? AND deleted_at IS NULL',
+        [INBOX_PROJECT_ID, timestamp, sub.id]
+      )
+    }
 
     return true
   }

@@ -69,6 +69,11 @@ export function DatePicker({
     setIsOpen(false)
   }
 
+  const handleQuickOption = (date: Date) => {
+    onChange(date)
+    setIsOpen(false)
+  }
+
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
     onChange(null)
@@ -153,7 +158,7 @@ export function DatePicker({
               <button
                 key={label}
                 type="button"
-                onClick={() => handleDayClick(date.getDate())}
+                onClick={() => handleQuickOption(date)}
                 className="px-2 py-1 text-xs rounded-md bg-muted hover:bg-accent"
               >
                 {label}

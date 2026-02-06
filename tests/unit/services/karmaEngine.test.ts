@@ -4,6 +4,7 @@ import type { Database as SqlJsDatabase } from 'sql.js'
 import { KarmaRepository } from '../../../src/main/db/repositories/karmaRepository'
 import { KarmaEngine } from '../../../src/main/services/karmaEngine'
 import type { Task } from '../../../src/shared/types'
+import { getLocalDateKey } from '../../../src/shared/utils'
 
 describe('KarmaEngine', () => {
   let db: SqlJsDatabase
@@ -206,7 +207,7 @@ describe('KarmaEngine', () => {
 
   describe('updateStreak', () => {
     it('should update current streak', () => {
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateKey()
       karmaRepo.recordHistory(today, 0, 1)
 
       karmaEngine.updateStreak()
@@ -216,14 +217,13 @@ describe('KarmaEngine', () => {
     })
 
     it('should update longest streak when current exceeds it', () => {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+      const now = new Date()
 
       // Create a 3-day streak
       for (let i = 0; i < 3; i++) {
-        const date = new Date(today)
+        const date = new Date(now)
         date.setDate(date.getDate() - i)
-        karmaRepo.recordHistory(date.toISOString().split('T')[0], 0, 1)
+        karmaRepo.recordHistory(getLocalDateKey(date), 0, 1)
       }
 
       karmaEngine.updateStreak()

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Hash, Plus } from 'lucide-react'
+import { Tag, Plus } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useLabels } from '@hooks/useLabels'
 import type { Label } from '@shared/types'
@@ -198,7 +198,7 @@ export function LabelAutocomplete({
                 selectedIndex === index && 'bg-accent'
               )}
             >
-              <Hash className="w-4 h-4" style={{ color: label.color }} />
+              <Tag className="w-4 h-4" style={{ color: label.color }} />
               <span>{label.name}</span>
             </button>
           ))}

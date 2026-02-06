@@ -2,14 +2,16 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import type { TaskRepository } from '../db/repositories/taskRepository'
 import type { ProjectRepository } from '../db/repositories/projectRepository'
 import type { LabelRepository } from '../db/repositories/labelRepository'
+import type { KarmaEngine } from '../services/karmaEngine'
 import { parseDateWithRecurrence } from '../services/dateParser'
+import { calculateNextDueDate } from '../services/recurrenceEngine'
 import type { Priority } from '@shared/types'
-import { Database as SqlJsDatabase } from 'sql.js'
 
 interface Repositories {
   taskRepo: TaskRepository
   projectRepo: ProjectRepository
   labelRepo: LabelRepository
+  karmaEngine: KarmaEngine
 }
 
 export function registerTools(): Tool[] {
@@ -208,32 +210,12 @@ export function registerTools(): Tool[] {
   ]
 }
 
-interface KarmaStats {
-  total_points: number
-  current_streak: number
-  longest_streak: number
-  daily_goal: number
-  weekly_goal: number
-}
-
-function getKarmaStats(db: SqlJsDatabase): KarmaStats | null {
-  const stmt = db.prepare('SELECT * FROM karma_stats WHERE id = ?')
-  stmt.bind(['default'])
-  if (stmt.step()) {
-    const result = stmt.getAsObject() as unknown as KarmaStats
-    stmt.free()
-    return result
-  }
-  stmt.free()
-  return null
-}
-
 export function handleToolCall(
   name: string,
   args: Record<string, unknown>,
   repos: Repositories
 ): { content: Array<{ type: string; text: string }> } {
-  const { taskRepo, projectRepo, labelRepo } = repos
+  const { taskRepo, projectRepo, labelRepo, karmaEngine } = repos
 
   try {
     switch (name) {
@@ -325,26 +307,60 @@ export function handleToolCall(
       }
 
       case 'todoer_complete_task': {
-        const task = taskRepo.complete(args.taskId as string)
-        if (!task) {
+        const taskId = args.taskId as string
+        const taskBeforeComplete = taskRepo.get(taskId)
+        if (!taskBeforeComplete) {
           return {
-            content: [{ type: 'text', text: `Task not found: ${args.taskId}` }]
+            content: [{ type: 'text', text: `Task not found: ${taskId}` }]
           }
         }
+
+        const task = taskRepo.complete(taskId)
+        if (task) {
+          karmaEngine.recordTaskCompletion(task)
+        }
+
+        // Handle recurring tasks - create next occurrence
+        if (taskBeforeComplete.recurrenceRule && taskBeforeComplete.dueDate) {
+          const completedAt = Date.now()
+          const nextDueDate = calculateNextDueDate(
+            taskBeforeComplete.recurrenceRule,
+            taskBeforeComplete.dueDate,
+            completedAt
+          )
+
+          if (nextDueDate) {
+            // Uncomplete the task and set the next due date
+            taskRepo.uncomplete(taskId)
+            taskRepo.update(taskId, { dueDate: nextDueDate })
+            const nextDateStr = new Date(nextDueDate).toLocaleDateString()
+            return {
+              content: [{ type: 'text', text: `Completed recurring task: "${taskBeforeComplete.content}" - next due: ${nextDateStr}` }]
+            }
+          }
+        }
+
         return {
-          content: [{ type: 'text', text: `Completed task: "${task.content}"` }]
+          content: [{ type: 'text', text: `Completed task: "${taskBeforeComplete.content}"` }]
         }
       }
 
       case 'todoer_uncomplete_task': {
-        const task = taskRepo.uncomplete(args.taskId as string)
-        if (!task) {
+        const taskId = args.taskId as string
+        const taskBefore = taskRepo.get(taskId)
+        if (!taskBefore) {
           return {
-            content: [{ type: 'text', text: `Task not found: ${args.taskId}` }]
+            content: [{ type: 'text', text: `Task not found: ${taskId}` }]
           }
         }
+
+        const task = taskRepo.uncomplete(taskId)
+        if (taskBefore) {
+          karmaEngine.recordTaskUncompletion(taskBefore)
+        }
+
         return {
-          content: [{ type: 'text', text: `Uncompleted task: "${task.content}"` }]
+          content: [{ type: 'text', text: `Uncompleted task: "${task?.content}"` }]
         }
       }
 
@@ -446,13 +462,13 @@ export function handleToolCall(
       }
 
       case 'todoer_get_stats': {
-        // Access the database from the repository (it has a private db property)
-        const db = (taskRepo as unknown as { db: SqlJsDatabase }).db
-        const stats = getKarmaStats(db)
+        // Get karma stats from engine
+        const karmaStats = karmaEngine.getStats()
+        const todayStats = karmaEngine.getTodayStats()
+        const weekStats = karmaEngine.getWeekStats()
 
-        // Count tasks
+        // Count pending tasks
         const allTasks = taskRepo.list({ completed: false })
-        const completedToday = taskRepo.list({ completed: true })
 
         return {
           content: [
@@ -460,13 +476,17 @@ export function handleToolCall(
               type: 'text',
               text: JSON.stringify(
                 {
-                  karma: stats?.total_points ?? 0,
-                  currentStreak: stats?.current_streak ?? 0,
-                  longestStreak: stats?.longest_streak ?? 0,
+                  karma: karmaStats.totalPoints,
+                  currentStreak: karmaStats.currentStreak,
+                  longestStreak: karmaStats.longestStreak,
                   pendingTasks: allTasks.length,
-                  completedToday: completedToday.length,
-                  dailyGoal: stats?.daily_goal ?? 5,
-                  weeklyGoal: stats?.weekly_goal ?? 25
+                  completedToday: todayStats.tasksCompleted,
+                  dailyGoal: karmaStats.dailyGoal,
+                  dailyProgress: todayStats.progress,
+                  dailyGoalMet: todayStats.goalMet,
+                  weeklyGoal: karmaStats.weeklyGoal,
+                  weeklyProgress: weekStats.progress,
+                  weeklyGoalMet: weekStats.goalMet
                 },
                 null,
                 2

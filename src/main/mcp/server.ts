@@ -10,13 +10,14 @@ import { initDatabase, getDatabase } from '../db'
 import { TaskRepository } from '../db/repositories/taskRepository'
 import { ProjectRepository } from '../db/repositories/projectRepository'
 import { LabelRepository } from '../db/repositories/labelRepository'
-import { parseDateWithRecurrence } from '../services/dateParser'
+import { KarmaRepository } from '../db/repositories/karmaRepository'
+import { KarmaEngine } from '../services/karmaEngine'
 import { registerTools, handleToolCall } from './tools'
 import { registerResources, handleResourceRead } from './resources'
 
 export async function startMcpServer(): Promise<void> {
   // Initialize database
-  initDatabase()
+  await initDatabase()
 
   const server = new Server(
     {
@@ -43,11 +44,14 @@ export async function startMcpServer(): Promise<void> {
     const taskRepo = new TaskRepository(db)
     const projectRepo = new ProjectRepository(db)
     const labelRepo = new LabelRepository(db)
+    const karmaRepo = new KarmaRepository(db)
+    const karmaEngine = new KarmaEngine(karmaRepo)
 
     return handleToolCall(request.params.name, request.params.arguments || {}, {
       taskRepo,
       projectRepo,
-      labelRepo
+      labelRepo,
+      karmaEngine
     })
   })
 

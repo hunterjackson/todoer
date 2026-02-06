@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Check, HelpCircle } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { FilterQueryAutocomplete } from '@renderer/components/ui/FilterQueryAutocomplete'
 import type { Filter, FilterCreate, FilterUpdate } from '@shared/types'
 import { PROJECT_COLORS } from '@shared/types'
 
@@ -134,11 +135,10 @@ export function FilterDialog({
                 Help
               </button>
             </div>
-            <input
-              type="text"
+            <FilterQueryAutocomplete
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g., today & p1"
+              onChange={setQuery}
+              placeholder="e.g., today & p1 | #project | @label"
               className="w-full px-3 py-2 border rounded-md bg-background font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
 
@@ -153,7 +153,8 @@ export function FilterDialog({
                   <li><code className="bg-background px-1 rounded">7 days</code> - Due in next 7 days</li>
                   <li><code className="bg-background px-1 rounded">no date</code> - Tasks without due date</li>
                   <li><code className="bg-background px-1 rounded">p1</code>, <code className="bg-background px-1 rounded">p2</code>, <code className="bg-background px-1 rounded">p3</code>, <code className="bg-background px-1 rounded">p4</code> - By priority</li>
-                  <li><code className="bg-background px-1 rounded">#project</code> - By project name</li>
+                  <li><code className="bg-background px-1 rounded">#project</code> - By project name (type # for autocomplete)</li>
+                  <li><code className="bg-background px-1 rounded">@label</code> - By label name (type @ for autocomplete)</li>
                   <li><code className="bg-background px-1 rounded">&</code> - AND (both conditions)</li>
                   <li><code className="bg-background px-1 rounded">|</code> - OR (either condition)</li>
                 </ul>

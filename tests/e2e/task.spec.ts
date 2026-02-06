@@ -3,6 +3,7 @@ import { join } from 'path'
 
 let electronApp: ElectronApplication
 let page: Page
+const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
   // Launch Electron app
@@ -21,6 +22,13 @@ test.beforeAll(async () => {
   await page.waitForLoadState('domcontentloaded')
   // Wait for React to render
   await page.waitForTimeout(1000)
+
+  // Collect console errors
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text())
+    }
+  })
 })
 
 test.afterAll(async () => {
@@ -45,60 +53,86 @@ test.describe('Task Management', () => {
     await page.waitForTimeout(300)
 
     // Click add task button
-    const addButton = page.locator('button:has-text("Add task"), [data-testid="add-task"]').first()
-    if (await addButton.isVisible()) {
-      await addButton.click()
+    const addButton = page.locator('button:has-text("Add task")').first()
+    await addButton.waitFor({ state: 'visible', timeout: 3000 })
+    await addButton.click()
 
-      // Type task content
-      const input = page.locator('input[placeholder*="Task"], textarea[placeholder*="Task"]').first()
-      await input.fill('Test task from E2E')
+    // Type task content
+    const input = page.locator('input[placeholder*="Task name"]').first()
+    await input.fill('Test task from E2E')
 
-      // Click add/submit button
-      await page.click('button:has-text("Add")')
-      await page.waitForTimeout(300)
+    // Click submit button (also says "Add task")
+    const addSubmit = page.locator('button:has-text("Add task")').last()
+    await addSubmit.click()
+    await page.waitForTimeout(500)
 
-      // Verify task appears in list
-      await expect(page.locator('text=Test task from E2E')).toBeVisible()
-    } else {
-      // If no add task button, try using the quick add keyboard shortcut
-      await page.keyboard.press('q')
-      await page.waitForTimeout(300)
-    }
+    // Verify task appears in list
+    await expect(page.locator('.task-item:has-text("Test task from E2E")')).toBeVisible()
   })
 
   test('should complete a task', async () => {
-    // First create a task if it doesn't exist
-    const taskText = page.locator('text=Test task from E2E')
-    if (!(await taskText.isVisible())) {
-      test.skip()
-      return
+    // Ensure showCompleted is OFF so completed tasks disappear from view
+    const completedToggle = page.locator('button:has-text("Completed")').first()
+    if (await completedToggle.isVisible().catch(() => false)) {
+      const sectionVisible = await page.locator('span:has-text("Completed tasks")').first().isVisible().catch(() => false)
+      if (sectionVisible) {
+        // Turn off showCompleted
+        await completedToggle.click()
+        await page.waitForTimeout(300)
+      }
     }
 
-    // Find the task checkbox and click it
-    const taskItem = page.locator('.task-item:has-text("Test task from E2E"), [data-task]:has-text("Test task from E2E")').first()
-    const checkbox = taskItem.locator('button, [role="checkbox"]').first()
-    await checkbox.click()
+    // Create a dedicated task for this test
+    const taskName = `Complete-me-${Date.now()}`
+    const addButton = page.locator('button:has-text("Add task")').first()
+    await addButton.click()
+    await page.waitForTimeout(200)
+    const input = page.locator('input[placeholder*="Task name"]').first()
+    await input.fill(taskName)
+    const addSubmit = page.locator('button:has-text("Add task")').last()
+    await addSubmit.click()
+    await page.waitForTimeout(500)
 
-    await page.waitForTimeout(300)
+    // Find the task and click its checkbox
+    const taskItem = page.locator(`.task-item:has-text("${taskName}")`).first()
+    await taskItem.waitFor({ state: 'visible', timeout: 3000 })
+    const checkbox = taskItem.locator('button').first()
+    await checkbox.click()
+    await page.waitForTimeout(500)
+
+    // Task should disappear from active list (it's completed)
+    expect(await taskItem.isVisible()).toBe(false)
   })
 
   test('should delete a task', async () => {
-    const taskText = page.locator('text=Test task from E2E')
-    if (!(await taskText.isVisible())) {
-      test.skip()
-      return
-    }
+    // Create a dedicated task for this test
+    const taskName = `Delete-me-${Date.now()}`
+    const addButton = page.locator('button:has-text("Add task")').first()
+    await addButton.click()
+    await page.waitForTimeout(200)
+    const input = page.locator('input[placeholder*="Task name"]').first()
+    await input.fill(taskName)
+    const addSubmit = page.locator('button:has-text("Add task")').last()
+    await addSubmit.click()
+    await page.waitForTimeout(500)
 
-    // Hover over task to show delete button
-    const taskItem = page.locator('.task-item:has-text("Test task from E2E"), [data-task]:has-text("Test task from E2E")').first()
-    await taskItem.hover()
+    // Open edit dialog to access delete
+    const taskContent = page.locator(`.task-item .cursor-pointer:has-text("${taskName}")`).first()
+    await taskContent.click()
+    await page.waitForTimeout(600)
 
-    // Click delete button
-    const deleteButton = taskItem.locator('button[title="Delete"], [data-action="delete"]')
-    if (await deleteButton.isVisible()) {
-      await deleteButton.click()
-      await page.waitForTimeout(300)
-    }
+    // Click delete button in the dialog
+    const deleteBtn = page.locator('.fixed.inset-0 button:has-text("Delete task")')
+    await deleteBtn.waitFor({ state: 'visible', timeout: 3000 })
+
+    // Handle the confirm dialog by accepting it
+    page.once('dialog', dialog => dialog.accept())
+    await deleteBtn.click()
+    await page.waitForTimeout(500)
+
+    // Task should be gone
+    const taskInList = page.locator(`.task-item:has-text("${taskName}")`)
+    expect(await taskInList.isVisible()).toBe(false)
   })
 
   test('should open quick add modal with keyboard shortcut', async () => {
@@ -267,8 +301,9 @@ test.describe('Task Editing', () => {
         await nameInput.clear()
         await nameInput.fill('Updated task name')
 
-        // Click save
-        await page.click('button:has-text("Save")')
+        // Wait for autosave to complete then close dialog
+        await page.waitForTimeout(1500)
+        await page.click('button:has-text("Close")')
         await page.waitForTimeout(300)
 
         // Verify task was updated
@@ -298,4 +333,9 @@ test.describe('Search', () => {
 
     expect(true).toBe(true) // Test passes if we got here without error
   })
+})
+
+// Final check: no console errors during entire test run
+test('should have no console errors throughout test run', () => {
+  expect(consoleErrors).toHaveLength(0)
 })

@@ -53,6 +53,30 @@ function runMigrations(database: SqlJsDatabase): void {
   if (!projectColNames.includes('description')) {
     database.run('ALTER TABLE projects ADD COLUMN description TEXT')
   }
+
+  // Get existing columns in comments table
+  const commentCols = database.exec("PRAGMA table_info(comments)")
+  const commentColNames = commentCols[0]?.values.map(row => row[1]) || []
+
+  // Add project_id column to comments if missing (supports project comments)
+  if (commentColNames.length > 0 && !commentColNames.includes('project_id')) {
+    database.run('ALTER TABLE comments ADD COLUMN project_id TEXT')
+  }
+
+  // Create task_attachments table if missing (stores files as BLOBs)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS task_attachments (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      data BLOB NOT NULL,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+    )
+  `)
+  database.run('CREATE INDEX IF NOT EXISTS idx_task_attachments_task ON task_attachments(task_id)')
 }
 
 // Initialize database with schema

@@ -1,6 +1,7 @@
 import { Database as SqlJsDatabase } from 'sql.js'
 import { generateId, now } from '@shared/utils'
 import type { Filter, FilterCreate, FilterUpdate } from '@shared/types'
+import { saveDatabase } from '../index'
 
 interface FilterRow {
   id: string
@@ -47,6 +48,7 @@ export class FilterRepository {
 
   private run(sql: string, params: unknown[] = []): void {
     this.db.run(sql, params)
+    saveDatabase()
   }
 
   list(): Filter[] {

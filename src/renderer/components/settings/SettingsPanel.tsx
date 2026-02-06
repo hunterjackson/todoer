@@ -145,6 +145,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
                   const val = parseInt(e.target.value, 10)
                   setDailyGoal(val)
                   saveSetting('dailyGoal', String(val))
+                  // Also update karma engine's daily goal
+                  window.api.karma.updateGoals({ dailyGoal: val }).catch(() => {})
                 }}
                 className="flex-1"
               />
@@ -278,6 +280,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
                   const newVal = !notificationsEnabled
                   setNotificationsEnabled(newVal)
                   saveSetting('notificationsEnabled', String(newVal))
+                  window.api.notifications.setEnabled(newVal).catch(() => {})
                 }}
                 className={`relative w-10 h-6 rounded-full transition-colors ${
                   notificationsEnabled ? 'bg-primary' : 'bg-muted'

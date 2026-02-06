@@ -1,8 +1,11 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
-import { initDatabase } from './db'
+import { initDatabase, closeDatabase, saveDatabase, getDatabase } from './db'
 import { registerIpcHandlers } from './ipc/handlers'
 import { createAppMenu } from './menu'
+import { notificationService } from './services/notificationService'
+import { ReminderRepository } from './db/repositories/reminderRepository'
+import { TaskRepository } from './db/repositories/taskRepository'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -74,6 +77,31 @@ if (isMcpMode) {
       // Create application menu
       createAppMenu()
 
+      // Start reminder checking service
+      const db = getDatabase()
+      const reminderRepo = new ReminderRepository(db)
+      const taskRepo = new TaskRepository(db)
+
+      // Load notification enabled setting
+      const stmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+      stmt.bind(['notificationsEnabled'])
+      if (stmt.step()) {
+        const result = stmt.getAsObject() as { value: string }
+        notificationService.setEnabled(result.value !== 'false')
+      }
+      stmt.free()
+
+      notificationService.startChecking(async () => {
+        const dueReminders = reminderRepo.getDue()
+        for (const reminder of dueReminders) {
+          const task = taskRepo.get(reminder.taskId)
+          if (task) {
+            notificationService.showTaskReminder(task)
+            reminderRepo.markNotified(reminder.id)
+          }
+        }
+      })
+
       createWindow()
 
       app.on('activate', () => {
@@ -86,6 +114,16 @@ if (isMcpMode) {
     }
   }).catch((error) => {
     console.error('App ready failed:', error)
+  })
+
+  // Save database periodically to prevent data loss on crash
+  const saveInterval = setInterval(() => saveDatabase(), 30000) // Every 30 seconds
+
+  // Save and close database before app quits
+  app.on('before-quit', () => {
+    clearInterval(saveInterval)
+    notificationService.stopChecking()
+    closeDatabase()
   })
 
   app.on('window-all-closed', () => {

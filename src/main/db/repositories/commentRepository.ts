@@ -1,5 +1,6 @@
 import type { Database } from 'sql.js'
 import type { Comment, CommentCreate, CommentUpdate } from '@shared/types'
+import { saveDatabase } from '../index'
 
 interface CommentRow {
   id: string
@@ -12,6 +13,11 @@ interface CommentRow {
 
 export class CommentRepository {
   constructor(private db: Database) {}
+
+  private run(sql: string, params: unknown[] = []): void {
+    this.db.run(sql, params)
+    saveDatabase()
+  }
 
   private rowToComment(row: CommentRow): Comment {
     return {
@@ -28,7 +34,7 @@ export class CommentRepository {
     const id = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const now = Date.now()
 
-    this.db.run(
+    this.run(
       `INSERT INTO comments (id, task_id, project_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
       [id, data.taskId || null, data.projectId || null, data.content, now, now]
     )
@@ -84,7 +90,7 @@ export class CommentRepository {
 
   update(id: string, data: CommentUpdate): Comment {
     const now = Date.now()
-    this.db.run(`UPDATE comments SET content = ?, updated_at = ? WHERE id = ?`, [
+    this.run(`UPDATE comments SET content = ?, updated_at = ? WHERE id = ?`, [
       data.content,
       now,
       id
@@ -94,15 +100,15 @@ export class CommentRepository {
   }
 
   delete(id: string): void {
-    this.db.run('DELETE FROM comments WHERE id = ?', [id])
+    this.run('DELETE FROM comments WHERE id = ?', [id])
   }
 
   deleteByTask(taskId: string): void {
-    this.db.run('DELETE FROM comments WHERE task_id = ?', [taskId])
+    this.run('DELETE FROM comments WHERE task_id = ?', [taskId])
   }
 
   deleteByProject(projectId: string): void {
-    this.db.run('DELETE FROM comments WHERE project_id = ?', [projectId])
+    this.run('DELETE FROM comments WHERE project_id = ?', [projectId])
   }
 
   count(taskId: string): number {

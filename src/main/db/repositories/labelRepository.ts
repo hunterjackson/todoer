@@ -1,6 +1,7 @@
 import { Database as SqlJsDatabase } from 'sql.js'
 import { generateId, now } from '@shared/utils'
 import type { Label, LabelCreate, LabelUpdate } from '@shared/types'
+import { saveDatabase } from '../index'
 
 interface LabelRow {
   id: string
@@ -45,6 +46,7 @@ export class LabelRepository {
 
   private run(sql: string, params: unknown[] = []): void {
     this.db.run(sql, params)
+    saveDatabase()
   }
 
   list(): Label[] {

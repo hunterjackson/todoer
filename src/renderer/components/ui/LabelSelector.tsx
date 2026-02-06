@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Hash, Check, X, Plus } from 'lucide-react'
+import { Tag, Check, X, Plus } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
-import { useLabels } from '@hooks/useLabels'
+import { useLabels, notifyLabelsChanged } from '@hooks/useLabels'
 import { PROJECT_COLORS } from '@shared/types'
 
 interface LabelSelectorProps {
@@ -87,6 +87,8 @@ export function LabelSelector({
       // Add new label to selection
       onChange([...selectedIds, newLabel.id])
       setNewLabelName('')
+      // Notify other components (sidebar) to refresh their label lists
+      notifyLabelsChanged()
     } finally {
       setIsCreating(false)
     }
@@ -113,7 +115,7 @@ export function LabelSelector({
       >
         {selectedLabels.length === 0 ? (
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Hash className="w-4 h-4" />
+            <Tag className="w-4 h-4" />
             {placeholder}
           </span>
         ) : (
@@ -126,7 +128,7 @@ export function LabelSelector({
                 color: label.color
               }}
             >
-              <Hash className="w-2.5 h-2.5" />
+              <Tag className="w-2.5 h-2.5" />
               {label.name}
               <button
                 onClick={(e) => removeLabel(label.id, e)}
@@ -191,7 +193,7 @@ export function LabelSelector({
                         isSelected && 'bg-accent/50'
                       )}
                     >
-                      <Hash className="w-4 h-4" style={{ color: label.color }} />
+                      <Tag className="w-4 h-4" style={{ color: label.color }} />
                       <span className="flex-1">{label.name}</span>
                       {isSelected && <Check className="w-4 h-4 text-primary" />}
                     </button>

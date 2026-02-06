@@ -3,6 +3,7 @@ import { join } from 'path'
 
 let electronApp: ElectronApplication
 let page: Page
+const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
   // Launch Electron app
@@ -18,6 +19,13 @@ test.beforeAll(async () => {
   await page.waitForLoadState('domcontentloaded')
   // Wait for React to render
   await page.waitForTimeout(1000)
+
+  // Collect console errors
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text())
+    }
+  })
 })
 
 test.afterAll(async () => {
@@ -316,7 +324,8 @@ test.describe('Task Edit Dialog', () => {
       }
 
       // Save
-      await page.click('button:has-text("Save")')
+      await page.waitForTimeout(1200)
+      await page.keyboard.press('Escape')
       await page.waitForTimeout(300)
     }
     await closeDialogs()
@@ -340,7 +349,8 @@ test.describe('Task Edit Dialog', () => {
       }
 
       // Save
-      await page.click('button:has-text("Save")')
+      await page.waitForTimeout(1200)
+      await page.keyboard.press('Escape')
       await page.waitForTimeout(300)
     }
     await closeDialogs()
@@ -364,7 +374,8 @@ test.describe('Task Edit Dialog', () => {
       }
 
       // Save
-      await page.click('button:has-text("Save")')
+      await page.waitForTimeout(1200)
+      await page.keyboard.press('Escape')
       await page.waitForTimeout(300)
     }
     await closeDialogs()
@@ -548,9 +559,11 @@ test.describe('Label Management', () => {
         }
       }
 
-      const saveBtn = page.locator('button:has-text("Save")').first()
-      if (await saveBtn.isVisible().catch(() => false)) {
-        await saveBtn.click()
+      // Wait for autosave then close
+      await page.waitForTimeout(1200)
+      const closeBtn = page.locator('button:has-text("Close")').first()
+      if (await closeBtn.isVisible().catch(() => false)) {
+        await closeBtn.click()
         await page.waitForTimeout(300)
       }
     }
@@ -838,62 +851,12 @@ test.describe('Undo/Redo', () => {
   })
 })
 
+// Subtask tests with real assertions are in subtask-subproject-comments.spec.ts
 test.describe('Subtasks', () => {
-  test.beforeEach(async () => {
-    await closeDialogs()
-  })
-
-  test('should create subtask via Tab key indentation', async () => {
-    await goToInbox()
-
-    // Create parent task
-    const addBtn = page.locator('button:has-text("Add task")').first()
-    if (await addBtn.isVisible()) {
-      await addBtn.click()
-      const input = page.locator('input[placeholder*="Task"]').first()
-      await input.fill('Parent task')
-      await page.click('button:has-text("Add")')
-      await page.waitForTimeout(300)
-
-      // Create another task
-      await addBtn.click()
-      const input2 = page.locator('input[placeholder*="Task"]').first()
-      await input2.fill('Child task')
-      await page.click('button:has-text("Add")')
-      await page.waitForTimeout(300)
-    }
-
-    // Focus child task and indent with Tab
-    const childTask = page.locator('.task-item:has-text("Child task")').first()
-    if (await childTask.isVisible()) {
-      await childTask.click()
-      await page.waitForTimeout(100)
-      await page.keyboard.press('Tab')
-      await page.waitForTimeout(300)
-    }
-
-    expect(true).toBe(true)
-  })
-
-  test('should collapse/expand subtasks with H/L keys', async () => {
-    await goToInbox()
-
-    // Focus a task that might have subtasks
-    const taskItem = page.locator('.task-item').first()
-    if (await taskItem.isVisible()) {
-      await taskItem.click()
-      await page.waitForTimeout(100)
-
-      // Try to collapse
-      await page.keyboard.press('h')
-      await page.waitForTimeout(200)
-
-      // Try to expand
-      await page.keyboard.press('l')
-      await page.waitForTimeout(200)
-    }
-
-    expect(true).toBe(true)
+  test('subtask tests covered in subtask-subproject-comments.spec.ts', async () => {
+    // Real subtask tests (Tab indent, collapse/expand, Shift+Tab outdent)
+    // are in subtask-subproject-comments.spec.ts with hard assertions
+    expect(true).toBe(true) // placeholder - real tests in dedicated file
   })
 })
 
@@ -1045,63 +1008,12 @@ test.describe('Drag and Drop', () => {
   })
 })
 
+// Comment tests with real assertions are in subtask-subproject-comments.spec.ts
 test.describe('Comments', () => {
-  test.beforeEach(async () => {
-    await closeDialogs()
-  })
-
-  test('should add comment to task', async () => {
-    await goToInbox()
-
-    // First ensure we have a task - create one if needed
-    let taskContent = page.locator('.task-item .text-sm.cursor-pointer').first()
-    if (!(await taskContent.isVisible().catch(() => false))) {
-      // Create a task
-      const addBtn = page.locator('button:has-text("Add task")').first()
-      if (await addBtn.isVisible()) {
-        await addBtn.click()
-        const taskInput = page.locator('input[placeholder*="Task"]').first()
-        await taskInput.fill('Task for comments')
-        await page.click('button:has-text("Add")')
-        await page.waitForTimeout(300)
-      }
-      taskContent = page.locator('.task-item .text-sm.cursor-pointer').first()
-    }
-
-    // Open task edit dialog
-    if (await taskContent.isVisible()) {
-      await taskContent.click()
-      await page.waitForTimeout(500)
-
-      // Look for comments tab or section - it may be a tab in the dialog
-      const commentsTab = page.locator('button:has-text("Comments"), [role="tab"]:has-text("Comments")').first()
-      if (await commentsTab.isVisible().catch(() => false)) {
-        await commentsTab.click()
-        await page.waitForTimeout(200)
-      }
-
-      // Find comments section
-      const commentInput = page.locator('textarea[placeholder*="comment"], textarea[placeholder*="Add a comment"], input[placeholder*="comment"]').first()
-      if (await commentInput.isVisible().catch(() => false)) {
-        await commentInput.fill('This is a test comment')
-        await page.keyboard.press('Enter')
-        await page.waitForTimeout(300)
-
-        // Verify comment appears
-        const comment = page.locator('text=This is a test comment')
-        const commentVisible = await comment.isVisible().catch(() => false)
-        if (!commentVisible) {
-          // Comment may need explicit submit
-          const submitBtn = page.locator('button:has-text("Post"), button:has-text("Add comment")').first()
-          if (await submitBtn.isVisible()) {
-            await submitBtn.click()
-            await page.waitForTimeout(300)
-          }
-        }
-      }
-    }
-    await closeDialogs()
-    expect(true).toBe(true)
+  test('comment tests covered in subtask-subproject-comments.spec.ts', async () => {
+    // Real comment tests (add, persist, multiple comments, count)
+    // are in subtask-subproject-comments.spec.ts with hard assertions
+    expect(true).toBe(true) // placeholder - real tests in dedicated file
   })
 })
 
@@ -1170,4 +1082,9 @@ test.describe('Productivity Panel', () => {
     await closeDialogs()
     expect(true).toBe(true)
   })
+})
+
+// Final check: no console errors during entire test run
+test('should have no console errors throughout test run', () => {
+  expect(consoleErrors).toHaveLength(0)
 })
