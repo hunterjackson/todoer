@@ -154,7 +154,9 @@ test.describe('Bug Fixes Validation', () => {
           el.getAttribute('aria-pressed') === 'true'
         ).catch(() => false)
 
-        // Reaching here without error is the assertion
+        // Verify both view toggle buttons are still visible after toggling
+        expect(await listViewBtn.isVisible()).toBe(true)
+        expect(await boardViewBtn.isVisible()).toBe(true)
       }
     })
   })
@@ -248,7 +250,9 @@ test.describe('Bug Fixes Validation', () => {
         await page.waitForTimeout(200)
       }
 
-      // Reaching here without error is the assertion
+      // Verify the parent task was created and is visible
+      const parentTask = page.locator('.task-item:has-text("Parent task with subtasks")')
+      expect(await parentTask.isVisible()).toBe(true)
     })
   })
 })

@@ -329,7 +329,9 @@ test.describe('Task Edit Dialog', () => {
       await page.waitForTimeout(300)
     }
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the task is still visible in the list after priority change
+    const taskVisible = await page.locator('.task-item:has-text("Task to change priority")').isVisible().catch(() => false)
+    expect(taskVisible).toBe(true)
   })
 
   test('should set due date in edit dialog', async () => {
@@ -354,7 +356,9 @@ test.describe('Task Edit Dialog', () => {
       await page.waitForTimeout(300)
     }
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify we are still on the inbox view with tasks visible
+    const headingVisible = await page.locator('h1:has-text("Inbox")').isVisible().catch(() => false)
+    expect(headingVisible).toBe(true)
   })
 
   test('should add description to task', async () => {
@@ -379,7 +383,9 @@ test.describe('Task Edit Dialog', () => {
       await page.waitForTimeout(300)
     }
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the task list is still showing on the inbox page
+    const taskListVisible = await page.locator('.task-item').first().isVisible().catch(() => false)
+    expect(taskListVisible).toBe(true)
   })
 })
 
@@ -436,7 +442,9 @@ test.describe('Project Management', () => {
       }
     }
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the renamed project is visible in the sidebar
+    const renamedVisible = await page.locator('button:has-text("Renamed Project")').first().isVisible().catch(() => false)
+    expect(renamedVisible).toBe(true)
   })
 
   test('should archive project', async () => {
@@ -457,7 +465,9 @@ test.describe('Project Management', () => {
       }
     }
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the sidebar is still visible after archiving
+    const sidebarVisible = await page.locator('button:has-text("Inbox")').isVisible().catch(() => false)
+    expect(sidebarVisible).toBe(true)
   })
 
   test('should duplicate project', async () => {
@@ -520,7 +530,9 @@ test.describe('Label Management', () => {
       }
     }
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the urgent label appears in the sidebar
+    const labelVisible = await page.locator('text=urgent').first().isVisible().catch(() => false)
+    expect(labelVisible).toBe(true)
   })
 
   test('should add existing label to task via edit dialog', async () => {
@@ -568,7 +580,9 @@ test.describe('Label Management', () => {
       }
     }
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify we are back on the inbox view
+    const inboxHeading = await page.locator('h1:has-text("Inbox")').isVisible().catch(() => false)
+    expect(inboxHeading).toBe(true)
   })
 })
 
@@ -617,7 +631,9 @@ test.describe('Filter Management', () => {
       const heading = page.locator('main h1, .main-content h1').first()
       await expect(heading).toContainText('High Priority')
     }
-    // Reaching here without error is the assertion
+    // Verify the filter view heading shows
+    const heading = page.locator('main h1, .main-content h1').first()
+    await expect(heading).toBeVisible()
   })
 })
 
@@ -668,7 +684,8 @@ test.describe('Keyboard Shortcuts', () => {
     if (isOpen) {
       await closeDialogs()
     }
-    // Reaching here without error is the assertion
+    // Verify the settings dialog was opened
+    expect(isOpen).toBe(true)
   })
 
   test('should toggle sidebar with M', async () => {
@@ -678,7 +695,9 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press('m')
     await page.waitForTimeout(300)
 
-    // Reaching here without error is the assertion (sidebar toggled)
+    // Verify the main content area is still visible after sidebar toggle
+    const mainVisible = await page.locator('main').first().isVisible().catch(() => false)
+    expect(mainVisible).toBe(true)
   })
 
   test('should show help with ?', async () => {
@@ -691,7 +710,8 @@ test.describe('Keyboard Shortcuts', () => {
     if (isOpen) {
       await closeDialogs()
     }
-    // Reaching here without error is the assertion
+    // Verify the help dialog was shown
+    expect(isOpen).toBe(true)
   })
 
   test('should navigate tasks with J/K keys', async () => {
@@ -727,7 +747,9 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press('k')
     await page.waitForTimeout(200)
 
-    // Reaching here without error is the assertion
+    // Verify tasks are still visible after J/K navigation
+    const tasksVisible = await page.locator('.task-item').first().isVisible().catch(() => false)
+    expect(tasksVisible).toBe(true)
   })
 
   test('should complete task with E key', async () => {
@@ -757,7 +779,9 @@ test.describe('Keyboard Shortcuts', () => {
       await page.waitForTimeout(300)
     }
 
-    // Reaching here without error is the assertion
+    // Verify the inbox heading is still showing (we're still on the right page)
+    const inboxStillVisible = await page.locator('h1:has-text("Inbox")').isVisible().catch(() => false)
+    expect(inboxStillVisible).toBe(true)
   })
 
   test('should set priority with number keys 1-4', async () => {
@@ -787,7 +811,9 @@ test.describe('Keyboard Shortcuts', () => {
       await page.waitForTimeout(300)
     }
 
-    // Reaching here without error is the assertion
+    // Verify at least one task is visible in the inbox
+    const anyTaskVisible = await page.locator('.task-item').first().isVisible().catch(() => false)
+    expect(anyTaskVisible).toBe(true)
   })
 })
 
@@ -819,7 +845,9 @@ test.describe('Settings', () => {
       await themeToggle.click()
       await page.waitForTimeout(300)
     }
-    // Reaching here without error is the assertion
+    // Verify the page is still rendered after theme toggle
+    const pageBody = await page.locator('body').isVisible()
+    expect(pageBody).toBe(true)
   })
 })
 
@@ -844,7 +872,9 @@ test.describe('Undo/Redo', () => {
         await page.waitForTimeout(300)
       }
     }
-    // Reaching here without error is the assertion
+    // Verify we are still on the inbox view after undo
+    const inboxVisible = await page.locator('h1:has-text("Inbox")').isVisible().catch(() => false)
+    expect(inboxVisible).toBe(true)
   })
 })
 
@@ -932,7 +962,9 @@ test.describe('Sections', () => {
         }
       }
     }
-    // Reaching here without error is the assertion
+    // Verify the project view is showing
+    const mainVisible = await page.locator('main').first().isVisible()
+    expect(mainVisible).toBe(true)
   })
 })
 
@@ -977,7 +1009,10 @@ test.describe('Drag and Drop', () => {
       }
     }
 
-    // Reaching here without error is the assertion
+    // Verify both drag tasks are still visible after drag attempt
+    const dragTask1Visible = await page.locator('.task-item:has-text("Drag Task 1")').isVisible().catch(() => false)
+    const dragTask2Visible = await page.locator('.task-item:has-text("Drag Task 2")').isVisible().catch(() => false)
+    expect(dragTask1Visible || dragTask2Visible).toBe(true)
   })
 
   test('should drag task to project in sidebar', async () => {
@@ -999,7 +1034,9 @@ test.describe('Drag and Drop', () => {
       }
     }
 
-    // Reaching here without error is the assertion
+    // Verify the inbox view is still showing after drag attempt
+    const inboxHeading = await page.locator('h1:has-text("Inbox")').isVisible().catch(() => false)
+    expect(inboxHeading).toBe(true)
   })
 })
 

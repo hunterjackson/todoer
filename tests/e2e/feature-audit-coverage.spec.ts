@@ -127,7 +127,9 @@ test.describe('Task Management: Redo', () => {
     await page.keyboard.press('Meta+Shift+z')
     await page.waitForTimeout(500)
 
-    // Redo re-completes the task; reaching here without error is the assertion
+    // Redo re-completes the task - it should no longer be visible in active list
+    const taskGoneAfterRedo = await page.locator('.task-item:has-text("Redo test task")').isVisible().catch(() => false)
+    expect(taskGoneAfterRedo).toBe(false)
   })
 })
 
@@ -224,7 +226,9 @@ test.describe('Project Features: Project Description', () => {
     // Look for description text in project view
     const descText = page.locator('text=This is a project description')
     const hasDesc = await descText.isVisible().catch(() => false)
-    // Reaching here without error is the assertion
+    // Verify the project heading is visible after navigation
+    const projectHeading = page.locator('h1:has-text("ProjectWithDesc")')
+    expect(await projectHeading.isVisible().catch(() => false)).toBe(true)
   })
 })
 
@@ -720,7 +724,9 @@ test.describe('Labels: Multiple Labels Per Task', () => {
     }
 
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the task is still visible in the list after label changes
+    const taskStillVisible = page.locator(`.task-item:has-text("MultiLabelTask")`)
+    expect(await taskStillVisible.isVisible().catch(() => false)).toBe(true)
   })
 })
 

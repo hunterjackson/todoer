@@ -396,7 +396,10 @@ test.describe('Combined Label and Project Autocomplete', () => {
       const dropdown = page.locator('.fixed.bg-popover').first()
       const isDropdownVisible = await dropdown.isVisible().catch(() => false)
 
-      // Reaching here without error is the assertion
+      // Verify the input contains both @ and # tokens
+      const inputValue = await input.inputValue()
+      expect(inputValue).toContain('@')
+      expect(inputValue).toContain('#')
     }
 
     await closeDialogs()

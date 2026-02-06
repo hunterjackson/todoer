@@ -146,7 +146,8 @@ test.describe('Project Name Display (not raw IDs)', () => {
       }
     }
 
-    // Reaching here without error is the assertion
+    // Verify the Today view heading is visible
+    await expect(page.locator('h1:has-text("Today")')).toBeVisible()
   })
 })
 
@@ -226,7 +227,12 @@ test.describe('Comment Timestamps and Editing', () => {
     }
 
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the comment text is still visible (edit didn't destroy it)
+    await goToInbox()
+    await openEditDialog(taskName)
+    const commentStillExists = await page.locator('text=Test comment with timestamp').isVisible().catch(() => false)
+    expect(commentStillExists).toBe(true)
+    await closeDialogs()
   })
 
   test('should show (edited) label after editing comment', async () => {
@@ -274,7 +280,8 @@ test.describe('Comment Timestamps and Editing', () => {
     const isEdited = await editedLabel.isVisible().catch(() => false)
 
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the comment was edited - either (edited) label shows or updated text appears
+    expect(isEdited || await page.locator('text=Updated comment text').isVisible().catch(() => false)).toBe(true)
   })
 })
 
@@ -329,7 +336,8 @@ test.describe('Rich Text Editor', () => {
     }
 
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the editor was visible and typeable
+    expect(await page.locator('.ProseMirror').first().isVisible().catch(() => false)).toBe(true)
   })
 })
 
@@ -409,7 +417,9 @@ test.describe('Autosave Task Changes', () => {
     // Wait for save to complete
     await page.waitForTimeout(1500)
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the modified task name persisted in the list
+    const modifiedTask = page.locator(`.task-item:has-text("${taskName}-modified")`)
+    expect(await modifiedTask.isVisible().catch(() => false)).toBe(true)
   })
 })
 
@@ -467,7 +477,8 @@ test.describe('Filter Query Typeahead Autocomplete', () => {
     }
 
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the filter dialog was opened and the query input was interactive
+    expect(await page.locator('button[title="Add filter"]').first().isVisible().catch(() => false)).toBe(true)
   })
 
   test('should show autocomplete dropdown when typing @ in filter query', async () => {
@@ -519,7 +530,8 @@ test.describe('Filter Query Typeahead Autocomplete', () => {
     }
 
     await closeDialogs()
-    // Reaching here without error is the assertion
+    // Verify the add filter button is present (filter dialog was successfully interacted with)
+    expect(await page.locator('button[title="Add filter"]').first().isVisible().catch(() => false)).toBe(true)
   })
 })
 

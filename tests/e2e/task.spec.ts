@@ -150,7 +150,8 @@ test.describe('Task Management', () => {
       await page.waitForTimeout(300)
     }
 
-    // Reaching here without error is the assertion
+    // Verify the quick add modal was opened (or at least the shortcut was handled)
+    expect(isVisible).toBe(true)
   })
 
   test('should navigate with keyboard shortcuts', async () => {
@@ -230,7 +231,9 @@ test.describe('Task Editing', () => {
       }
     }
 
-    // Reaching here without error is the assertion
+    // Verify a task item exists in the inbox (prerequisite for the test)
+    const taskExists = await page.locator('.task-item, [data-task]').first().isVisible().catch(() => false)
+    expect(taskExists).toBe(true)
   })
 
   test('should open edit dialog when clicking edit button', async () => {
@@ -262,9 +265,11 @@ test.describe('Task Editing', () => {
 
         expect(dialogVisible).toBe(true)
       }
-      // If edit button not visible, reaching here without error is the assertion
+      // If edit button not visible, at least verify the task item is present
+      expect(await taskItem.isVisible()).toBe(true)
     }
-    // If no task visible, reaching here without error is the assertion
+    // Verify at least one task is visible in the inbox
+    expect(await page.locator('.task-item, [data-task]').first().isVisible()).toBe(true)
   })
 
   test('should save edited task', async () => {
@@ -311,7 +316,9 @@ test.describe('Task Editing', () => {
       }
     }
 
-    // Reaching here without error is the assertion
+    // Verify the updated task name is visible in the list
+    const updatedTaskVisible = await page.locator('.task-item:has-text("Updated task name")').isVisible().catch(() => false)
+    expect(updatedTaskVisible).toBe(true)
   })
 })
 
@@ -329,7 +336,8 @@ test.describe('Search', () => {
       await page.waitForTimeout(500)
     }
 
-    // Reaching here without error is the assertion
+    // Verify the search input was opened and is interactable
+    expect(isVisible).toBe(true)
   })
 })
 
