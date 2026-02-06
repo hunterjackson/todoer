@@ -281,6 +281,47 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
   })
 
+  // ─── Fix #10 (Medium): Calendar overdue highlighting ───
+  describe('Fix #10: Calendar overdue date comparison', () => {
+    // The old code compared day/month/year components individually, which
+    // failed for cross-month and cross-year boundaries. The fix compares
+    // full Date timestamps.
+
+    function isOverdue(year: number, month: number, day: number, todayDate: Date): boolean {
+      const todayStart = new Date(todayDate)
+      todayStart.setHours(0, 0, 0, 0)
+      return new Date(year, month, day).getTime() < todayStart.getTime()
+    }
+
+    it('should detect overdue for previous day in same month', () => {
+      const today = new Date(2026, 1, 6) // Feb 6
+      expect(isOverdue(2026, 1, 5, today)).toBe(true) // Feb 5 is overdue
+    })
+
+    it('should not mark today as overdue', () => {
+      const today = new Date(2026, 1, 6)
+      expect(isOverdue(2026, 1, 6, today)).toBe(false)
+    })
+
+    it('should detect overdue across month boundary (Jan 31 vs Feb 1)', () => {
+      const today = new Date(2026, 1, 1) // Feb 1
+      // Old buggy logic: day=31, 31 < 1 is false → missed overdue
+      expect(isOverdue(2026, 0, 31, today)).toBe(true) // Jan 31 IS overdue
+    })
+
+    it('should detect overdue across year boundary (Dec 2025 vs Jan 2026)', () => {
+      const today = new Date(2026, 0, 1) // Jan 1, 2026
+      // Old buggy logic: month=11, 11 <= 0 is false → missed overdue
+      expect(isOverdue(2025, 11, 31, today)).toBe(true) // Dec 31 2025 IS overdue
+    })
+
+    it('should not mark future dates as overdue', () => {
+      const today = new Date(2026, 1, 6)
+      expect(isOverdue(2026, 1, 7, today)).toBe(false)
+      expect(isOverdue(2026, 2, 1, today)).toBe(false) // March
+    })
+  })
+
   // ─── Fix #12: MCP server awaits DB init ───
   describe('Fix #12: MCP server DB init', () => {
     it('initDatabase should be idempotent (safe to call twice)', async () => {

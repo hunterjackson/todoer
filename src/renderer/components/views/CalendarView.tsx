@@ -148,9 +148,10 @@ export function CalendarView(): React.ReactElement {
             {calendarDays.map((day, index) => {
               const dayTasks = day ? getTasksForDay(day) : []
               const incompleteTasks = dayTasks.filter((t) => !t.completed)
-              const hasOverdue = day && day < new Date().getDate() &&
-                month <= new Date().getMonth() &&
-                year <= new Date().getFullYear() &&
+              const todayStart = new Date()
+              todayStart.setHours(0, 0, 0, 0)
+              const hasOverdue = day !== null &&
+                new Date(year, month, day).getTime() < todayStart.getTime() &&
                 incompleteTasks.length > 0
 
               return (
