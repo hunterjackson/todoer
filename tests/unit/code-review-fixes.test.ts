@@ -640,6 +640,39 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
   })
 
+  // ─── v6 Fix #7: Due-date grouping timezone-safe parsing ───
+  describe('v6 Fix #7: Date grouping key parsing', () => {
+    it('should create consistent group keys from local date components', () => {
+      // Simulate what groupTasks does: create key from local components
+      const timestamp = new Date(2024, 0, 15, 10, 30).getTime() // Jan 15 2024, 10:30 local
+      const date = new Date(timestamp)
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      const d = String(date.getDate()).padStart(2, '0')
+      const key = `${y}-${m}-${d}`
+
+      // Parse key back as local date (the fix)
+      const [py, pm, pd] = key.split('-').map(Number)
+      const parsed = new Date(py, pm - 1, pd)
+
+      // The parsed date should match the original day in local time
+      expect(parsed.getFullYear()).toBe(2024)
+      expect(parsed.getMonth()).toBe(0) // January
+      expect(parsed.getDate()).toBe(15)
+    })
+
+    it('should NOT shift days when parsing YYYY-MM-DD locally vs UTC', () => {
+      // The bug: new Date('2024-01-15') parses as UTC midnight
+      // In UTC-5, that's Jan 14 23:00 local → wrong day label!
+      const key = '2024-01-15'
+
+      // Fixed approach: parse as local
+      const [y, m, d] = key.split('-').map(Number)
+      const localDate = new Date(y, m - 1, d)
+      expect(localDate.getDate()).toBe(15) // Always 15 regardless of timezone
+    })
+  })
+
   // ─── v6 Fix #4: Recurring task completion without dueDate ───
   describe('v6 Fix #4: Recurrence without dueDate', () => {
     it('should reschedule recurring task that has no dueDate using today as base', () => {

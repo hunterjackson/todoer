@@ -302,7 +302,9 @@ export function groupTasks(
         if (key === 'no-date') {
           label = 'No date'
         } else {
-          const date = new Date(key)
+          // Parse YYYY-MM-DD key as local date (not UTC)
+          const [y, m, d] = key.split('-').map(Number)
+          const date = new Date(y, m - 1, d)
           const today = new Date()
           const tomorrow = new Date(today)
           tomorrow.setDate(tomorrow.getDate() + 1)
