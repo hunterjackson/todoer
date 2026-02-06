@@ -82,4 +82,50 @@ describe('sanitizeHtml', () => {
     const html = '<p onmouseover="evil()" onload="bad()" onclick="worse()">Text</p>'
     expect(sanitizeHtml(html)).toBe('<p>Text</p>')
   })
+
+  it('should strip javascript: URLs with mixed case', () => {
+    const html = '<a href="jAvAsCrIpT:alert(1)">Click</a>'
+    expect(sanitizeHtml(html)).toBe('<a href="">Click</a>')
+  })
+
+  it('should strip javascript: URLs with whitespace/encoding', () => {
+    const html = '<a href="  javascript:alert(1)">Click</a>'
+    expect(sanitizeHtml(html)).toBe('<a href="">Click</a>')
+  })
+
+  it('should strip data: URLs', () => {
+    const html = '<a href="data:text/html,<script>alert(1)</script>">Click</a>'
+    expect(sanitizeHtml(html)).toBe('<a href="">Click</a>')
+  })
+
+  it('should strip vbscript: URLs', () => {
+    const html = '<a href="vbscript:msgbox">Click</a>'
+    expect(sanitizeHtml(html)).toBe('<a href="">Click</a>')
+  })
+
+  it('should strip SVG-based XSS', () => {
+    const html = '<svg onload="alert(1)"><circle r="10"/></svg>'
+    const result = sanitizeHtml(html)
+    expect(result).not.toContain('<svg')
+    expect(result).not.toContain('onload')
+  })
+
+  it('should strip style tags and their content', () => {
+    const html = '<style>body { background: url("javascript:alert(1)") }</style><p>Safe</p>'
+    const result = sanitizeHtml(html)
+    expect(result).not.toContain('<style')
+    expect(result).toContain('<p>Safe</p>')
+  })
+
+  it('should strip base tags', () => {
+    const html = '<base href="https://evil.com"><p>Content</p>'
+    const result = sanitizeHtml(html)
+    expect(result).not.toContain('<base')
+  })
+
+  it('should strip meta tags', () => {
+    const html = '<meta http-equiv="refresh" content="0;url=evil.com"><p>Content</p>'
+    const result = sanitizeHtml(html)
+    expect(result).not.toContain('<meta')
+  })
 })

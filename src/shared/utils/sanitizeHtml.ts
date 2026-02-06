@@ -27,20 +27,22 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
  * Keeps safe formatting tags and text content.
  */
 export function sanitizeHtml(html: string): string {
-  // Remove script tags and their content
+  // Remove script and style tags and their content
   let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
 
-  // Remove iframe, object, embed, form tags and their content
-  sanitized = sanitized.replace(/<(iframe|object|embed|form)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi, '')
+  // Remove iframe, object, embed, form, svg, math tags and their content
+  sanitized = sanitized.replace(/<(iframe|object|embed|form|svg|math)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi, '')
   // Also remove self-closing versions
-  sanitized = sanitized.replace(/<(iframe|object|embed|form)\b[^>]*\/?>/gi, '')
+  sanitized = sanitized.replace(/<(iframe|object|embed|form|svg|math)\b[^>]*\/?>/gi, '')
 
   // Remove event handler attributes (on*)
   sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
 
-  // Remove javascript: and data: URLs from href/src/action attributes
-  sanitized = sanitized.replace(/(href|src|action)\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi, '$1=""')
-  sanitized = sanitized.replace(/(href|src|action)\s*=\s*(?:"data:[^"]*"|'data:[^']*')/gi, '$1=""')
+  // Remove dangerous protocol URLs from href/src/action attributes
+  // Handles javascript:, data:, vbscript: with optional whitespace and mixed case
+  sanitized = sanitized.replace(/(href|src|action)\s*=\s*"[\s]*(javascript|data|vbscript)\s*:[^"]*"/gi, '$1=""')
+  sanitized = sanitized.replace(/(href|src|action)\s*=\s*'[\s]*(javascript|data|vbscript)\s*:[^']*'/gi, '$1=""')
 
   // Remove style attributes that could contain expressions
   sanitized = sanitized.replace(/style\s*=\s*(?:"[^"]*expression\s*\([^"]*"|'[^']*expression\s*\([^']*')/gi, '')

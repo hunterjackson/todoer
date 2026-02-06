@@ -23,7 +23,7 @@ import {
   getUndoAction,
   getRedoAction
 } from '../services/undoRedo'
-import { topologicalSort } from '@shared/utils'
+import { topologicalSort, sanitizeHtml } from '@shared/utils'
 import type { Task, TaskCreate, TaskUpdate, CommentCreate, CommentUpdate } from '@shared/types'
 
 // Lazy-initialized repository singletons
@@ -951,11 +951,12 @@ export function registerIpcHandlers(): void {
           // Skip if neither task nor project was imported
           if (!remappedTaskId && !remappedProjectId) continue
 
+          const sanitizedContent = sanitizeHtml(comment.content)
           let newComment
           if (remappedTaskId) {
-            newComment = commentRepo.create({ taskId: remappedTaskId, content: comment.content })
+            newComment = commentRepo.create({ taskId: remappedTaskId, content: sanitizedContent })
           } else if (remappedProjectId) {
-            newComment = commentRepo.create({ projectId: remappedProjectId, content: comment.content })
+            newComment = commentRepo.create({ projectId: remappedProjectId, content: sanitizedContent })
           }
           // Restore original timestamps
           if (newComment && (comment.createdAt || comment.updatedAt)) {
