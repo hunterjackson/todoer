@@ -8,39 +8,56 @@ interface Repositories {
   projectRepo: ProjectRepository
 }
 
-export function registerResources(): Resource[] {
-  return [
-    {
-      uri: 'todoer://today',
-      name: 'Today\'s Tasks',
-      description: 'Tasks due today and overdue tasks',
-      mimeType: 'application/json'
-    },
-    {
-      uri: 'todoer://inbox',
-      name: 'Inbox',
-      description: 'Tasks in the Inbox project',
-      mimeType: 'application/json'
-    },
-    {
-      uri: 'todoer://overdue',
-      name: 'Overdue Tasks',
-      description: 'All overdue tasks',
-      mimeType: 'application/json'
-    },
-    {
-      uri: 'todoer://upcoming',
-      name: 'Upcoming Tasks',
-      description: 'Tasks due in the next 7 days',
-      mimeType: 'application/json'
-    },
-    {
-      uri: 'todoer://stats',
-      name: 'Productivity Stats',
-      description: 'Karma points, streaks, and productivity statistics',
-      mimeType: 'application/json'
+const STATIC_RESOURCES: Resource[] = [
+  {
+    uri: 'todoer://today',
+    name: 'Today\'s Tasks',
+    description: 'Tasks due today and overdue tasks',
+    mimeType: 'application/json'
+  },
+  {
+    uri: 'todoer://inbox',
+    name: 'Inbox',
+    description: 'Tasks in the Inbox project',
+    mimeType: 'application/json'
+  },
+  {
+    uri: 'todoer://overdue',
+    name: 'Overdue Tasks',
+    description: 'All overdue tasks',
+    mimeType: 'application/json'
+  },
+  {
+    uri: 'todoer://upcoming',
+    name: 'Upcoming Tasks',
+    description: 'Tasks due in the next 7 days',
+    mimeType: 'application/json'
+  },
+  {
+    uri: 'todoer://stats',
+    name: 'Productivity Stats',
+    description: 'Karma points, streaks, and productivity statistics',
+    mimeType: 'application/json'
+  }
+]
+
+export function registerResources(repos?: { projectRepo: ProjectRepository }): Resource[] {
+  const resources = [...STATIC_RESOURCES]
+
+  // Dynamically add project resources
+  if (repos) {
+    const projects = repos.projectRepo.list()
+    for (const project of projects) {
+      resources.push({
+        uri: `todoer://project/${project.id}`,
+        name: `Project: ${project.name}`,
+        description: `Tasks in the "${project.name}" project`,
+        mimeType: 'application/json'
+      })
     }
-  ]
+  }
+
+  return resources
 }
 
 interface KarmaStats {

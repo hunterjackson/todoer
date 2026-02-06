@@ -57,7 +57,9 @@ export async function startMcpServer(): Promise<void> {
 
   // Register resource handlers
   server.setRequestHandler(ListResourcesRequestSchema, async () => {
-    return { resources: registerResources() }
+    const db = getDatabase()
+    const projectRepo = new ProjectRepository(db)
+    return { resources: registerResources({ projectRepo }) }
   })
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
