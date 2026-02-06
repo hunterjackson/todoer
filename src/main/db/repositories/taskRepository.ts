@@ -218,6 +218,11 @@ export class TaskRepository {
   create(data: TaskCreate): Task {
     const timestamp = now()
     const id = generateId()
+    const normalizedContent = data.content.trim()
+
+    if (!normalizedContent) {
+      throw new Error('Task content cannot be empty')
+    }
 
     // Determine actual project ID
     const actualProjectId = data.projectId ?? INBOX_PROJECT_ID
@@ -271,7 +276,7 @@ export class TaskRepository {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL)`,
       [
         id,
-        data.content,
+        normalizedContent,
         data.description ?? null,
         data.projectId ?? INBOX_PROJECT_ID,
         data.sectionId ?? null,
@@ -326,8 +331,12 @@ export class TaskRepository {
     const params: unknown[] = [timestamp]
 
     if (data.content !== undefined) {
+      const normalizedContent = data.content.trim()
+      if (!normalizedContent) {
+        throw new Error('Task content cannot be empty')
+      }
       updates.push('content = ?')
-      params.push(data.content)
+      params.push(normalizedContent)
     }
     if (data.description !== undefined) {
       updates.push('description = ?')

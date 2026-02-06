@@ -40,11 +40,15 @@ export function TaskAddInput({
   const handleSubmit = async () => {
     if (!content.trim() || isSubmitting) return
 
+    // Parse inline modifiers from content (same as QuickAddModal)
+    const parsed = parseInlineTaskContent(content)
+    const parsedContent = parsed.content.trim()
+    if (!parsedContent) {
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      // Parse inline modifiers from content (same as QuickAddModal)
-      const parsed = parseInlineTaskContent(content)
-      let finalContent = parsed.content
       let finalProjectId = selectedProject?.id || initialProjectId
       let finalPriority = priority
       const finalLabelIds = selectedLabels.map((l) => l.id)
@@ -73,7 +77,7 @@ export function TaskAddInput({
       }
 
       const taskData: TaskCreate = {
-        content: finalContent,
+        content: parsedContent,
         dueDate: dueDate ? dueDate.getTime() : undefined,
         priority: finalPriority,
         projectId: finalProjectId,
@@ -118,21 +122,58 @@ export function TaskAddInput({
       e.preventDefault()
       setIsSubmitting(true)
       try {
+        let createdCount = 0
         for (const line of lines) {
+          const parsed = parseInlineTaskContent(line)
+          const parsedContent = parsed.content.trim()
+          if (!parsedContent) {
+            continue
+          }
+
+          let finalProjectId = selectedProject?.id || initialProjectId
+          let finalPriority = priority
+          const finalLabelIds = selectedLabels.map((l) => l.id)
+
+          // Resolve inline #project
+          if (parsed.projectName) {
+            const matchedProject = findProjectByName(parsed.projectName, projects)
+            if (matchedProject) {
+              finalProjectId = matchedProject.id
+            }
+          }
+
+          // Resolve inline @label
+          if (parsed.labelNames) {
+            for (const labelName of parsed.labelNames) {
+              const matchedLabel = findLabelByName(labelName, allLabels)
+              if (matchedLabel && !finalLabelIds.includes(matchedLabel.id)) {
+                finalLabelIds.push(matchedLabel.id)
+              }
+            }
+          }
+
+          if (parsed.priority && priority === 4) {
+            finalPriority = parsed.priority
+          }
+
           await onCreate({
-            content: line,
-            priority,
-            projectId: selectedProject?.id || initialProjectId,
-            labelIds: selectedLabels.map((l) => l.id)
+            content: parsedContent,
+            priority: finalPriority,
+            projectId: finalProjectId,
+            labelIds: finalLabelIds
           })
+          createdCount++
         }
-        setContent('')
-        setDueDate(null)
-        setPriority(4)
-        setSelectedLabels([])
-        setSelectedProject(null)
-        if (!autoFocus) {
-          setIsExpanded(false)
+
+        if (createdCount > 0) {
+          setContent('')
+          setDueDate(null)
+          setPriority(4)
+          setSelectedLabels([])
+          setSelectedProject(null)
+          if (!autoFocus) {
+            setIsExpanded(false)
+          }
         }
       } finally {
         setIsSubmitting(false)

@@ -138,6 +138,67 @@ test.describe.serial('CODE_REVIEW v8 fixes', () => {
     expect(taskText).not.toContain('p1')
   })
 
+  test('Finding 4: TaskAddInput rejects inline-only content', async () => {
+    await goToInbox()
+
+    const beforeCount = await page.locator('.task-item').count()
+
+    const addButton = page.locator('button:has-text("Add task")').first()
+    await addButton.click()
+    await page.waitForTimeout(300)
+
+    const input = page.locator('input[placeholder*="Task name"]').first()
+    await input.fill('#Inbox')
+    await page.waitForTimeout(100)
+
+    const submitBtn = page.locator('button:has-text("Add task")').last()
+    await submitBtn.click()
+    await page.waitForTimeout(500)
+
+    const afterCount = await page.locator('.task-item').count()
+    expect(afterCount).toBe(beforeCount)
+    await expect(input).toHaveValue('#Inbox')
+  })
+
+  test('Finding 4: TaskAddInput multi-line paste parses inline priority', async () => {
+    await goToInbox()
+
+    const stamp = Date.now()
+    const taskOneContent = `PasteParse ${stamp} one`
+    const taskTwoContent = `PasteParse ${stamp} two`
+    const line1 = `${taskOneContent} p2`
+    const line2 = `${taskTwoContent} p1`
+
+    const addButton = page.locator('button:has-text("Add task")').first()
+    await addButton.click()
+    await page.waitForTimeout(300)
+
+    const input = page.locator('input[placeholder*="Task name"]').first()
+    await input.click()
+    await input.evaluate((element, payload) => {
+      const event = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent
+      Object.defineProperty(event, 'clipboardData', {
+        value: { getData: () => payload as string }
+      })
+      element.dispatchEvent(event)
+    }, `${line1}\n${line2}`)
+    await page.waitForTimeout(800)
+
+    const taskOne = page.locator(`.task-item:has-text("${taskOneContent}")`).first()
+    const taskTwo = page.locator(`.task-item:has-text("${taskTwoContent}")`).first()
+
+    await expect(taskOne).toBeVisible()
+    await expect(taskTwo).toBeVisible()
+
+    const taskOneText = await taskOne.locator('.text-sm').first().textContent()
+    const taskTwoText = await taskTwo.locator('.text-sm').first().textContent()
+
+    expect(taskOneText).not.toContain('p2')
+    expect(taskTwoText).not.toContain('p1')
+    await expect(taskOne.locator('text=P2')).toBeVisible()
+    await expect(taskTwo.locator('text=P1')).toBeVisible()
+  })
+
   test('Finding 4: TaskAddInput parses inline @label via Quick Add', async () => {
     // Create a label first (before opening modal, so useLabels picks it up)
     await page.evaluate(async () => {

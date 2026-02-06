@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+set -e
+
+echo "Running lint before commit..."
+npm run -s lint

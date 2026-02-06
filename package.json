@@ -19,7 +19,8 @@
     "test:all": "npm run typecheck && npm run test:coverage && npm run test:e2e",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run test:coverage"
+    "verify": "npm run typecheck && npm run test:coverage",
+    "setup:hooks": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

@@ -17,7 +17,7 @@ import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
 import { calculateRecurringRescheduleDate } from '../services/recurrenceEngine'
 import { importTaskAttachments } from '../services/attachmentImport'
-import { validateSettingEntry } from '../services/settingsValidation'
+import { validateSettingEntry, type SettingKey } from '../services/settingsValidation'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
 import { KarmaEngine } from '../services/karmaEngine'
 import {
@@ -130,7 +130,7 @@ export function registerIpcHandlers(): void {
     const task = recordUndo ? taskRepo.get(id) : null
 
     // Snapshot reminders before delete (taskRepo.delete removes them)
-    let reminderSnapshot: Array<{ taskId: string; remindAt: number; notified: boolean }> = []
+    const reminderSnapshot: Array<{ taskId: string; remindAt: number; notified: boolean }> = []
     if (recordUndo && task) {
       const descendantIds = taskRepo.getDescendantIds(id)
       const allTaskIds = [id, ...descendantIds]
@@ -1026,12 +1026,15 @@ export function registerIpcHandlers(): void {
         taskIdMap
       )
 
+      const validatedImportedSettings: Partial<Record<SettingKey, string>> = {}
+
       // Import settings (validated using same rules as settings:set)
       if (data.settings && typeof data.settings === 'object') {
         const db = getDatabase()
         for (const [key, value] of Object.entries(data.settings)) {
           try {
             const validated = validateSettingEntry(key, String(value))
+            validatedImportedSettings[validated.key] = validated.value
             const stmt = db.prepare('SELECT key FROM settings WHERE key = ?')
             stmt.bind([validated.key])
             const exists = stmt.step()
@@ -1048,17 +1051,18 @@ export function registerIpcHandlers(): void {
         }
       }
 
-      // Apply imported notification settings to runtime service
-      if (data.settings && typeof data.settings === 'object') {
-        if ('notificationsEnabled' in data.settings) {
-          notificationService.setEnabled(String(data.settings.notificationsEnabled) === 'true')
-        }
-        if ('quietHoursStart' in data.settings && 'quietHoursEnd' in data.settings) {
-          notificationService.setQuietHours(
-            Number(data.settings.quietHoursStart),
-            Number(data.settings.quietHoursEnd)
-          )
-        }
+      // Apply imported notification settings to runtime service using validated values.
+      if (validatedImportedSettings.notificationsEnabled !== undefined) {
+        notificationService.setEnabled(validatedImportedSettings.notificationsEnabled === 'true')
+      }
+      if (
+        validatedImportedSettings.quietHoursStart !== undefined &&
+        validatedImportedSettings.quietHoursEnd !== undefined
+      ) {
+        notificationService.setQuietHours(
+          Number.parseInt(validatedImportedSettings.quietHoursStart, 10),
+          Number.parseInt(validatedImportedSettings.quietHoursEnd, 10)
+        )
       }
 
       // Import karma stats

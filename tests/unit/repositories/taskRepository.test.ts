@@ -137,6 +137,11 @@ describe('TaskRepository', () => {
       expect(task1.sortOrder).toBeLessThan(task2.sortOrder)
       expect(task2.sortOrder).toBeLessThan(task3.sortOrder)
     })
+
+    it('should reject empty or whitespace-only content', () => {
+      expect(() => repo.create({ content: '' })).toThrow(/task content cannot be empty/i)
+      expect(() => repo.create({ content: '   ' })).toThrow(/task content cannot be empty/i)
+    })
   })
 
   describe('get', () => {
@@ -283,6 +288,14 @@ describe('TaskRepository', () => {
     it('should return null for non-existent task', () => {
       const result = repo.update('non-existent', { content: 'Test' })
       expect(result).toBeNull()
+    })
+
+    it('should reject updating to empty or whitespace-only content', () => {
+      const task = repo.create({ content: 'Task' })
+
+      expect(() => repo.update(task.id, { content: '' })).toThrow(/task content cannot be empty/i)
+      expect(() => repo.update(task.id, { content: '   ' })).toThrow(/task content cannot be empty/i)
+      expect(repo.get(task.id)?.content).toBe('Task')
     })
 
     it('should update the updatedAt timestamp', () => {
