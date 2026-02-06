@@ -517,7 +517,7 @@ describe('CODE_REVIEW Fix Tests', () => {
       // Delete the project
       projectRepo.delete(project.id)
 
-      // Simulate the handler logic: check and reset
+      // Replicate handler logic from handlers.ts projects:delete (IPC handlers require electron)
       const stmt = db.prepare('SELECT value FROM settings WHERE key = ?')
       stmt.bind(['defaultProject'])
       let defaultProject = 'inbox'
