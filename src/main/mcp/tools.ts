@@ -15,6 +15,14 @@ interface Repositories {
   karmaEngine: KarmaEngine
 }
 
+function normalizePriority(value: unknown): Priority {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (parsed === 1 || parsed === 2 || parsed === 3 || parsed === 4) {
+    return parsed
+  }
+  return 4
+}
+
 export function registerTools(): Tool[] {
   return [
     {
@@ -292,7 +300,7 @@ export function handleToolCall(
           description: args.description as string | undefined,
           dueDate,
           recurrenceRule,
-          priority: (args.priority as Priority) || 4,
+          priority: normalizePriority(args.priority),
           projectId: args.projectId as string | undefined,
           labelIds
         })
@@ -373,7 +381,7 @@ export function handleToolCall(
 
         if (args.content) updates.content = args.content
         if (args.description !== undefined) updates.description = args.description
-        if (args.priority) updates.priority = args.priority
+        if (args.priority !== undefined) updates.priority = normalizePriority(args.priority)
         if (args.projectId) updates.projectId = args.projectId
 
         if (args.dueDate) {
