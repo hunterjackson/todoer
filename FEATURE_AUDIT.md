@@ -242,11 +242,13 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Theme/dark mode | ✅ | |
-| Start of week | ✅ | In Settings panel |
-| Date format | ✅ | MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD in Settings |
-| Time format | ✅ | 12h/24h in Settings panel |
+| Start of week | ✅ | In Settings panel, wired to CalendarView |
+| Date format | ✅ | mdy/dmy/ymd in Settings, wired to TaskItem |
+| Time format | 🔶 | Setting exists but not wired to all date displays |
 | Default project | ✅ | In Settings panel, used by QuickAddModal |
-| Notification settings | ✅ | Quiet hours, enable/disable |
+| Notification toggle | ✅ | Enable/disable in Settings |
+| Quiet hours | ❌ | Service supports it, no Settings UI controls |
+| Confirm before delete | ✅ | Setting wired to all delete actions |
 | Daily/weekly goals | ✅ | |
 
 ---
@@ -287,14 +289,16 @@
 ## Remaining Features to Implement
 
 ### High Priority (Core UX)
-(All completed!)
+(All completed)
 
 ### Medium Priority (Power Users)
-(All completed!)
+- 🔶 Time format setting not wired to all date displays
+- ❌ Quiet hours Settings UI
 
 ### Lower Priority (Nice to Have)
-9. ❌ Project templates
-16. ✅ File attachments
+- ❌ Project templates
+- ❌ Drag-to-indent sub-projects in sidebar
+- ❌ Duration in calendar view
 
 ---
 
