@@ -205,6 +205,45 @@ describe('KarmaEngine', () => {
     })
   })
 
+  describe('karma varies with due date (recurring-undo fix)', () => {
+    it('should award on-time bonus when due date is in the future', () => {
+      const futureDate = new Date()
+      futureDate.setDate(futureDate.getDate() + 7)
+
+      const task = createMockTask({ dueDate: futureDate.getTime() })
+      const result = karmaEngine.recordTaskCompletion(task)
+
+      // TASK_COMPLETED (1) + TASK_COMPLETED_ON_TIME (2) = 3
+      expect(result.points).toBe(3)
+    })
+
+    it('should not award on-time bonus when due date is in the past', () => {
+      const pastDate = new Date()
+      pastDate.setDate(pastDate.getDate() - 7)
+
+      const task = createMockTask({ dueDate: pastDate.getTime() })
+      const result = karmaEngine.recordTaskCompletion(task)
+
+      // TASK_COMPLETED (1) only, no on-time bonus
+      expect(result.points).toBe(1)
+    })
+
+    it('should subtract correct amount based on due date during uncompletion', () => {
+      const futureDate = new Date()
+      futureDate.setDate(futureDate.getDate() + 7)
+
+      const task = createMockTask({ dueDate: futureDate.getTime() })
+      karmaEngine.recordTaskCompletion(task)
+
+      const pointsBefore = karmaEngine.getStats().totalPoints
+      const uncompResult = karmaEngine.recordTaskUncompletion(task)
+
+      // Should subtract same 3 points that were awarded
+      expect(uncompResult.points).toBe(-3)
+      expect(karmaEngine.getStats().totalPoints).toBe(pointsBefore - 3)
+    })
+  })
+
   describe('updateStreak', () => {
     it('should update current streak', () => {
       const today = getLocalDateKey()

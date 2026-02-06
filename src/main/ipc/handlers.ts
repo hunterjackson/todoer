@@ -953,14 +953,14 @@ export function registerIpcHandlers(): void {
             break
 
           case 'recurring-complete-undo': {
-            // Undo recurring complete = restore previous due date AND reverse karma
-            const taskBefore = taskRepo.get(action.taskId)
+            // Undo recurring complete = restore previous due date FIRST, then reverse karma
+            // Must restore due date before reading task so karma uses the original due date
             if (action.previousDueDate !== undefined) {
               taskRepo.update(action.taskId, { dueDate: action.previousDueDate })
             }
-            // Reverse karma for the completion that happened
-            if (taskBefore) {
-              karmaEngine.recordTaskUncompletion(taskBefore)
+            const taskWithOriginalDate = taskRepo.get(action.taskId)
+            if (taskWithOriginalDate) {
+              karmaEngine.recordTaskUncompletion(taskWithOriginalDate)
             }
             break
           }
