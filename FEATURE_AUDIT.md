@@ -247,7 +247,7 @@
 | Time format | 🔶 | Setting exists but not wired to all date displays |
 | Default project | ✅ | In Settings panel, used by QuickAddModal |
 | Notification toggle | ✅ | Enable/disable in Settings |
-| Quiet hours | ❌ | Service supports it, no Settings UI controls |
+| Quiet hours | ✅ | Settings panel controls wired to NotificationService |
 | Confirm before delete | ✅ | Setting wired to all delete actions |
 | Daily/weekly goals | ✅ | |
 
@@ -293,7 +293,6 @@
 
 ### Medium Priority (Power Users)
 - 🔶 Time format setting not wired to all date displays
-- ❌ Quiet hours Settings UI
 
 ### Lower Priority (Nice to Have)
 - ❌ Project templates

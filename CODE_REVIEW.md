@@ -11,12 +11,8 @@ Re-validation after the latest "all fixes applied" update, plus a fresh architec
 - `npm run -s lint` passed with warnings only (nits ignored per request).
 
 ## Open Findings
-
-### 8) [Low] `FEATURE_AUDIT.md` is now inconsistent with current implementation
-- Evidence: audit says quiet-hours UI is not implemented in `FEATURE_AUDIT.md:250`.
-- Evidence: settings UI now includes quiet-hours controls in `src/renderer/components/settings/SettingsPanel.tsx:278`.
-- Impact: feature-status documentation is stale and can mislead further review/planning.
+- None.
 
 ## Status of Prior Findings
 - No prior open findings remained in `CODE_REVIEW.md` at the start of this pass.
-- Previously listed resolved items stayed resolved, but the issues above are still open based on current code.
+- Previously listed findings were revalidated and addressed in this pass.
