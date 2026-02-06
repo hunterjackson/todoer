@@ -109,6 +109,38 @@ describe('Notification Service', () => {
     })
   })
 
+  describe('showNotification return value', () => {
+    it('should return false when disabled', () => {
+      notificationService.setEnabled(false)
+      const result = notificationService.showNotification({ title: 'Test', body: 'Test' })
+      expect(result).toBe(false)
+    })
+
+    it('should return false during quiet hours', () => {
+      notificationService.setEnabled(true)
+      notificationService.setQuietHours(0, 23) // Almost always quiet
+      const result = notificationService.showNotification({ title: 'Test', body: 'Test' })
+      expect(result).toBe(false)
+    })
+
+    it('should return true when enabled and not quiet', () => {
+      notificationService.setEnabled(true)
+      // Set quiet hours to a time that won't conflict
+      const now = new Date()
+      const safeHour = (now.getHours() + 12) % 24
+      notificationService.setQuietHours(safeHour, (safeHour + 1) % 24)
+      const result = notificationService.showNotification({ title: 'Test', body: 'Test' })
+      expect(result).toBe(true)
+    })
+
+    it('showTaskReminder should return false when notification not shown', () => {
+      notificationService.setEnabled(false)
+      const task = { id: 't1', content: 'Task', dueDate: Date.now(), priority: 4 }
+      const result = notificationService.showTaskReminder(task)
+      expect(result).toBe(false)
+    })
+  })
+
   describe('Reminder creation', () => {
     it('should create reminder from due date with offset', () => {
       const dueDate = Date.now() + 3600000 // 1 hour from now
@@ -203,6 +235,17 @@ class NotificationService {
       return hour >= this.quietHoursStart || hour < this.quietHoursEnd
     }
     return hour >= this.quietHoursStart && hour < this.quietHoursEnd
+  }
+
+  showNotification(content: NotificationContent): boolean {
+    if (!this.enabled) return false
+    if (this.isQuietTime()) return false
+    return true
+  }
+
+  showTaskReminder(task: TaskForNotification): boolean {
+    const content = this.formatTaskNotification(task)
+    return this.showNotification(content)
   }
 
   calculateReminderTime(dueDate: number, offsetMinutes: number): number {

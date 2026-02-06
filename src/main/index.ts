@@ -96,8 +96,10 @@ if (isMcpMode) {
         for (const reminder of dueReminders) {
           const task = taskRepo.get(reminder.taskId)
           if (task) {
-            notificationService.showTaskReminder(task)
-            reminderRepo.markNotified(reminder.id)
+            const shown = notificationService.showTaskReminder(task)
+            if (shown) {
+              reminderRepo.markNotified(reminder.id)
+            }
           }
         }
       })

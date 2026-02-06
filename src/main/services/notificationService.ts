@@ -84,16 +84,16 @@ export class NotificationService {
   }
 
   /**
-   * Show a native notification
+   * Show a native notification. Returns true if notification was actually shown.
    */
-  showNotification(content: NotificationContent): void {
-    if (!this.enabled) return
-    if (this.isQuietTime()) return
+  showNotification(content: NotificationContent): boolean {
+    if (!this.enabled) return false
+    if (this.isQuietTime()) return false
 
     // Check if notifications are supported
     if (!Notification.isSupported()) {
       console.warn('Notifications not supported on this platform')
-      return
+      return false
     }
 
     const notification = new Notification({
@@ -103,22 +103,23 @@ export class NotificationService {
     })
 
     notification.show()
+    return true
   }
 
   /**
-   * Show a task reminder notification
+   * Show a task reminder notification. Returns true if shown.
    */
-  showTaskReminder(task: Task): void {
+  showTaskReminder(task: Task): boolean {
     const content = this.formatTaskNotification(task)
-    this.showNotification(content)
+    return this.showNotification(content)
   }
 
   /**
-   * Show an overdue task notification
+   * Show an overdue task notification. Returns true if shown.
    */
-  showOverdueReminder(task: Task): void {
+  showOverdueReminder(task: Task): boolean {
     const content = this.formatOverdueNotification(task)
-    this.showNotification(content)
+    return this.showNotification(content)
   }
 
   /**
