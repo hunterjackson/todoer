@@ -26,6 +26,22 @@ describe('Database Integration Tests', () => {
   })
 
   describe('Task and Project Integration', () => {
+    it('should enforce foreign key constraints', async () => {
+      const pragmaResult = db.exec('PRAGMA foreign_keys')
+      const foreignKeysEnabled = Number(pragmaResult[0]?.values?.[0]?.[0] ?? 0)
+      expect(foreignKeysEnabled).toBe(1)
+
+      // Project reference must exist when project_id is set
+      expect(() => {
+        db.run(
+          `INSERT INTO tasks
+           (id, content, project_id, sort_order, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          ['fk-test-task', 'Task with missing project', 'missing-project', 1, Date.now(), Date.now()]
+        )
+      }).toThrow()
+    })
+
     it('should create tasks in a project', async () => {
       // Create a project
       const project = projectRepo.create({ name: 'Work' })

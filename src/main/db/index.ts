@@ -326,6 +326,9 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
     }
   }
 
+  // SQLite FK checks are disabled by default and must be enabled per connection.
+  db.run('PRAGMA foreign_keys = ON')
+
   // Initialize schema
   initSchema(db)
 
@@ -353,6 +356,8 @@ export function getDatabase(): SqlJsDatabase {
 export async function createTestDatabase(): Promise<SqlJsDatabase> {
   const SQL = await initSqlJs()
   const testDb = new SQL.Database()
+  // Ensure tests run with the same FK guarantees as production.
+  testDb.run('PRAGMA foreign_keys = ON')
   initSchema(testDb)
   runMigrations(testDb)
   seedInitialData(testDb)
