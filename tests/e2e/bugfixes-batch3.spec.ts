@@ -5,22 +5,14 @@
  * #77: Attachments should open directly (open API exists)
  */
 import { test, expect, ElectronApplication, Page } from '@playwright/test'
-import { _electron as electron } from 'playwright'
-import path from 'path'
+import { launchElectron } from './helpers'
 
 let electronApp: ElectronApplication
 let page: Page
 const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
-  electronApp = await electron.launch({
-    args: [path.join(__dirname, '../../out/main/index.js')],
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      TODOER_TEST_MODE: 'true'
-    }
-  })
+  electronApp = await launchElectron()
   page = await electronApp.firstWindow()
   await page.waitForLoadState('domcontentloaded')
   await page.waitForTimeout(1000)

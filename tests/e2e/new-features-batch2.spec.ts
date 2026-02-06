@@ -1,5 +1,5 @@
-import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test'
-import { join } from 'path'
+import { test, expect, ElectronApplication, Page } from '@playwright/test'
+import { launchElectron } from './helpers'
 
 /**
  * E2E Tests for Tasks #66-#74 batch features:
@@ -19,14 +19,7 @@ let page: Page
 const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
-  electronApp = await electron.launch({
-    args: [join(__dirname, '../../out/main/index.js')],
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      TODOER_TEST_MODE: 'true'
-    }
-  })
+  electronApp = await launchElectron()
 
   page = await electronApp.firstWindow()
   await page.waitForLoadState('domcontentloaded')
