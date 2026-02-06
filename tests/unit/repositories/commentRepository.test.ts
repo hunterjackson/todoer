@@ -87,6 +87,15 @@ describe('Comment Repository', () => {
       const comments = commentRepo.list(taskId)
       expect(comments.length).toBe(3)
     })
+
+    it('should sanitize HTML content on create', () => {
+      const comment = commentRepo.create({
+        taskId,
+        content: '<p>Hello</p><script>alert(1)</script>'
+      })
+
+      expect(comment.content).toBe('<p>Hello</p>')
+    })
   })
 
   describe('get', () => {
@@ -150,6 +159,15 @@ describe('Comment Repository', () => {
       expect(updated.taskId).toBe(comment.taskId)
       expect(updated.createdAt).toBe(comment.createdAt)
     })
+
+    it('should sanitize HTML content on update', () => {
+      const comment = commentRepo.create({ taskId, content: 'Original' })
+      const updated = commentRepo.update(comment.id, {
+        content: '<a href=javascript:alert(1)>Click</a>'
+      })
+
+      expect(updated.content).toBe('<a href="">Click</a>')
+    })
   })
 
   describe('delete', () => {
@@ -198,4 +216,3 @@ describe('Comment Repository', () => {
     })
   })
 })
-

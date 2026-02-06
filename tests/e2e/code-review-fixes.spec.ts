@@ -441,6 +441,40 @@ test.describe('Fix #14: Archived default project fallback', () => {
 })
 
 // ─────────────────────────────────────────────
+// Fix #15: Comment content is sanitized through IPC create/update
+// ─────────────────────────────────────────────
+test.describe('Fix #15: Comment sanitization', () => {
+  test('should sanitize persisted comment content on create and update', async () => {
+    const result = await page.evaluate(async () => {
+      const task = await window.api.tasks.create({
+        content: `SanitizeCommentTask-${Date.now()}`
+      })
+
+      const created = await window.api.comments.create({
+        taskId: task.id,
+        content: '<a href=javascript:alert(1)>Click</a><script>alert(2)</script>'
+      })
+
+      const updated = await window.api.comments.update(created.id, {
+        content: '<p onclick=alert(1)>Safe</p>'
+      })
+
+      const fetched = await window.api.comments.get(created.id)
+
+      return {
+        createdContent: created.content,
+        updatedContent: updated.content,
+        fetchedContent: fetched?.content ?? null
+      }
+    })
+
+    expect(result.createdContent).toBe('<a href="">Click</a>')
+    expect(result.updatedContent).toBe('<p>Safe</p>')
+    expect(result.fetchedContent).toBe('<p>Safe</p>')
+  })
+})
+
+// ─────────────────────────────────────────────
 // Console error check
 // ─────────────────────────────────────────────
 test.describe('Console Errors', () => {

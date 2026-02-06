@@ -485,12 +485,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('comments:create', async (_event, data: CommentCreate) => {
     const { commentRepo } = getRepositories()
-    return commentRepo.create(data)
+    return commentRepo.create({
+      ...data,
+      content: sanitizeHtml(data.content)
+    })
   })
 
   ipcMain.handle('comments:update', async (_event, id: string, data: CommentUpdate) => {
     const { commentRepo } = getRepositories()
-    return commentRepo.update(id, data)
+    return commentRepo.update(id, {
+      ...data,
+      content: sanitizeHtml(data.content)
+    })
   })
 
   ipcMain.handle('comments:delete', async (_event, id: string) => {

@@ -11,21 +11,6 @@ Full top-down architecture review after resolving all prior findings (v1-v7). Co
 
 ## Open Findings
 
-### Finding 2 — High: Comment create/update IPC handlers skip HTML sanitization
-**File**: `src/main/ipc/handlers.ts:486-494`
-**Impact**: XSS risk. Comments created or updated via the renderer IPC path are stored unsanitized. The `sanitizeHtml()` utility is imported and used during JSON import (line 961), but the standard `comments:create` and `comments:update` handlers pass content directly to the repository.
-**Detail**: `comments:create` at line 486 calls `commentRepo.create(data)` without sanitizing `data.content`. `comments:update` at line 491 calls `commentRepo.update(id, data)` without sanitizing `data.content`. The renderer's `TaskComments` component renders comment content with `dangerouslySetInnerHTML` (via its display logic), making unsanitized content exploitable.
-**Fix**: Sanitize content in both handlers before passing to the repository:
-```typescript
-// comments:create
-const sanitizedData = { ...data, content: sanitizeHtml(data.content) }
-return commentRepo.create(sanitizedData)
-
-// comments:update
-const sanitizedData = { ...data, content: data.content ? sanitizeHtml(data.content) : data.content }
-return commentRepo.update(id, sanitizedData)
-```
-
 ### Finding 3 — Medium: Karma division by zero when goals are set to 0
 **File**: `src/main/services/karmaEngine.ts:171,198`
 **Impact**: If a user sets `dailyGoal` or `weeklyGoal` to 0 (via settings), `getTodayStats()` and `getWeekStats()` compute `tasksCompleted / 0`, producing `Infinity` for the progress percentage. `Math.min(100, Infinity)` returns 100, so the UI would show 100% progress with 0 tasks completed.

@@ -1,6 +1,7 @@
 import type { Database } from 'sql.js'
 import type { Comment, CommentCreate, CommentUpdate } from '@shared/types'
 import { saveDatabase } from '../index'
+import { sanitizeHtml } from '@shared/utils'
 
 interface CommentRow {
   id: string
@@ -33,10 +34,11 @@ export class CommentRepository {
   create(data: CommentCreate): Comment {
     const id = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const now = Date.now()
+    const sanitizedContent = sanitizeHtml(data.content)
 
     this.run(
       `INSERT INTO comments (id, task_id, project_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, data.taskId || null, data.projectId || null, data.content, now, now]
+      [id, data.taskId || null, data.projectId || null, sanitizedContent, now, now]
     )
 
     return this.get(id)!
@@ -105,8 +107,9 @@ export class CommentRepository {
 
   update(id: string, data: CommentUpdate): Comment {
     const now = Date.now()
+    const sanitizedContent = sanitizeHtml(data.content)
     this.run(`UPDATE comments SET content = ?, updated_at = ? WHERE id = ?`, [
-      data.content,
+      sanitizedContent,
       now,
       id
     ])
