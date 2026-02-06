@@ -77,7 +77,8 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
 
     it('recurring task completion should uncomplete and reschedule', () => {
-      // Simulate the handler logic: complete -> check recurrence -> uncomplete + reschedule
+      // Tests the repository + recurrence engine operations used by the handler
+      // (IPC handler itself can't be unit tested without mocking electron ipcMain)
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const todayTs = today.getTime()
@@ -93,11 +94,11 @@ describe('CODE_REVIEW Fix Tests', () => {
       const completed = taskRepo.get(task.id)
       expect(completed?.completed).toBe(true)
 
-      // Calculate next due date (handler logic)
+      // Calculate next due date (same logic as tasks:complete handler)
       const nextDue = calculateNextDueDate('FREQ=DAILY', todayTs, Date.now())
       expect(nextDue).not.toBeNull()
 
-      // Uncomplete and reschedule (handler logic)
+      // Uncomplete and reschedule (same operations as tasks:complete handler)
       taskRepo.uncomplete(task.id)
       taskRepo.update(task.id, { dueDate: nextDue! })
 

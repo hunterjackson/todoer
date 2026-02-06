@@ -5,6 +5,11 @@ import { DEFAULT_SETTINGS } from '@shared/constants'
 /**
  * Tests for settings storage using the same SQL patterns as the IPC handlers
  * in src/main/ipc/handlers.ts (settings:get, settings:set).
+ *
+ * NOTE: Settings logic is inline in handlers.ts (no separate SettingsService class),
+ * so these tests use helper functions that mirror the exact SQL queries from the
+ * handlers. This is intentional - extracting a SettingsService would be the ideal
+ * fix but is beyond the scope of a code review pass.
  */
 
 // These helper functions mirror the exact SQL used in handlers.ts
