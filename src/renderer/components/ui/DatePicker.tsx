@@ -96,11 +96,18 @@ export function DatePicker({
     calendarDays.push(day)
   }
 
-  // Quick date options
+  // Quick date options - use midnight timestamps for consistency with day clicks
+  const todayMidnight = new Date()
+  todayMidnight.setHours(0, 0, 0, 0)
+  const tomorrowMidnight = new Date(todayMidnight)
+  tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1)
+  const nextWeekMidnight = new Date(todayMidnight)
+  nextWeekMidnight.setDate(nextWeekMidnight.getDate() + 7)
+
   const quickOptions = [
-    { label: 'Today', date: new Date() },
-    { label: 'Tomorrow', date: new Date(Date.now() + 86400000) },
-    { label: 'Next week', date: new Date(Date.now() + 7 * 86400000) },
+    { label: 'Today', date: todayMidnight },
+    { label: 'Tomorrow', date: tomorrowMidnight },
+    { label: 'Next week', date: nextWeekMidnight },
   ]
 
   const formatDisplayDate = (date: Date): string => {

@@ -166,7 +166,7 @@ export function TodayView(): React.ReactElement {
                   onCreate={async (data) => {
                     await createTask({
                       ...data,
-                      dueDate: Date.now() // Set due date to today
+                      dueDate: new Date().setHours(0, 0, 0, 0) // Set due date to today (midnight)
                     })
                   }}
                   showProject

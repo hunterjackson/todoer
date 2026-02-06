@@ -81,8 +81,11 @@ export function TaskItem({
   }
 
   const priorityColor = PRIORITY_COLORS[task.priority as Priority]
-  const isOverdue = task.dueDate && task.dueDate < Date.now() && !task.completed
-  const isDeadlinePast = task.deadline && task.deadline < Date.now() && !task.completed
+  // Compare against start of today (midnight) so same-day tasks aren't marked overdue
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const isOverdue = task.dueDate && task.dueDate < todayStart.getTime() && !task.completed
+  const isDeadlinePast = task.deadline && task.deadline < todayStart.getTime() && !task.completed
 
   return (
     <div
