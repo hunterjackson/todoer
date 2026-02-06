@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, Trophy, Flame, Target, TrendingUp, Calendar } from 'lucide-react'
+import { getLocalDateKey } from '@shared/utils'
 import type { KarmaStats, KarmaHistory } from '@shared/types'
 
 interface ProductivityPanelProps {
@@ -47,8 +48,8 @@ export function ProductivityPanel({ open, onClose }: ProductivityPanelProps): Re
       weekAgo.setDate(weekAgo.getDate() - 7)
 
       const historyData = await window.api.karma.getHistory(
-        weekAgo.toISOString().split('T')[0],
-        today.toISOString().split('T')[0]
+        getLocalDateKey(weekAgo),
+        getLocalDateKey(today)
       )
       setHistory(historyData)
     } catch (err) {
@@ -181,7 +182,7 @@ export function ProductivityPanel({ open, onClose }: ProductivityPanelProps): Re
                   {Array.from({ length: 7 }).map((_, i) => {
                     const date = new Date()
                     date.setDate(date.getDate() - (6 - i))
-                    const dateStr = date.toISOString().split('T')[0]
+                    const dateStr = getLocalDateKey(date)
                     const dayHistory = history.find((h) => h.date === dateStr)
                     const count = dayHistory?.tasksCompleted ?? 0
                     const intensity = count === 0 ? 0 : Math.min(4, Math.ceil(count / 2))

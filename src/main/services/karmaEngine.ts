@@ -185,8 +185,8 @@ export class KarmaEngine {
     startOfWeek.setDate(today.getDate() - today.getDay())
     startOfWeek.setHours(0, 0, 0, 0)
 
-    const startStr = startOfWeek.toISOString().split('T')[0]
-    const endStr = today.toISOString().split('T')[0]
+    const startStr = getLocalDateKey(startOfWeek)
+    const endStr = getLocalDateKey(today)
 
     const history = this.karmaRepo.getHistory(startStr, endStr)
     const tasksCompleted = history.reduce((sum, h) => sum + h.tasksCompleted, 0)

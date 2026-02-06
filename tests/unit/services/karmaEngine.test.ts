@@ -244,6 +244,37 @@ describe('KarmaEngine', () => {
     })
   })
 
+  describe('getWeekStats', () => {
+    it('should use local date keys (not UTC) for date bucketing', () => {
+      // Record history for today using local date key
+      const today = new Date()
+      const todayKey = getLocalDateKey(today)
+      karmaRepo.recordHistory(todayKey, 5, 3)
+
+      const weekStats = karmaEngine.getWeekStats()
+
+      // The stats should find today's history since getWeekStats
+      // now uses getLocalDateKey instead of toISOString
+      expect(weekStats.tasksCompleted).toBe(3)
+      expect(weekStats.daysActive).toBe(1)
+    })
+
+    it('should include all days from start of week', () => {
+      const today = new Date()
+
+      // Record for each day this week up to today
+      for (let i = today.getDay(); i >= 0; i--) {
+        const date = new Date(today)
+        date.setDate(today.getDate() - i)
+        karmaRepo.recordHistory(getLocalDateKey(date), 1, 1)
+      }
+
+      const weekStats = karmaEngine.getWeekStats()
+      expect(weekStats.tasksCompleted).toBe(today.getDay() + 1)
+      expect(weekStats.daysActive).toBe(today.getDay() + 1)
+    })
+  })
+
   describe('updateStreak', () => {
     it('should update current streak', () => {
       const today = getLocalDateKey()
