@@ -91,6 +91,20 @@ export function createAttachmentRepository(db: SqlJsDatabase) {
     },
 
     addWithMetadata(id: string, taskId: string, filename: string, mimeType: string, data: Buffer, createdAt: number): TaskAttachment {
+      // Enforce same size limits as normal uploads
+      if (data.length > MAX_FILE_SIZE) {
+        throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`)
+      }
+
+      const totalResult = db.exec(
+        'SELECT COALESCE(SUM(size), 0) FROM task_attachments WHERE task_id = ?',
+        [taskId]
+      )
+      const currentTotal = totalResult.length > 0 ? (totalResult[0].values[0][0] as number) : 0
+      if (currentTotal + data.length > MAX_TOTAL_SIZE) {
+        throw new Error(`Total attachment size for this task would exceed ${MAX_TOTAL_SIZE / 1024 / 1024}MB`)
+      }
+
       run(
         `INSERT OR IGNORE INTO task_attachments (id, task_id, filename, mime_type, size, data, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,

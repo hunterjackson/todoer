@@ -159,6 +159,25 @@ describe('Attachment Repository', () => {
     expect(list[0].id).toBe(originalId)
   })
 
+  it('addWithMetadata should reject files over 10MB', () => {
+    const repo = createAttachmentRepository(db)
+    const bigData = Buffer.alloc(11 * 1024 * 1024)
+
+    expect(() => repo.addWithMetadata('big-id', 'task-1', 'big.bin', 'application/octet-stream', bigData, Date.now()))
+      .toThrow('File too large')
+  })
+
+  it('addWithMetadata should reject when total attachments exceed 50MB', () => {
+    const repo = createAttachmentRepository(db)
+
+    for (let i = 0; i < 5; i++) {
+      repo.addWithMetadata(`meta-${i}`, 'task-1', `file${i}.bin`, 'application/octet-stream', Buffer.alloc(9 * 1024 * 1024), Date.now())
+    }
+
+    expect(() => repo.addWithMetadata('overflow-id', 'task-1', 'overflow.bin', 'application/octet-stream', Buffer.alloc(9 * 1024 * 1024), Date.now()))
+      .toThrow('Total attachment size')
+  })
+
   it('addWithMetadata should skip duplicate IDs (INSERT OR IGNORE)', () => {
     const repo = createAttachmentRepository(db)
 
