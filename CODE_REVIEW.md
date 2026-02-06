@@ -12,11 +12,6 @@ Re-validation after the latest "all fixes applied" update, plus a fresh architec
 
 ## Open Findings
 
-### 3) [High] Project parent cycle protection is incomplete and can deadlock UI logic
-- Evidence: `ProjectRepository.update` validates only parent existence, not self/descendant cycle assignment in `src/main/db/repositories/projectRepository.ts:125`.
-- Evidence: `ProjectDialog` descendant-check loop has no visited-set guard in `src/renderer/components/project/ProjectDialog.tsx:46`.
-- Impact: cyclic project graphs can be persisted, projects can disappear from normal tree traversal, and the edit dialog's parent filter can loop indefinitely on cyclic data.
-
 ### 4) [High] `sanitizeHtml` still allows unquoted `javascript:`/`data:` URL payloads
 - Evidence: dangerous protocol stripping only handles quoted attributes in `src/shared/utils/sanitizeHtml.ts:44` and `src/shared/utils/sanitizeHtml.ts:45`.
 - Evidence: attribute allowlist then preserves unquoted `href` in `src/shared/utils/sanitizeHtml.ts:74`.

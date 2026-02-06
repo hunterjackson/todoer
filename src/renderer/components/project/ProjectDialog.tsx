@@ -4,6 +4,7 @@ import { cn } from '@renderer/lib/utils'
 import { useConfirmDelete } from '@renderer/hooks/useSettings'
 import type { Project, ProjectCreate, ProjectUpdate } from '@shared/types'
 import { PROJECT_COLORS } from '@shared/types'
+import { getAvailableParentProjects } from './projectParentOptions'
 
 interface ProjectDialogProps {
   open: boolean
@@ -38,19 +39,7 @@ export function ProjectDialog({
   const isEditing = !!project
 
   // Get available parent projects (exclude self and descendants when editing)
-  const availableParents = projects.filter((p) => {
-    if (!project) return true
-    // Can't be own parent
-    if (p.id === project.id) return false
-    // Can't select a descendant as parent (would create cycle)
-    let current = p
-    while (current.parentId) {
-      if (current.parentId === project.id) return false
-      current = projects.find((pp) => pp.id === current.parentId) || current
-      if (!projects.find((pp) => pp.id === current.parentId)) break
-    }
-    return true
-  })
+  const availableParents = getAvailableParentProjects(projects, project?.id)
 
   useEffect(() => {
     if (project) {

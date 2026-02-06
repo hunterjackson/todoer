@@ -89,6 +89,21 @@ export class ProjectRepository {
     }
   }
 
+  private validateParentAssignment(projectId: string, parentId: string | null): void {
+    if (parentId === null) return
+
+    if (parentId === projectId) {
+      throw new Error(`Project ${projectId} cannot be its own parent`)
+    }
+
+    this.validateParentProjectExists(parentId)
+
+    const descendantIds = new Set(this.getDescendantProjectIds(projectId))
+    if (descendantIds.has(parentId)) {
+      throw new Error(`Project ${projectId} cannot be moved under descendant ${parentId}`)
+    }
+  }
+
   create(data: ProjectCreate): Project {
     const timestamp = now()
     const id = generateId()
@@ -127,8 +142,8 @@ export class ProjectRepository {
     if (!existing) return null
 
     // Validate FK references
-    if (data.parentId !== undefined && data.parentId !== null) {
-      this.validateParentProjectExists(data.parentId)
+    if (data.parentId !== undefined) {
+      this.validateParentAssignment(id, data.parentId)
     }
 
     const updates: string[] = []

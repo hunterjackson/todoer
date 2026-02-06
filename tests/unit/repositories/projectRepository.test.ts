@@ -455,6 +455,21 @@ describe('ProjectRepository', () => {
         .toThrow(/parent project.*not found/i)
     })
 
+    it('should reject update when setting project as its own parent', () => {
+      const project = projectRepo.create({ name: 'Self Parent' })
+      expect(() => projectRepo.update(project.id, { parentId: project.id }))
+        .toThrow(/cannot be its own parent/i)
+    })
+
+    it('should reject update when setting parent to a descendant project', () => {
+      const root = projectRepo.create({ name: 'Root' })
+      const child = projectRepo.create({ name: 'Child', parentId: root.id })
+      const grandchild = projectRepo.create({ name: 'Grandchild', parentId: child.id })
+
+      expect(() => projectRepo.update(root.id, { parentId: grandchild.id }))
+        .toThrow(/descendant/i)
+    })
+
     it('should allow null parentId (root project)', () => {
       const project = projectRepo.create({ name: 'Root' })
       expect(project.parentId).toBeNull()
