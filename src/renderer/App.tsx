@@ -69,8 +69,8 @@ export default function App(): React.ReactElement {
         await window.api.tasks.update(task.id, { projectId: newProjectId, sectionId: null })
         // Trigger refresh of views
         setRefreshKey((k) => k + 1)
-      } catch (err) {
-        console.error('Failed to move task:', err)
+      } catch {
+        setToast({ message: 'Failed to move task', type: 'error' })
       }
     }
   }, [])
