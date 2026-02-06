@@ -236,3 +236,18 @@ export function calculateNextDueDate(
     return null
   }
 }
+
+// Calculate rescheduled due date for a completed recurring task.
+// Falls back to completion time when the task had no explicit due date.
+export function calculateRecurringRescheduleDate(
+  recurrenceRule: string | null,
+  currentDueDate: number | null,
+  completedAt: number
+): number | null {
+  if (!recurrenceRule) {
+    return null
+  }
+
+  const baseDueDate = currentDueDate ?? completedAt
+  return calculateNextDueDate(recurrenceRule, baseDueDate, completedAt)
+}

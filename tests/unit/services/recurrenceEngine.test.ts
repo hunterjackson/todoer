@@ -7,6 +7,7 @@ import {
   describeRecurrence,
   matchesRecurrence,
   calculateNextDueDate,
+  calculateRecurringRescheduleDate,
   isCompletionBasedRecurrence,
   getActualRRule,
   createCompletionBasedRule
@@ -230,6 +231,23 @@ describe('recurrenceEngine', () => {
       // Should be within 2 days (allowing for timezone/rrule behavior)
       const daysDiff = (next! - completedAt) / (24 * 60 * 60 * 1000)
       expect(daysDiff).toBeLessThanOrEqual(2)
+    })
+  })
+
+  describe('calculateRecurringRescheduleDate', () => {
+    it('returns next due date for recurring tasks that have no current dueDate', () => {
+      const completedAt = new Date('2024-03-15T10:00:00Z').getTime()
+      const next = calculateRecurringRescheduleDate('FREQ=DAILY', null, completedAt)
+
+      expect(next).not.toBeNull()
+      expect(next!).toBeGreaterThan(completedAt)
+    })
+
+    it('returns null when recurrence rule is missing', () => {
+      const completedAt = Date.now()
+      const next = calculateRecurringRescheduleDate(null, null, completedAt)
+
+      expect(next).toBeNull()
     })
   })
 

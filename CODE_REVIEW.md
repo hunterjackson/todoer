@@ -12,11 +12,6 @@ Re-validation after the latest "all fixes applied" update, plus a fresh architec
 
 ## Open Findings
 
-### 5) [Medium] Recurring redo path regressed for tasks without a due date
-- Evidence: forward completion correctly supports recurrence without `dueDate` using `completedAt` fallback in `src/main/ipc/handlers.ts:160`.
-- Evidence: redo path still requires `taskBeforeComplete.dueDate` in `src/main/ipc/handlers.ts:1288`.
-- Impact: undo/redo is behaviorally inconsistent; redo can fail to reschedule recurring tasks that were completed successfully in the forward path.
-
 ### 6) [Medium] Default project can be set to archived/hidden projects
 - Evidence: settings default-project dropdown includes all projects in `src/renderer/components/settings/SettingsPanel.tsx:238`.
 - Evidence: sidebar hides archived projects from main project tree in `src/renderer/components/sidebar/Sidebar.tsx:102`.

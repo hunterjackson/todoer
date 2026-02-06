@@ -15,7 +15,7 @@ import { createAttachmentRepository } from '../db/repositories/attachmentReposit
 import { notificationService } from '../services/notificationService'
 import { parseDateWithRecurrence } from '../services/dateParser'
 import { evaluateFilter, createFilterContext } from '../services/filterEngine'
-import { calculateNextDueDate } from '../services/recurrenceEngine'
+import { calculateRecurringRescheduleDate } from '../services/recurrenceEngine'
 import { exportToJSON, exportToCSV, importFromJSON, importFromCSV } from '../services/dataExport'
 import { KarmaEngine } from '../services/karmaEngine'
 import {
@@ -159,10 +159,9 @@ export function registerIpcHandlers(): void {
     // Use existing dueDate or today as base when no dueDate is set
     if (taskBeforeComplete?.recurrenceRule) {
       const completedAt = Date.now()
-      const baseDueDate = taskBeforeComplete.dueDate ?? completedAt
-      const nextDueDate = calculateNextDueDate(
+      const nextDueDate = calculateRecurringRescheduleDate(
         taskBeforeComplete.recurrenceRule,
-        baseDueDate,
+        taskBeforeComplete.dueDate,
         completedAt
       )
 
@@ -1290,9 +1289,9 @@ export function registerIpcHandlers(): void {
             }
 
             // Handle recurring logic
-            if (taskBeforeComplete?.recurrenceRule && taskBeforeComplete.dueDate) {
+            if (taskBeforeComplete?.recurrenceRule) {
               const completedAt = Date.now()
-              const nextDueDate = calculateNextDueDate(
+              const nextDueDate = calculateRecurringRescheduleDate(
                 taskBeforeComplete.recurrenceRule,
                 taskBeforeComplete.dueDate,
                 completedAt
