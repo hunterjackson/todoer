@@ -604,6 +604,107 @@ describe('TaskRepository', () => {
         .toThrow(/parent task.*not found/i)
     })
 
+    it('should reject create with non-existent sectionId', () => {
+      expect(() => repo.create({ content: 'Task', sectionId: 'missing-section' }))
+        .toThrow(/section.*not found/i)
+    })
+
+    it('should reject create when section does not belong to task project', () => {
+      const projectA = 'project-a'
+      const projectB = 'project-b'
+      db.run(
+        `INSERT INTO projects (id, name, color, sort_order, view_mode, is_favorite, created_at)
+         VALUES (?, ?, '#ff0000', 1, 'list', 0, ?)`,
+        [projectA, 'Project A', Date.now()]
+      )
+      db.run(
+        `INSERT INTO projects (id, name, color, sort_order, view_mode, is_favorite, created_at)
+         VALUES (?, ?, '#00ff00', 2, 'list', 0, ?)`,
+        [projectB, 'Project B', Date.now()]
+      )
+      db.run(
+        `INSERT INTO sections (id, name, project_id, sort_order, is_collapsed, created_at)
+         VALUES (?, ?, ?, 1, 0, ?)`,
+        ['section-b', 'Section B', projectB, Date.now()]
+      )
+
+      expect(() =>
+        repo.create({
+          content: 'Mismatched section',
+          projectId: projectA,
+          sectionId: 'section-b'
+        })
+      ).toThrow(/section.*does not belong to project/i)
+    })
+
+    it('should reject create with non-existent labelIds', () => {
+      expect(() =>
+        repo.create({ content: 'Task with missing label', labelIds: ['missing-label'] })
+      ).toThrow(/label.*not found/i)
+    })
+
+    it('should reject update with non-existent sectionId', () => {
+      const task = repo.create({ content: 'Task' })
+      expect(() => repo.update(task.id, { sectionId: 'missing-section' }))
+        .toThrow(/section.*not found/i)
+    })
+
+    it('should reject update that would leave section on a different project', () => {
+      const projectA = 'project-a-update'
+      const projectB = 'project-b-update'
+      db.run(
+        `INSERT INTO projects (id, name, color, sort_order, view_mode, is_favorite, created_at)
+         VALUES (?, ?, '#aabbcc', 3, 'list', 0, ?)`,
+        [projectA, 'Project A Update', Date.now()]
+      )
+      db.run(
+        `INSERT INTO projects (id, name, color, sort_order, view_mode, is_favorite, created_at)
+         VALUES (?, ?, '#ccbbaa', 4, 'list', 0, ?)`,
+        [projectB, 'Project B Update', Date.now()]
+      )
+      db.run(
+        `INSERT INTO sections (id, name, project_id, sort_order, is_collapsed, created_at)
+         VALUES (?, ?, ?, 1, 0, ?)`,
+        ['section-a-update', 'Section A', projectA, Date.now()]
+      )
+
+      const task = repo.create({
+        content: 'Task',
+        projectId: projectA,
+        sectionId: 'section-a-update'
+      })
+
+      expect(() => repo.update(task.id, { projectId: projectB }))
+        .toThrow(/section.*does not belong to project/i)
+    })
+
+    it('should reject update with non-existent labelIds', () => {
+      const task = repo.create({ content: 'Task' })
+      expect(() => repo.update(task.id, { labelIds: ['missing-label'] }))
+        .toThrow(/label.*not found/i)
+    })
+
+    it('should reject reorder when new parent does not exist', () => {
+      const task = repo.create({ content: 'Task' })
+      expect(() => repo.reorder(task.id, 1, 'missing-parent'))
+        .toThrow(/parent task.*not found/i)
+    })
+
+    it('should reject reorder when setting task as its own parent', () => {
+      const task = repo.create({ content: 'Task' })
+      expect(() => repo.reorder(task.id, 1, task.id))
+        .toThrow(/cannot be its own parent/i)
+    })
+
+    it('should reject reorder when new parent is a descendant (cycle)', () => {
+      const parent = repo.create({ content: 'Parent' })
+      const child = repo.create({ content: 'Child', parentId: parent.id })
+      const grandchild = repo.create({ content: 'Grandchild', parentId: child.id })
+
+      expect(() => repo.reorder(parent.id, 1, grandchild.id))
+        .toThrow(/descendant/i)
+    })
+
     it('should survive cyclic data in getDescendantIds without infinite recursion', () => {
       // Create two tasks normally
       const t1 = repo.create({ content: 'Task A' })

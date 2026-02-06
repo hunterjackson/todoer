@@ -12,12 +12,6 @@ Re-validation after the latest "all fixes applied" update, plus a fresh architec
 
 ## Open Findings
 
-### 2) [High] Task reference validation is incomplete (sections, labels, parent cycles)
-- Evidence: `TaskRepository` only validates `projectId` and `parentId` in `src/main/db/repositories/taskRepository.ts:39` and `src/main/db/repositories/taskRepository.ts:50`.
-- Evidence: `create`/`update` do not validate `sectionId` ownership/existence or `labelIds` existence in `src/main/db/repositories/taskRepository.ts:170` and `src/main/db/repositories/taskRepository.ts:249`.
-- Evidence: `reorder` writes `parent_id` directly without validating parent existence or cycle/self rules in `src/main/db/repositories/taskRepository.ts:414`.
-- Impact: invalid section/project combinations and parent cycles can still be created through IPC/MCP/import paths.
-
 ### 3) [High] Project parent cycle protection is incomplete and can deadlock UI logic
 - Evidence: `ProjectRepository.update` validates only parent existence, not self/descendant cycle assignment in `src/main/db/repositories/projectRepository.ts:125`.
 - Evidence: `ProjectDialog` descendant-check loop has no visited-set guard in `src/renderer/components/project/ProjectDialog.tsx:46`.

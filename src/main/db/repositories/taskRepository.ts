@@ -57,6 +57,46 @@ export class TaskRepository {
     }
   }
 
+  private validateSectionBelongsToProject(sectionId: string, projectId: string | null): void {
+    const section = this.queryOne<{ id: string; project_id: string }>(
+      'SELECT id, project_id FROM sections WHERE id = ?',
+      [sectionId]
+    )
+    if (!section) {
+      throw new Error(`Section not found: ${sectionId}`)
+    }
+    if (!projectId || section.project_id !== projectId) {
+      throw new Error(`Section ${sectionId} does not belong to project ${projectId}`)
+    }
+  }
+
+  private validateLabelsExist(labelIds: string[]): void {
+    for (const labelId of labelIds) {
+      const label = this.queryOne<{ id: string }>(
+        'SELECT id FROM labels WHERE id = ?',
+        [labelId]
+      )
+      if (!label) {
+        throw new Error(`Label not found: ${labelId}`)
+      }
+    }
+  }
+
+  private validateParentAssignment(taskId: string, parentId: string | null): void {
+    if (parentId === null) return
+
+    if (parentId === taskId) {
+      throw new Error(`Task ${taskId} cannot be its own parent`)
+    }
+
+    this.validateParentTaskExists(parentId)
+
+    const descendantIds = new Set(this.getDescendantIds(taskId))
+    if (descendantIds.has(parentId)) {
+      throw new Error(`Task ${taskId} cannot be moved under descendant ${parentId}`)
+    }
+  }
+
   private rowToTask(row: TaskRow): Task {
     return {
       id: row.id,
@@ -176,8 +216,14 @@ export class TaskRepository {
 
     // Validate FK references
     this.validateProjectExists(actualProjectId)
+    if (data.sectionId) {
+      this.validateSectionBelongsToProject(data.sectionId, actualProjectId)
+    }
     if (data.parentId) {
       this.validateParentTaskExists(data.parentId)
+    }
+    if (data.labelIds && data.labelIds.length > 0) {
+      this.validateLabelsExist(data.labelIds)
     }
 
     // Calculate sort order - match on actual project/section/parent
@@ -251,11 +297,20 @@ export class TaskRepository {
     if (!existing) return null
 
     // Validate FK references
-    if (data.projectId !== undefined && data.projectId !== null) {
-      this.validateProjectExists(data.projectId)
+    const nextProjectId = data.projectId !== undefined ? data.projectId : existing.projectId
+    const nextSectionId = data.sectionId !== undefined ? data.sectionId : existing.sectionId
+
+    if (nextProjectId !== null && nextProjectId !== undefined) {
+      this.validateProjectExists(nextProjectId)
     }
-    if (data.parentId !== undefined && data.parentId !== null) {
-      this.validateParentTaskExists(data.parentId)
+    if (nextSectionId !== null && nextSectionId !== undefined) {
+      this.validateSectionBelongsToProject(nextSectionId, nextProjectId ?? null)
+    }
+    if (data.parentId !== undefined) {
+      this.validateParentAssignment(id, data.parentId)
+    }
+    if (data.labelIds !== undefined) {
+      this.validateLabelsExist(data.labelIds)
     }
 
     const timestamp = now()
@@ -414,6 +469,10 @@ export class TaskRepository {
   reorder(taskId: string, newOrder: number, newParentId?: string | null): Task | null {
     const existing = this.get(taskId)
     if (!existing) return null
+
+    if (newParentId !== undefined) {
+      this.validateParentAssignment(taskId, newParentId)
+    }
 
     const timestamp = now()
     if (newParentId !== undefined) {
