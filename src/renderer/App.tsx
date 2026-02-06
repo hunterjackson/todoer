@@ -22,6 +22,7 @@ import { QuickAddModal } from './components/task/QuickAddModal'
 import { KeyboardShortcutsHelp } from './components/ui/KeyboardShortcutsHelp'
 import { ExportImportToast } from './components/ui/ExportImportToast'
 import { SettingsPanel } from './components/settings/SettingsPanel'
+import { ProductivityPanel } from './components/settings/ProductivityPanel'
 import { useStore } from './stores/useStore'
 import type { Task } from '@shared/types'
 
@@ -32,6 +33,7 @@ export default function App(): React.ReactElement {
   const [refreshKey, setRefreshKey] = useState(0)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showProductivity, setShowProductivity] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   // Configure drag sensors with activation constraint
@@ -313,6 +315,7 @@ export default function App(): React.ReactElement {
             onViewChange={setView}
             onQuickAdd={() => setQuickAddOpen(true)}
             onOpenSettings={() => setShowSettings(true)}
+            onOpenProductivity={() => setShowProductivity(true)}
           />
         )}
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -351,6 +354,10 @@ export default function App(): React.ReactElement {
         <SettingsPanel
           open={showSettings}
           onClose={() => setShowSettings(false)}
+        />
+        <ProductivityPanel
+          open={showProductivity}
+          onClose={() => setShowProductivity(false)}
         />
         {toast && (
           <ExportImportToast

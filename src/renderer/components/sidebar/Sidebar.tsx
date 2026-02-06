@@ -9,6 +9,7 @@ import {
   Tag,
   Filter,
   Settings,
+  BarChart3,
   ChevronRight
 } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
@@ -34,6 +35,7 @@ interface SidebarProps {
   onViewChange: (view: ViewType, id?: string) => void
   onQuickAdd: () => void
   onOpenSettings?: () => void
+  onOpenProductivity?: () => void
 }
 
 // Build a tree structure from flat projects list
@@ -85,7 +87,7 @@ function flattenProjectTree(nodes: ProjectNode[]): ProjectNode[] {
   return result
 }
 
-export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, onOpenSettings }: SidebarProps): React.ReactElement {
+export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, onOpenSettings, onOpenProductivity }: SidebarProps): React.ReactElement {
   const { projects, createProject, updateProject, deleteProject, duplicateProject } = useProjects()
   const { labels, createLabel } = useLabels()
   const { filters, createFilter } = useFilters()
@@ -367,6 +369,15 @@ export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, 
           <span className="text-xs text-muted-foreground">Theme</span>
           <ThemeToggle />
         </div>
+        {onOpenProductivity && (
+          <button
+            onClick={onOpenProductivity}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Productivity</span>
+          </button>
+        )}
         {onOpenSettings && (
           <button
             onClick={onOpenSettings}
