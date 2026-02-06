@@ -32,6 +32,11 @@ const POINTS = {
 export class KarmaEngine {
   constructor(private karmaRepo: KarmaRepository) {}
 
+  private normalizeGoal(goal: number): number {
+    if (!Number.isFinite(goal)) return 1
+    return Math.max(1, Math.round(goal))
+  }
+
   /**
    * Get current karma stats
    */
@@ -44,8 +49,8 @@ export class KarmaEngine {
    */
   updateGoals(dailyGoal?: number, weeklyGoal?: number): KarmaStats {
     const updates: Partial<KarmaStats> = {}
-    if (dailyGoal !== undefined) updates.dailyGoal = dailyGoal
-    if (weeklyGoal !== undefined) updates.weeklyGoal = weeklyGoal
+    if (dailyGoal !== undefined) updates.dailyGoal = this.normalizeGoal(dailyGoal)
+    if (weeklyGoal !== undefined) updates.weeklyGoal = this.normalizeGoal(weeklyGoal)
     return this.karmaRepo.updateStats(updates)
   }
 
@@ -164,12 +169,15 @@ export class KarmaEngine {
     const stats = this.karmaRepo.getStats()
     const today = this.getTodayHistory()
     const tasksCompleted = today?.tasksCompleted ?? 0
+    const hasValidGoal = stats.dailyGoal > 0
 
     return {
       tasksCompleted,
       dailyGoal: stats.dailyGoal,
-      progress: Math.min(100, Math.round((tasksCompleted / stats.dailyGoal) * 100)),
-      goalMet: tasksCompleted >= stats.dailyGoal
+      progress: hasValidGoal
+        ? Math.min(100, Math.round((tasksCompleted / stats.dailyGoal) * 100))
+        : 0,
+      goalMet: hasValidGoal ? tasksCompleted >= stats.dailyGoal : false
     }
   }
 
@@ -191,12 +199,15 @@ export class KarmaEngine {
     const history = this.karmaRepo.getHistory(startStr, endStr)
     const tasksCompleted = history.reduce((sum, h) => sum + h.tasksCompleted, 0)
     const daysActive = history.filter((h) => h.tasksCompleted > 0).length
+    const hasValidGoal = stats.weeklyGoal > 0
 
     return {
       tasksCompleted,
       weeklyGoal: stats.weeklyGoal,
-      progress: Math.min(100, Math.round((tasksCompleted / stats.weeklyGoal) * 100)),
-      goalMet: tasksCompleted >= stats.weeklyGoal,
+      progress: hasValidGoal
+        ? Math.min(100, Math.round((tasksCompleted / stats.weeklyGoal) * 100))
+        : 0,
+      goalMet: hasValidGoal ? tasksCompleted >= stats.weeklyGoal : false,
       daysActive
     }
   }

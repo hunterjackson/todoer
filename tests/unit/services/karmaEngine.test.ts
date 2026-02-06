@@ -76,6 +76,12 @@ describe('KarmaEngine', () => {
       expect(stats.dailyGoal).toBe(10)
       expect(stats.weeklyGoal).toBe(50)
     })
+
+    it('should clamp goals to at least 1', () => {
+      const stats = karmaEngine.updateGoals(0, -5)
+      expect(stats.dailyGoal).toBe(1)
+      expect(stats.weeklyGoal).toBe(1)
+    })
   })
 
   describe('recordTaskCompletion', () => {
@@ -177,6 +183,17 @@ describe('KarmaEngine', () => {
       expect(todayStats.goalMet).toBe(true)
       expect(todayStats.progress).toBe(100)
     })
+
+    it('should avoid division by zero when daily goal is 0', () => {
+      const todayKey = getLocalDateKey()
+      karmaRepo.recordHistory(todayKey, 1, 1)
+      karmaRepo.updateStats({ dailyGoal: 0 })
+
+      const todayStats = karmaEngine.getTodayStats()
+      expect(todayStats.dailyGoal).toBe(0)
+      expect(todayStats.progress).toBe(0)
+      expect(todayStats.goalMet).toBe(false)
+    })
   })
 
   describe('getWeekStats', () => {
@@ -188,6 +205,17 @@ describe('KarmaEngine', () => {
       expect(weekStats.tasksCompleted).toBeGreaterThanOrEqual(1)
       expect(weekStats.weeklyGoal).toBe(25)
       expect(weekStats.daysActive).toBe(1)
+    })
+
+    it('should avoid division by zero when weekly goal is 0', () => {
+      const todayKey = getLocalDateKey()
+      karmaRepo.recordHistory(todayKey, 1, 1)
+      karmaRepo.updateStats({ weeklyGoal: 0 })
+
+      const weekStats = karmaEngine.getWeekStats()
+      expect(weekStats.weeklyGoal).toBe(0)
+      expect(weekStats.progress).toBe(0)
+      expect(weekStats.goalMet).toBe(false)
     })
   })
 

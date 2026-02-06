@@ -475,6 +475,32 @@ test.describe('Fix #15: Comment sanitization', () => {
 })
 
 // ─────────────────────────────────────────────
+// Fix #16: Karma goals should be clamped and progress finite
+// ─────────────────────────────────────────────
+test.describe('Fix #16: Karma goal validation', () => {
+  test('should clamp zero goals and avoid infinite progress values', async () => {
+    const result = await page.evaluate(async () => {
+      await window.api.karma.updateGoals({ dailyGoal: 0, weeklyGoal: 0 })
+      const stats = await window.api.karma.getStats()
+      const today = await window.api.karma.getTodayStats()
+      const week = await window.api.karma.getWeekStats()
+
+      return {
+        dailyGoal: stats.dailyGoal,
+        weeklyGoal: stats.weeklyGoal,
+        todayProgress: today.progress,
+        weekProgress: week.progress
+      }
+    })
+
+    expect(result.dailyGoal).toBe(1)
+    expect(result.weeklyGoal).toBe(1)
+    expect(Number.isFinite(result.todayProgress)).toBe(true)
+    expect(Number.isFinite(result.weekProgress)).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────
 // Console error check
 // ─────────────────────────────────────────────
 test.describe('Console Errors', () => {
