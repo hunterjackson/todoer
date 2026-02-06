@@ -166,10 +166,15 @@ export class ProjectRepository {
         'UPDATE projects SET deleted_at = ? WHERE id = ?',
         [timestamp, projectId]
       )
-      // Move tasks from each deleted project to Inbox
+      // Move tasks from each deleted project to Inbox and clear section_id
       this.run(
-        'UPDATE tasks SET project_id = ?, updated_at = ? WHERE project_id = ? AND deleted_at IS NULL',
+        'UPDATE tasks SET project_id = ?, section_id = NULL, updated_at = ? WHERE project_id = ? AND deleted_at IS NULL',
         [INBOX_PROJECT_ID, timestamp, projectId]
+      )
+      // Delete sections belonging to the deleted project
+      this.run(
+        'DELETE FROM sections WHERE project_id = ?',
+        [projectId]
       )
     }
 

@@ -63,6 +63,17 @@ describe('ProjectRepository', () => {
       )
     `)
 
+    db.run(`
+      CREATE TABLE sections (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        sort_order REAL DEFAULT 0,
+        is_collapsed INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL
+      )
+    `)
+
     projectRepo = new ProjectRepository(db)
     taskRepo = new TaskRepository(db)
   })
@@ -280,6 +291,50 @@ describe('ProjectRepository', () => {
       projectRepo.delete(parent.id)
 
       expect(projectRepo.get(child.id)).toBeNull()
+    })
+
+    it('should delete sections belonging to the project', () => {
+      const project = projectRepo.create({ name: 'Test' })
+
+      // Create sections for the project
+      const now = Date.now()
+      db.run(
+        'INSERT INTO sections (id, name, project_id, sort_order, is_collapsed, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ['sec-1', 'Section A', project.id, 1, 0, now]
+      )
+      db.run(
+        'INSERT INTO sections (id, name, project_id, sort_order, is_collapsed, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ['sec-2', 'Section B', project.id, 2, 0, now]
+      )
+
+      projectRepo.delete(project.id)
+
+      // Sections should be deleted
+      const sections = db.exec('SELECT * FROM sections WHERE project_id = ?', [project.id])
+      expect(sections.length === 0 || sections[0].values.length === 0).toBe(true)
+    })
+
+    it('should clear section_id on tasks moved to Inbox', () => {
+      const project = projectRepo.create({ name: 'Test' })
+
+      // Create a section
+      const now = Date.now()
+      db.run(
+        'INSERT INTO sections (id, name, project_id, sort_order, is_collapsed, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ['sec-1', 'My Section', project.id, 1, 0, now]
+      )
+
+      // Create a task in that section
+      const task = taskRepo.create({ content: 'Sectioned task', projectId: project.id })
+      db.run('UPDATE tasks SET section_id = ? WHERE id = ?', ['sec-1', task.id])
+
+      projectRepo.delete(project.id)
+
+      // Task should be in Inbox with section_id cleared
+      const inboxTasks = taskRepo.list({ projectId: 'inbox' })
+      const movedTask = inboxTasks.find(t => t.content === 'Sectioned task')
+      expect(movedTask).toBeDefined()
+      expect(movedTask!.sectionId).toBeNull()
     })
   })
 
