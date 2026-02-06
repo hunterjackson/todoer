@@ -317,7 +317,7 @@ export function Sidebar({ currentView, currentViewId, onViewChange, onQuickAdd, 
                         />
                       }
                       label={project.name}
-                      active={currentView === 'project'}
+                      active={currentView === 'project' && currentViewId === project.id}
                       onClick={() => onViewChange('project', project.id)}
                       onDoubleClick={() => setEditingProject(project)}
                     />
