@@ -144,7 +144,8 @@ describe('Notification Service (real)', () => {
 
     it('should return false during quiet hours', () => {
       service.setEnabled(true)
-      service.setQuietHours(0, 23)
+      // Use 0-24 range to cover all hours regardless of CI timezone
+      service.setQuietHours(0, 24)
       const result = service.showNotification({ title: 'Test', body: 'Test' })
       expect(result).toBe(false)
     })
