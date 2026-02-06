@@ -424,7 +424,10 @@ test.describe('Fix #14: Archived default project fallback', () => {
     expect(await taskInInbox.isVisible().catch(() => false)).toBe(true)
 
     const createdTask = await page.evaluate(async ({ taskName }) => {
-      const tasks = await window.api.tasks.list({ completed: false })
+      const tasks = (await window.api.tasks.list({ completed: false })) as Array<{
+        content: string
+        projectId: string | null
+      }>
       return tasks.find((task) => task.content === taskName) || null
     }, { taskName })
     expect(createdTask?.projectId).toBe('inbox')
