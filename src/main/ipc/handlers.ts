@@ -704,14 +704,28 @@ export function registerIpcHandlers(): void {
       // Topological sort ensures parents are imported before children at any depth
       const sortedProjects = topologicalSort(data.projects)
 
+      // Build lookup of existing projects/labels for dedup on re-import
+      const existingProjects = projectRepo.list()
+      const existingLabels = labelRepo.list()
+
       let projectsImported = 0
       for (const project of sortedProjects) {
         try {
+          const resolvedParentId = project.parentId ? projectIdMap.get(project.parentId) || null : null
+          // Dedup: skip if project with same name and parent already exists
+          const existing = existingProjects.find(
+            p => p.name === project.name && (p.parentId ?? null) === resolvedParentId
+          )
+          if (existing) {
+            projectIdMap.set(project.id, existing.id)
+            continue
+          }
+
           const newProject = projectRepo.create({
             name: project.name,
             description: project.description ?? null,
             color: project.color,
-            parentId: project.parentId ? projectIdMap.get(project.parentId) || null : null,
+            parentId: resolvedParentId,
             viewMode: project.viewMode ?? 'list',
             isFavorite: project.isFavorite ?? false
           })
@@ -722,7 +736,7 @@ export function registerIpcHandlers(): void {
           projectIdMap.set(project.id, newProject.id)
           projectsImported++
         } catch {
-          // Skip duplicates
+          // Skip failures
         }
       }
 
@@ -730,6 +744,13 @@ export function registerIpcHandlers(): void {
       let labelsImported = 0
       for (const label of data.labels) {
         try {
+          // Dedup: skip if label with same name already exists
+          const existing = existingLabels.find(l => l.name === label.name)
+          if (existing) {
+            labelIdMap.set(label.id, existing.id)
+            continue
+          }
+
           const newLabel = labelRepo.create({
             name: label.name,
             color: label.color,
@@ -738,7 +759,7 @@ export function registerIpcHandlers(): void {
           labelIdMap.set(label.id, newLabel.id)
           labelsImported++
         } catch {
-          // Skip duplicates
+          // Skip failures
         }
       }
 
@@ -821,9 +842,36 @@ export function registerIpcHandlers(): void {
             labelIds: remappedLabelIds
           })
 
-          // Handle completed state
+          // Restore original metadata (sortOrder, timestamps, completed state)
+          const db = getDatabase()
+          const metaUpdates: string[] = []
+          const metaParams: unknown[] = []
+
+          if (task.sortOrder != null) {
+            metaUpdates.push('sort_order = ?')
+            metaParams.push(task.sortOrder)
+          }
+          if (task.createdAt != null) {
+            metaUpdates.push('created_at = ?')
+            metaParams.push(task.createdAt)
+          }
+          if (task.updatedAt != null) {
+            metaUpdates.push('updated_at = ?')
+            metaParams.push(task.updatedAt)
+          }
           if (task.completed) {
-            taskRepo.complete(newTask.id)
+            metaUpdates.push('completed = 1')
+            metaUpdates.push('completed_at = ?')
+            metaParams.push(task.completedAt ?? Date.now())
+          }
+
+          if (metaUpdates.length > 0) {
+            metaParams.push(newTask.id)
+            db.run(
+              `UPDATE tasks SET ${metaUpdates.join(', ')} WHERE id = ?`,
+              metaParams
+            )
+            saveDatabase()
           }
 
           taskIdMap.set(task.id, newTask.id)
@@ -848,10 +896,20 @@ export function registerIpcHandlers(): void {
           // Skip if neither task nor project was imported
           if (!remappedTaskId && !remappedProjectId) continue
 
+          let newComment
           if (remappedTaskId) {
-            commentRepo.create({ taskId: remappedTaskId, content: comment.content })
+            newComment = commentRepo.create({ taskId: remappedTaskId, content: comment.content })
           } else if (remappedProjectId) {
-            commentRepo.create({ projectId: remappedProjectId, content: comment.content })
+            newComment = commentRepo.create({ projectId: remappedProjectId, content: comment.content })
+          }
+          // Restore original timestamps
+          if (newComment && (comment.createdAt || comment.updatedAt)) {
+            const db = getDatabase()
+            db.run(
+              'UPDATE comments SET created_at = ?, updated_at = ? WHERE id = ?',
+              [comment.createdAt ?? newComment.createdAt, comment.updatedAt ?? newComment.updatedAt, newComment.id]
+            )
+            saveDatabase()
           }
           commentsImported++
         } catch {
@@ -868,7 +926,11 @@ export function registerIpcHandlers(): void {
             : null
           if (!remappedTaskId) continue
 
-          reminderRepo.create({ taskId: remappedTaskId, remindAt: reminder.remindAt })
+          const newReminder = reminderRepo.create({ taskId: remappedTaskId, remindAt: reminder.remindAt })
+          // Restore notified state
+          if (reminder.notified && newReminder) {
+            reminderRepo.markNotified(newReminder.id)
+          }
           remindersImported++
         } catch {
           // Skip failures
