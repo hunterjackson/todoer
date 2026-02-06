@@ -150,7 +150,7 @@ test.describe('Task Management', () => {
       await page.waitForTimeout(300)
     }
 
-    expect(true).toBe(true) // Test passes if we got here without error
+    // Reaching here without error is the assertion
   })
 
   test('should navigate with keyboard shortcuts', async () => {
@@ -230,7 +230,7 @@ test.describe('Task Editing', () => {
       }
     }
 
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 
   test('should open edit dialog when clicking edit button', async () => {
@@ -261,13 +261,10 @@ test.describe('Task Editing', () => {
         }
 
         expect(dialogVisible).toBe(true)
-      } else {
-        // Edit button not visible, skip
-        expect(true).toBe(true)
       }
-    } else {
-      expect(true).toBe(true)
+      // If edit button not visible, reaching here without error is the assertion
     }
+    // If no task visible, reaching here without error is the assertion
   })
 
   test('should save edited task', async () => {
@@ -314,7 +311,7 @@ test.describe('Task Editing', () => {
       }
     }
 
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 })
 
@@ -332,7 +329,7 @@ test.describe('Search', () => {
       await page.waitForTimeout(500)
     }
 
-    expect(true).toBe(true) // Test passes if we got here without error
+    // Reaching here without error is the assertion
   })
 })
 

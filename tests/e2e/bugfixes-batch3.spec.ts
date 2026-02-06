@@ -376,7 +376,6 @@ test.describe('Task #78: Parallel test execution', () => {
     // This test verifies the parallelism configuration exists
     // The actual speedup is verified by comparing total test suite run times
     // Config: workers: 4 (local), workers: 2 (CI)
-    expect(true).toBe(true)
   })
 })
 

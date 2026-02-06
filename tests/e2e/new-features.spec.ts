@@ -146,7 +146,7 @@ test.describe('Project Name Display (not raw IDs)', () => {
       }
     }
 
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 })
 
@@ -226,7 +226,7 @@ test.describe('Comment Timestamps and Editing', () => {
     }
 
     await closeDialogs()
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 
   test('should show (edited) label after editing comment', async () => {
@@ -274,8 +274,7 @@ test.describe('Comment Timestamps and Editing', () => {
     const isEdited = await editedLabel.isVisible().catch(() => false)
 
     await closeDialogs()
-    // This is OK even if not visible - the test verifies the flow doesn't error
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 })
 
@@ -330,7 +329,7 @@ test.describe('Rich Text Editor', () => {
     }
 
     await closeDialogs()
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 })
 
@@ -410,7 +409,7 @@ test.describe('Autosave Task Changes', () => {
     // Wait for save to complete
     await page.waitForTimeout(1500)
     await closeDialogs()
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 })
 
@@ -468,7 +467,7 @@ test.describe('Filter Query Typeahead Autocomplete', () => {
     }
 
     await closeDialogs()
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 
   test('should show autocomplete dropdown when typing @ in filter query', async () => {
@@ -520,7 +519,7 @@ test.describe('Filter Query Typeahead Autocomplete', () => {
     }
 
     await closeDialogs()
-    expect(true).toBe(true)
+    // Reaching here without error is the assertion
   })
 })
 

@@ -154,8 +154,7 @@ test.describe('Bug Fixes Validation', () => {
           el.getAttribute('aria-pressed') === 'true'
         ).catch(() => false)
 
-        // Should work without needing to navigate away and back
-        expect(true).toBe(true) // Test passes if no errors thrown
+        // Reaching here without error is the assertion
       }
     })
   })
@@ -249,7 +248,7 @@ test.describe('Bug Fixes Validation', () => {
         await page.waitForTimeout(200)
       }
 
-      expect(true).toBe(true)
+      // Reaching here without error is the assertion
     })
   })
 })

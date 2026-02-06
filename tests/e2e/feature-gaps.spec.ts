@@ -667,7 +667,6 @@ test.describe('Filter Favorites', () => {
     const favLabel = page.locator('label:has-text("favorite"), label[for="favorite"]').first()
     if (await favLabel.isVisible().catch(() => false)) {
       // Label is there, which means the favorites feature exists in the dialog
-      expect(true).toBe(true)
     }
 
     const submitBtn = page.locator('.fixed.inset-0 button:has-text("Add"), .fixed.inset-0 button:has-text("Save")').first()

@@ -396,8 +396,7 @@ test.describe('Combined Label and Project Autocomplete', () => {
       const dropdown = page.locator('.fixed.bg-popover').first()
       const isDropdownVisible = await dropdown.isVisible().catch(() => false)
 
-      // Just verify we can type both symbols
-      expect(true).toBe(true)
+      // Reaching here without error is the assertion
     }
 
     await closeDialogs()
