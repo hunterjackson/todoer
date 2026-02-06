@@ -33,7 +33,7 @@ const shortcuts = [
     category: 'Task List (hover over list)',
     items: [
       { keys: ['J / K'], description: 'Move focus down / up' },
-      { keys: ['Tab / Shift+Tab'], description: 'Move focus down / up' },
+      { keys: ['Tab / Shift+Tab'], description: 'Indent / outdent task' },
       { keys: ['E'], description: 'Complete/uncomplete focused task' },
       { keys: ['1-4'], description: 'Set priority' },
       { keys: ['Enter'], description: 'Edit focused task' },
