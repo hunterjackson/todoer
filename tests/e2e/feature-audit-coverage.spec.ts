@@ -45,7 +45,7 @@ async function goToInbox() {
   await ensureSidebarVisible()
   await page.click('button:has-text("Inbox")')
   await page.waitForTimeout(500)
-  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 }
 
 // Helper to close any open dialogs
@@ -76,7 +76,7 @@ test.describe('Task Management: Delete Task', () => {
 
     // Hover and click delete
     const task = page.locator(`.task-item:has-text("DeleteTask")`).first()
-    await task.waitFor({ state: 'visible', timeout: 3000 })
+    await task.waitFor({ state: 'visible' })
     await task.hover()
     await page.waitForTimeout(300)
     const deleteBtn = task.locator('button[title="Delete"], button:has-text("Delete")').first()
@@ -148,7 +148,7 @@ test.describe('Project Management: Delete Project', () => {
 
     // Double-click to edit
     const projectBtn = page.locator(`button:has-text("${projectName}")`).first()
-    await projectBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await projectBtn.waitFor({ state: 'visible' })
     await projectBtn.dblclick()
     await page.waitForTimeout(500)
 
@@ -159,7 +159,7 @@ test.describe('Project Management: Delete Project', () => {
 
     // Find and click delete button in dialog
     const dialog = page.locator('.fixed.inset-0.z-50').first()
-    await dialog.waitFor({ state: 'visible', timeout: 3000 })
+    await dialog.waitFor({ state: 'visible' })
     const deleteBtn = dialog.locator('button:has-text("Delete")').first()
     if (await deleteBtn.isVisible()) {
       await deleteBtn.click()
@@ -245,7 +245,7 @@ test.describe('Quick Add: Section Syntax', () => {
 
     // Navigate to project
     const projectBtn = page.locator(`button:has-text("${projectName}")`).first()
-    await projectBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await projectBtn.waitFor({ state: 'visible' })
     await projectBtn.click()
     await page.waitForTimeout(500)
 
@@ -284,7 +284,7 @@ test.describe('Quick Add: Section Syntax', () => {
     await page.waitForTimeout(500)
 
     const task = page.locator('.task-item:has-text("Section task")')
-    await expect(task).toBeVisible({ timeout: 3000 })
+    await expect(task).toBeVisible()
   })
 })
 
@@ -355,7 +355,7 @@ test.describe('Settings: Daily/Weekly Goals', () => {
 
     const settingsPanel = page.locator('.fixed.inset-0')
     await expect(settingsPanel.locator('text=Daily Goal')).toBeVisible()
-    await expect(settingsPanel.locator('input[type="range"]')).toBeVisible()
+    await expect(settingsPanel.locator('input[type="range"]').first()).toBeVisible()
 
     await closeDialogs()
   })
@@ -389,7 +389,7 @@ test.describe('Filter Syntax: Priority Filter', () => {
 
     // Results should show the task
     const task = page.locator('.task-item:has-text("P1 priority")')
-    await expect(task).toBeVisible({ timeout: 3000 })
+    await expect(task).toBeVisible()
 
     await closeDialogs()
   })
@@ -565,7 +565,7 @@ test.describe('Sub-projects', () => {
 
     // Verify child is visible and indented
     const childBtn = page.locator(`button:has-text("${childName}")`).first()
-    await childBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await childBtn.waitFor({ state: 'visible' })
     expect(await childBtn.isVisible()).toBe(true)
 
     // Click child to navigate to it
@@ -573,7 +573,7 @@ test.describe('Sub-projects', () => {
     await page.waitForTimeout(500)
 
     const heading = page.locator(`h1:has-text("${childName}")`)
-    await heading.waitFor({ state: 'visible', timeout: 3000 })
+    await heading.waitFor({ state: 'visible' })
     expect(await heading.isVisible()).toBe(true)
   })
 })

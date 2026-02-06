@@ -51,12 +51,12 @@ async function goToInbox() {
   await page.waitForTimeout(200)
   await page.click('button:has-text("Inbox")')
   await page.waitForTimeout(500)
-  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 }
 
 async function createTask(taskName: string) {
   const addBtn = page.locator('button:has-text("Add task")').first()
-  await addBtn.waitFor({ state: 'visible', timeout: 3000 })
+  await addBtn.waitFor({ state: 'visible' })
   await addBtn.click()
   await page.waitForTimeout(200)
   const taskInput = page.locator('input[placeholder*="Task name"]').first()
@@ -85,7 +85,7 @@ test.describe('Keyboard Navigation: G+U for Upcoming', () => {
 
     // Verify Upcoming view heading
     const heading = page.locator('h1:has-text("Upcoming")')
-    await heading.waitFor({ state: 'visible', timeout: 3000 })
+    await heading.waitFor({ state: 'visible' })
     expect(await heading.isVisible()).toBe(true)
   })
 })
@@ -105,8 +105,8 @@ test.describe('Keyboard Subtask: Tab indent and Shift+Tab outdent', () => {
     await createTask(childTask)
 
     // Verify both tasks visible
-    await page.locator(`.task-item:has-text("${parentTask}")`).waitFor({ state: 'visible', timeout: 3000 })
-    await page.locator(`.task-item:has-text("${childTask}")`).waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator(`.task-item:has-text("${parentTask}")`).waitFor({ state: 'visible' })
+    await page.locator(`.task-item:has-text("${childTask}")`).waitFor({ state: 'visible' })
 
     // Blur any input and prepare for keyboard navigation
     const heading = page.locator('h1:has-text("Inbox")')
@@ -217,12 +217,12 @@ test.describe('Label View: Navigate to label view', () => {
     // Create a label via sidebar
     await ensureSidebarVisible()
     const addLabelBtn = page.locator('button[title="Add label"], button:has-text("Add label")').first()
-    await addLabelBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await addLabelBtn.waitFor({ state: 'visible' })
     await addLabelBtn.click()
     await page.waitForTimeout(300)
 
     const labelInput = page.locator('input[placeholder*="label"], input[placeholder*="Label"]').first()
-    await labelInput.waitFor({ state: 'visible', timeout: 3000 })
+    await labelInput.waitFor({ state: 'visible' })
     await labelInput.fill(labelName)
     await page.keyboard.press('Enter')
     await page.waitForTimeout(500)
@@ -232,13 +232,13 @@ test.describe('Label View: Navigate to label view', () => {
 
     // Click the label in the sidebar to navigate to label view
     const sidebarLabel = page.locator(`button:has-text("${labelName}")`).first()
-    await sidebarLabel.waitFor({ state: 'visible', timeout: 3000 })
+    await sidebarLabel.waitFor({ state: 'visible' })
     await sidebarLabel.click()
     await page.waitForTimeout(500)
 
     // Verify label view heading is visible
     const labelHeading = page.locator(`h1:has-text("${labelName}")`)
-    await labelHeading.waitFor({ state: 'visible', timeout: 3000 })
+    await labelHeading.waitFor({ state: 'visible' })
     expect(await labelHeading.isVisible()).toBe(true)
   })
 })
@@ -380,7 +380,7 @@ test.describe('Filter Query Operators: AND, NOT', () => {
       // The filter view should load without errors
       // Verify we're on a filter view (heading or filter name visible)
       const heading = page.locator('h1:has-text("Priority AND Filter")')
-      await heading.waitFor({ state: 'visible', timeout: 3000 })
+      await heading.waitFor({ state: 'visible' })
       expect(await heading.isVisible()).toBe(true)
     }
   })
@@ -463,7 +463,7 @@ test.describe('Filter Query: no date syntax', () => {
     await filterBtn.click()
     await page.waitForTimeout(500)
     const heading = page.locator('h1:has-text("No Date Filter")')
-    await heading.waitFor({ state: 'visible', timeout: 3000 })
+    await heading.waitFor({ state: 'visible' })
     expect(await heading.isVisible()).toBe(true)
   })
 })
@@ -508,7 +508,7 @@ test.describe('Filter Query: search: keyword syntax', () => {
     await filterBtn.click()
     await page.waitForTimeout(500)
     const heading = page.locator('h1:has-text("Search Keyword Filter")')
-    await heading.waitFor({ state: 'visible', timeout: 3000 })
+    await heading.waitFor({ state: 'visible' })
     expect(await heading.isVisible()).toBe(true)
   })
 })
@@ -553,7 +553,7 @@ test.describe('Filter Query: Wildcard (*) syntax', () => {
     await filterBtn.click()
     await page.waitForTimeout(500)
     const heading = page.locator('h1:has-text("Wildcard Filter")')
-    await heading.waitFor({ state: 'visible', timeout: 3000 })
+    await heading.waitFor({ state: 'visible' })
     expect(await heading.isVisible()).toBe(true)
   })
 })
@@ -692,7 +692,7 @@ test.describe('Deadline Field in Edit Dialog', () => {
 
     // Verify edit dialog is open
     const editDialog = page.locator('h2:has-text("Edit task")')
-    await editDialog.waitFor({ state: 'visible', timeout: 3000 })
+    await editDialog.waitFor({ state: 'visible' })
 
     // Look for Deadline label and its picker
     const deadlineLabel = page.locator('label:has-text("Deadline")')

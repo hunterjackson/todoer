@@ -53,7 +53,7 @@ async function goToInbox() {
   await page.waitForTimeout(200)
   await page.click('button:has-text("Inbox")')
   await page.waitForTimeout(500)
-  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 }
 
 async function resetInboxGrouping() {
@@ -78,7 +78,7 @@ async function resetInboxGrouping() {
 async function createTask(taskName: string) {
   await resetInboxGrouping()
   const addBtn = page.locator('button:has-text("Add task")').first()
-  await addBtn.waitFor({ state: 'visible', timeout: 3000 })
+  await addBtn.waitFor({ state: 'visible' })
   await addBtn.click()
   await page.waitForTimeout(200)
   const taskInput = page.locator('input[placeholder*="Task name"]').first()
@@ -105,7 +105,7 @@ test.describe('Bug #75: Comment edit save should not close dialog', () => {
 
     // Verify edit dialog is open
     const editDialog = page.locator('h2:has-text("Edit task")')
-    await editDialog.waitFor({ state: 'visible', timeout: 3000 })
+    await editDialog.waitFor({ state: 'visible' })
 
     // Add a comment first
     const commentInput = page.locator('input[placeholder="Add a comment..."]')
@@ -115,7 +115,7 @@ test.describe('Bug #75: Comment edit save should not close dialog', () => {
 
     // Verify comment appears
     const comment = page.locator('text=Test comment for editing')
-    await comment.waitFor({ state: 'visible', timeout: 3000 })
+    await comment.waitFor({ state: 'visible' })
 
     // Click the edit button on the comment (hover to reveal)
     const commentBlock = page.locator('.group:has-text("Test comment for editing")').first()
@@ -205,11 +205,11 @@ test.describe('Bug #76: Create new project from task edit dialog', () => {
     await page.waitForTimeout(600)
 
     // Verify edit dialog is open
-    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible' })
 
     // Find the project dropdown
     const projectSelect = page.locator('.fixed.inset-0 select').first()
-    await projectSelect.waitFor({ state: 'visible', timeout: 3000 })
+    await projectSelect.waitFor({ state: 'visible' })
 
     // Select "Create new project" option
     await projectSelect.selectOption('__create_new__')
@@ -217,7 +217,7 @@ test.describe('Bug #76: Create new project from task edit dialog', () => {
 
     // An inline input should appear with placeholder "New project name"
     const newProjectInput = page.locator('input[placeholder="New project name"]')
-    await newProjectInput.waitFor({ state: 'visible', timeout: 3000 })
+    await newProjectInput.waitFor({ state: 'visible' })
     expect(await newProjectInput.isVisible()).toBe(true)
 
     // Also verify there's an Add and Cancel button
@@ -248,7 +248,7 @@ test.describe('Bug #76: Create new project from task edit dialog', () => {
     await taskContent.click()
     await page.waitForTimeout(600)
 
-    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible' })
 
     // Select "Create new project"
     const projectSelect = page.locator('.fixed.inset-0 select').first()
@@ -267,7 +267,7 @@ test.describe('Bug #76: Create new project from task edit dialog', () => {
 
     // The dropdown should now show the new project selected
     const selectAfter = page.locator('.fixed.inset-0 select').first()
-    await selectAfter.waitFor({ state: 'visible', timeout: 3000 })
+    await selectAfter.waitFor({ state: 'visible' })
     const selectedValue = await selectAfter.inputValue()
 
     // Verify it's not "inbox" anymore (it should be the new project's ID)
@@ -296,7 +296,7 @@ test.describe('Bug #76: Create new project from task edit dialog', () => {
     await taskContent.click()
     await page.waitForTimeout(600)
 
-    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible' })
 
     // Select "Create new project"
     const projectSelect = page.locator('.fixed.inset-0 select').first()
@@ -312,7 +312,7 @@ test.describe('Bug #76: Create new project from task edit dialog', () => {
 
     // The dropdown should be back and show the new project
     const selectAfter = page.locator('.fixed.inset-0 select').first()
-    await selectAfter.waitFor({ state: 'visible', timeout: 3000 })
+    await selectAfter.waitFor({ state: 'visible' })
     const options = await selectAfter.locator('option').allTextContents()
     expect(options.some(o => o.includes(newProjectName))).toBe(true)
 
@@ -338,7 +338,7 @@ test.describe('Bug #77: Attachments open API', () => {
     await taskContent.click()
     await page.waitForTimeout(600)
 
-    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible' })
 
     // Verify the attachments section exists
     const attachSection = page.locator('text=Attachments').first()

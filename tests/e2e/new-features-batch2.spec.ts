@@ -113,7 +113,7 @@ async function createProject(name: string) {
   await page.waitForTimeout(300)
 
   const nameInput = page.locator('input[placeholder*="Project name"], input[placeholder*="project name"]').first()
-  await nameInput.waitFor({ state: 'visible', timeout: 3000 })
+  await nameInput.waitFor({ state: 'visible' })
   await nameInput.fill(name)
   await page.waitForTimeout(200)
 
@@ -180,7 +180,7 @@ test.describe('Comment Edit Bug Fix', () => {
 
     // Add a comment
     const commentInput = page.locator('input[placeholder="Add a comment..."]').first()
-    await commentInput.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+    await commentInput.waitFor({ state: 'visible' }).catch(() => {})
 
     if (await commentInput.isVisible().catch(() => false)) {
       await commentInput.fill('Test comment for bug fix')
@@ -197,7 +197,7 @@ test.describe('Comment Edit Bug Fix', () => {
 
       // Verify comment was added and dialog is still open
       const comment = page.locator('text=Test comment for bug fix')
-      await expect(comment).toBeVisible({ timeout: 3000 }).catch(() => {})
+      await expect(comment).toBeVisible().catch(() => {})
 
       // The dialog should still be open (even just adding a comment)
       await expect(dialogForm).toBeVisible()

@@ -40,7 +40,7 @@ async function goToInbox() {
 
 async function createTask(name: string) {
   const addButton = page.locator('button:has-text("Add task")').first()
-  await addButton.waitFor({ state: 'visible', timeout: 3000 })
+  await addButton.waitFor({ state: 'visible' })
   await addButton.click()
   await page.waitForTimeout(200)
 
@@ -164,7 +164,7 @@ test.describe('Comment Timestamps and Editing', () => {
 
     // Add a comment
     const commentInput = page.locator('input[placeholder="Add a comment..."]')
-    await commentInput.waitFor({ state: 'visible', timeout: 3000 })
+    await commentInput.waitFor({ state: 'visible' })
     await commentInput.click()
     await page.keyboard.type('Test comment with timestamp', { delay: 10 })
     await commentInput.press('Enter')

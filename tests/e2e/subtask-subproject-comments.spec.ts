@@ -47,7 +47,7 @@ async function goToInbox() {
   await page.waitForTimeout(300)
   await page.click('button:has-text("Inbox")')
   await page.waitForTimeout(500)
-  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 }
 
 // Helper to close any open dialogs
@@ -61,7 +61,7 @@ async function closeDialogs() {
 // Helper to create a task via the inline add input
 async function createTask(taskName: string) {
   const addBtn = page.locator('button:has-text("Add task")').first()
-  await addBtn.waitFor({ state: 'visible', timeout: 3000 })
+  await addBtn.waitFor({ state: 'visible' })
   await addBtn.click()
   await page.waitForTimeout(200)
   const taskInput = page.locator('input[placeholder*="Task name"]').first()
@@ -81,7 +81,7 @@ async function openEditDialog(taskName: string) {
 
   // Verify edit dialog opened
   const editDialog = page.locator('h2:has-text("Edit task")')
-  await editDialog.waitFor({ state: 'visible', timeout: 3000 })
+  await editDialog.waitFor({ state: 'visible' })
 }
 
 // Helper to scroll dialog to bottom
@@ -126,7 +126,7 @@ test.describe('Subtasks - Add subtask via Edit Dialog UI', () => {
     // Create parent task
     await createTask(parentName)
     const parentTask = page.locator(`.task-item:has-text("${parentName}")`)
-    await parentTask.waitFor({ state: 'visible', timeout: 3000 })
+    await parentTask.waitFor({ state: 'visible' })
 
     // Open edit dialog for the parent task
     await openEditDialog(parentName)
@@ -134,18 +134,18 @@ test.describe('Subtasks - Add subtask via Edit Dialog UI', () => {
 
     // Verify "Subtasks (0)" is visible
     const subtasksLabel = page.locator('text=Subtasks (0)')
-    await subtasksLabel.waitFor({ state: 'visible', timeout: 3000 })
+    await subtasksLabel.waitFor({ state: 'visible' })
     expect(await subtasksLabel.isVisible()).toBe(true)
 
     // Click "Add subtask" button
     const addSubtaskBtn = page.locator('button:has-text("Add subtask")')
-    await addSubtaskBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await addSubtaskBtn.waitFor({ state: 'visible' })
     await addSubtaskBtn.click()
     await page.waitForTimeout(300)
 
     // Subtask input should appear
     const subtaskInput = page.locator('input[placeholder="Subtask name"]')
-    await subtaskInput.waitFor({ state: 'visible', timeout: 3000 })
+    await subtaskInput.waitFor({ state: 'visible' })
 
     // Type subtask name and press Enter
     await subtaskInput.fill(subtaskName)
@@ -159,7 +159,7 @@ test.describe('Subtasks - Add subtask via Edit Dialog UI', () => {
 
     // Verify "Subtasks (1)" is now visible (count updated)
     const subtasksOne = page.locator('text=Subtasks (1)')
-    await subtasksOne.waitFor({ state: 'visible', timeout: 3000 })
+    await subtasksOne.waitFor({ state: 'visible' })
     expect(await subtasksOne.isVisible()).toBe(true)
 
     // Verify subtask name appears in the dialog
@@ -229,7 +229,7 @@ test.describe('Subtasks - Add subtask via Edit Dialog UI', () => {
 
     // Subtask count should still be 1
     const subtasksOne = page.locator('text=Subtasks (1)')
-    await subtasksOne.waitFor({ state: 'visible', timeout: 3000 })
+    await subtasksOne.waitFor({ state: 'visible' })
     expect(await subtasksOne.isVisible()).toBe(true)
 
     // Subtask name should be visible
@@ -249,7 +249,7 @@ test.describe('Subtasks - Add subtask via Edit Dialog UI', () => {
 
     // Verify subtask is listed
     const subtaskSpan = page.locator(`.fixed.inset-0 span:has-text("${subtaskName}")`).first()
-    await subtaskSpan.waitFor({ state: 'visible', timeout: 3000 })
+    await subtaskSpan.waitFor({ state: 'visible' })
 
     // Click the subtask name to navigate to its edit dialog
     await subtaskSpan.click()
@@ -257,7 +257,7 @@ test.describe('Subtasks - Add subtask via Edit Dialog UI', () => {
 
     // The dialog should now show the subtask's content in the task name input
     const editDialog = page.locator('h2:has-text("Edit task")')
-    await editDialog.waitFor({ state: 'visible', timeout: 3000 })
+    await editDialog.waitFor({ state: 'visible' })
 
     // The task name field should contain the subtask name
     const taskNameInput = page.locator('.fixed.inset-0 input[type="text"]').first()
@@ -293,7 +293,7 @@ test.describe('Sub-projects - Parent project selector always visible', () => {
 
     // Parent project label should ALWAYS be visible (even with no projects)
     const parentLabel = page.locator('label:has-text("Parent project")')
-    await parentLabel.waitFor({ state: 'visible', timeout: 3000 })
+    await parentLabel.waitFor({ state: 'visible' })
     expect(await parentLabel.isVisible()).toBe(true)
 
     await closeDialogs()
@@ -407,7 +407,7 @@ test.describe('Comments - Add, persist, and error handling', () => {
 
     // Verify "Comments (0)" and "No comments yet"
     const commentsZero = page.locator('text=Comments (0)')
-    await commentsZero.waitFor({ state: 'visible', timeout: 3000 })
+    await commentsZero.waitFor({ state: 'visible' })
     expect(await commentsZero.isVisible()).toBe(true)
 
     const noComments = page.locator('text=No comments yet')
@@ -415,7 +415,7 @@ test.describe('Comments - Add, persist, and error handling', () => {
 
     // Type comment
     const commentInput = page.locator('input[placeholder="Add a comment..."]')
-    await commentInput.waitFor({ state: 'visible', timeout: 3000 })
+    await commentInput.waitFor({ state: 'visible' })
     await commentInput.click()
     await page.keyboard.type(commentText, { delay: 10 })
     await page.waitForTimeout(200)

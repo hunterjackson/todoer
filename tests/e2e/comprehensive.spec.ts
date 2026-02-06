@@ -1097,7 +1097,7 @@ test.describe('Productivity Panel', () => {
     // Settings panel should show Daily Goal section (karma/productivity related)
     const settingsPanel = page.locator('.fixed.inset-0')
     await expect(settingsPanel.locator('text=Daily Goal')).toBeVisible()
-    await expect(settingsPanel.locator('input[type="range"]')).toBeVisible()
+    await expect(settingsPanel.locator('input[type="range"]').first()).toBeVisible()
 
     await closeDialogs()
   })

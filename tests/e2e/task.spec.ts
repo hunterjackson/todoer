@@ -48,7 +48,7 @@ test.describe('Task Management', () => {
 
     // Click add task button
     const addButton = page.locator('button:has-text("Add task")').first()
-    await addButton.waitFor({ state: 'visible', timeout: 3000 })
+    await addButton.waitFor({ state: 'visible' })
     await addButton.click()
 
     // Type task content
@@ -89,7 +89,7 @@ test.describe('Task Management', () => {
 
     // Find the task and click its checkbox
     const taskItem = page.locator(`.task-item:has-text("${taskName}")`).first()
-    await taskItem.waitFor({ state: 'visible', timeout: 3000 })
+    await taskItem.waitFor({ state: 'visible' })
     const checkbox = taskItem.locator('button').first()
     await checkbox.click()
     await page.waitForTimeout(500)
@@ -117,7 +117,7 @@ test.describe('Task Management', () => {
 
     // Click delete button in the dialog
     const deleteBtn = page.locator('.fixed.inset-0 button:has-text("Delete task")')
-    await deleteBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await deleteBtn.waitFor({ state: 'visible' })
 
     // Handle the confirm dialog by accepting it
     page.once('dialog', dialog => dialog.accept())

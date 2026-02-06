@@ -10,6 +10,9 @@ export default defineConfig({
   workers: process.env.CI ? 2 : 4, // Run test files in parallel - each launches its own Electron with isolated in-memory DB
   reporter: 'html',
   timeout: 60000,
+  expect: {
+    timeout: process.env.CI ? 15000 : 5000
+  },
   use: {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure'

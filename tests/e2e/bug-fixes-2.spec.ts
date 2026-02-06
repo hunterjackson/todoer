@@ -181,7 +181,7 @@ test.describe('Bug: Comments functionality', () => {
     await ensureSidebarVisible()
     await page.click('button:has-text("Inbox")')
     await page.waitForTimeout(500)
-    await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+    await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 
     // Create a task first with unique name
     const taskName = `Comment test task ${Date.now()}`
@@ -197,7 +197,7 @@ test.describe('Bug: Comments functionality', () => {
 
     // Hover over task to reveal edit button, then click Edit
     const task = page.locator('.task-item:has-text("Comment test task")').first()
-    await task.waitFor({ state: 'visible', timeout: 3000 })
+    await task.waitFor({ state: 'visible' })
     await task.hover()
     await page.waitForTimeout(200)
 
@@ -239,7 +239,7 @@ test.describe('Bug: Comments functionality', () => {
     await ensureSidebarVisible()
     await page.click('button:has-text("Inbox")')
     await page.waitForTimeout(500)
-    await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+    await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 
     // Open the task we just commented on
     const task = page.locator('.task-item:has-text("Comment test task")').first()

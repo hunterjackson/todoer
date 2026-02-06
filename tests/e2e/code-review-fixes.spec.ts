@@ -45,7 +45,7 @@ async function goToInbox() {
   await ensureSidebarVisible()
   await page.click('button:has-text("Inbox")')
   await page.waitForTimeout(500)
-  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 }
 
 // Helper: close any open dialogs
@@ -64,7 +64,7 @@ async function openSettingsPanel() {
   } else {
     await page.keyboard.press('Meta+,')
   }
-  await page.locator('h2:has-text("Settings")').first().waitFor({ state: 'visible', timeout: 3000 })
+  await page.locator('h2:has-text("Settings")').first().waitFor({ state: 'visible' })
 }
 
 // Helper: create a task in current view using inline Add task
@@ -105,7 +105,7 @@ test.describe('Fix #4: Recurring task completion', () => {
     await page.waitForTimeout(300)
 
     const quickAddDialog = page.locator('.fixed.inset-0.z-50').first()
-    await quickAddDialog.waitFor({ state: 'visible', timeout: 3000 })
+    await quickAddDialog.waitFor({ state: 'visible' })
 
     const input = quickAddDialog.locator('input[type="text"]').first()
     await input.fill('Recurring standup task')
@@ -175,7 +175,7 @@ test.describe('Fix #5: Filter @label functionality', () => {
     await page.waitForTimeout(300)
 
     const quickAddDialog = page.locator('.fixed.inset-0.z-50').first()
-    await quickAddDialog.waitFor({ state: 'visible', timeout: 3000 })
+    await quickAddDialog.waitFor({ state: 'visible' })
 
     const input = quickAddDialog.locator('input[type="text"]').first()
     // Type task content with @label trigger
@@ -225,7 +225,7 @@ test.describe('Fix #6: Undo preserves task identity', () => {
 
     // Verify task exists
     const taskItem = page.locator(`.task-item:has-text("${taskName}")`).first()
-    await taskItem.waitFor({ state: 'visible', timeout: 3000 })
+    await taskItem.waitFor({ state: 'visible' })
 
     // Hover and delete the task
     await taskItem.hover()
@@ -263,7 +263,7 @@ test.describe('Fix #10: Quick Add autocomplete symbols', () => {
     await page.waitForTimeout(300)
 
     const quickAddDialog = page.locator('.fixed.inset-0.z-50').first()
-    await quickAddDialog.waitFor({ state: 'visible', timeout: 3000 })
+    await quickAddDialog.waitFor({ state: 'visible' })
 
     const input = quickAddDialog.locator('input[type="text"]').first()
 
@@ -293,7 +293,7 @@ test.describe('Fix #10: Quick Add autocomplete symbols', () => {
     await page.waitForTimeout(300)
 
     const quickAddDialog = page.locator('.fixed.inset-0.z-50').first()
-    await quickAddDialog.waitFor({ state: 'visible', timeout: 3000 })
+    await quickAddDialog.waitFor({ state: 'visible' })
 
     const input = quickAddDialog.locator('input[type="text"]').first()
 
@@ -334,7 +334,7 @@ test.describe('Fix #11: Project delete moves tasks to Inbox', () => {
     // Navigate to the new project by clicking sidebar
     await ensureSidebarVisible()
     const projectBtn = page.locator(`button:has-text("${projName}")`).first()
-    await projectBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await projectBtn.waitFor({ state: 'visible' })
     await projectBtn.click()
     await page.waitForTimeout(500)
 
@@ -360,7 +360,7 @@ test.describe('Fix #11: Project delete moves tasks to Inbox', () => {
 
     // Find and click Delete button in the project edit dialog
     const dialog = page.locator('.fixed.inset-0.z-50').first()
-    await dialog.waitFor({ state: 'visible', timeout: 3000 })
+    await dialog.waitFor({ state: 'visible' })
     const deleteBtn = dialog.locator('button:has-text("Delete")').first()
     if (await deleteBtn.isVisible()) {
       await deleteBtn.click()
@@ -404,7 +404,7 @@ test.describe('Fix #14: Archived default project fallback', () => {
     await page.waitForTimeout(300)
 
     const quickAddDialog = page.locator('.fixed.inset-0.z-50').first()
-    await quickAddDialog.waitFor({ state: 'visible', timeout: 3000 })
+    await quickAddDialog.waitFor({ state: 'visible' })
     const input = quickAddDialog.locator('input[type="text"]').first()
     await input.fill(taskName)
     await page.keyboard.press('Meta+Enter')

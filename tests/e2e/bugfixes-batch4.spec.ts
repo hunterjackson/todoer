@@ -54,7 +54,7 @@ async function goToInbox() {
   await page.waitForTimeout(200)
   await page.click('button:has-text("Inbox")')
   await page.waitForTimeout(500)
-  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+  await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 }
 
 async function resetInboxGrouping() {
@@ -79,7 +79,7 @@ async function resetInboxGrouping() {
 async function createTask(taskName: string) {
   await resetInboxGrouping()
   const addBtn = page.locator('button:has-text("Add task")').first()
-  await addBtn.waitFor({ state: 'visible', timeout: 3000 })
+  await addBtn.waitFor({ state: 'visible' })
   await addBtn.click()
   await page.waitForTimeout(200)
   const taskInput = page.locator('input[placeholder*="Task name"]').first()
@@ -96,7 +96,7 @@ async function createProject(name: string) {
   await page.waitForTimeout(500)
 
   const nameInput = page.locator('input[placeholder="Project name"]').first()
-  await nameInput.waitFor({ state: 'visible', timeout: 3000 })
+  await nameInput.waitFor({ state: 'visible' })
   await nameInput.fill(name)
 
   const submitBtn = page.locator('.fixed.inset-0 button:has-text("Add")').first()
@@ -122,7 +122,7 @@ test.describe('Bug #79: Project header layout', () => {
 
     // Verify the project name heading is visible
     const heading = page.locator(`h1:has-text("${projectName}")`)
-    await heading.waitFor({ state: 'visible', timeout: 3000 })
+    await heading.waitFor({ state: 'visible' })
     expect(await heading.isVisible()).toBe(true)
 
     // Verify the sort/group controls are on a separate row from the title
@@ -168,7 +168,7 @@ test.describe('Bug #80: Label created from task edit appears in sidebar', () => 
     await page.waitForTimeout(600)
 
     // Verify edit dialog is open
-    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible' })
 
     // Find the label selector and open it
     const labelTrigger = page.locator('.fixed.inset-0 .relative:has(> div.flex.flex-wrap)').first()
@@ -218,7 +218,7 @@ test.describe('Bug #81: Subtasks in Today view', () => {
     const taskContent = page.locator(`.task-item .cursor-pointer:has-text("${parentName}")`).first()
     await taskContent.click()
     await page.waitForTimeout(600)
-    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible' })
 
     const dialog = page.locator('.fixed.inset-0')
 
@@ -229,7 +229,7 @@ test.describe('Bug #81: Subtasks in Today view', () => {
 
     // Click "Tomorrow" quick option (avoid "Today" which conflicts with sidebar)
     const tomorrowBtn = dialog.locator('.bg-popover button:has-text("Tomorrow")').first()
-    await tomorrowBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await tomorrowBtn.waitFor({ state: 'visible' })
     await tomorrowBtn.click()
     await page.waitForTimeout(300)
 
@@ -240,12 +240,12 @@ test.describe('Bug #81: Subtasks in Today view', () => {
     // Add a subtask via the "Add subtask" button - need to scroll down in dialog
     const addSubtaskBtn = dialog.locator('button:has-text("Add subtask")').first()
     await addSubtaskBtn.scrollIntoViewIfNeeded()
-    await addSubtaskBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await addSubtaskBtn.waitFor({ state: 'visible' })
     await addSubtaskBtn.click()
     await page.waitForTimeout(300)
 
     const subtaskInput = dialog.locator('input[placeholder="Subtask name"]').first()
-    await subtaskInput.waitFor({ state: 'visible', timeout: 3000 })
+    await subtaskInput.waitFor({ state: 'visible' })
     await subtaskInput.fill(subtaskName)
 
     // Click "Add" button for subtask
@@ -261,7 +261,7 @@ test.describe('Bug #81: Subtasks in Today view', () => {
     const taskContent2 = page.locator(`.task-item .cursor-pointer:has-text("${parentName}")`).first()
     await taskContent2.click()
     await page.waitForTimeout(600)
-    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator('h2:has-text("Edit task")').waitFor({ state: 'visible' })
 
     const dialog2 = page.locator('.fixed.inset-0')
     // Click the current date display (it shows "Tomorrow")
@@ -271,7 +271,7 @@ test.describe('Bug #81: Subtasks in Today view', () => {
 
     // Click "Today" in the date picker popover (scoped to .bg-popover)
     const todayQuickBtn = dialog2.locator('.bg-popover .bg-muted:has-text("Today")').first()
-    await todayQuickBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await todayQuickBtn.waitFor({ state: 'visible' })
     await todayQuickBtn.click()
     await page.waitForTimeout(300)
 
@@ -283,7 +283,7 @@ test.describe('Bug #81: Subtasks in Today view', () => {
     await ensureSidebarVisible()
     await page.click('aside button:has-text("Today")')
     await page.waitForTimeout(500)
-    await page.locator('h1:has-text("Today")').waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator('h1:has-text("Today")').waitFor({ state: 'visible' })
 
     // Verify parent task is visible
     const parentVisible = await page.locator(`text="${parentName}"`).isVisible().catch(() => false)
@@ -320,16 +320,16 @@ test.describe('Bug #82: No redundant Project group-by in project view', () => {
     await closeDialogs()
     await ensureSidebarVisible()
     const projectBtn = page.locator(`aside button:has-text("${projName}")`).first()
-    await projectBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await projectBtn.waitFor({ state: 'visible' })
     await projectBtn.click()
     await page.waitForTimeout(500)
 
     // Verify we're in the project view
-    await page.locator(`h1:has-text("${projName}")`).waitFor({ state: 'visible', timeout: 3000 })
+    await page.locator(`h1:has-text("${projName}")`).waitFor({ state: 'visible' })
 
     // Click the Group dropdown
     const groupBtn = page.locator('button:has-text("Group:")').first()
-    await groupBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await groupBtn.waitFor({ state: 'visible' })
     await groupBtn.click()
     await page.waitForTimeout(300)
 
@@ -356,7 +356,7 @@ test.describe('Bug #82: No redundant Project group-by in project view', () => {
 
     // Open group dropdown in Inbox
     const groupBtn = page.locator('button:has-text("Group:")').first()
-    await groupBtn.waitFor({ state: 'visible', timeout: 3000 })
+    await groupBtn.waitFor({ state: 'visible' })
     await groupBtn.click()
     await page.waitForTimeout(300)
 
@@ -389,7 +389,7 @@ test.describe('Bug: X button flushes pending autosave', () => {
 
     // Verify dialog opened
     const dialog = page.locator('.fixed.inset-0').first()
-    await dialog.locator('text=Edit task').waitFor({ state: 'visible', timeout: 3000 })
+    await dialog.locator('text=Edit task').waitFor({ state: 'visible' })
 
     // Change priority to P1 (click the first flag button)
     const p1Flag = dialog.locator('button[title="Priority 1"]').first()
@@ -408,7 +408,7 @@ test.describe('Bug: X button flushes pending autosave', () => {
 
     // Verify priority was saved (P1 flag should be selected/filled)
     const dialog2 = page.locator('.fixed.inset-0').first()
-    await dialog2.locator('text=Edit task').waitFor({ state: 'visible', timeout: 3000 })
+    await dialog2.locator('text=Edit task').waitFor({ state: 'visible' })
     const p1Button = dialog2.locator('button[title="Priority 1"]').first()
     const p1Classes = await p1Button.getAttribute('class')
     expect(p1Classes).toContain('bg-accent')

@@ -344,7 +344,7 @@ test.describe('Feature Coverage: Deadlines', () => {
 
     // Verify we're in Inbox view
     const inboxHeading = page.locator('h1:has-text("Inbox")')
-    await inboxHeading.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+    await inboxHeading.waitFor({ state: 'visible' }).catch(() => {})
 
     // Use the inline Add task input
     const addTaskBtn = page.locator('main button:has-text("Add task")').first()
@@ -511,7 +511,7 @@ test.describe('Feature Coverage: View Completed Tasks', () => {
     }
     // After toggling, completed section or completed task should be visible
     const completedTask = page.locator('.task-item:has-text("Task to complete for view")')
-    await expect(completedTask).toBeVisible({ timeout: 3000 })
+    await expect(completedTask).toBeVisible()
   })
 })
 
@@ -521,7 +521,7 @@ test.describe('Feature Coverage: Sorting and Grouping', () => {
 
     // Sort and Group controls should be available in the view header
     const sortBtn = page.locator('button:has-text("Sort")')
-    await expect(sortBtn).toBeVisible({ timeout: 3000 })
+    await expect(sortBtn).toBeVisible()
   })
 })
 
@@ -554,7 +554,7 @@ test.describe('Feature Coverage: Task Description', () => {
     await page.waitForTimeout(500)
 
     // Wait for Inbox view
-    await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+    await page.locator('h1:has-text("Inbox")').waitFor({ state: 'visible' }).catch(() => {})
 
     // Create a task with unique name
     const taskName = `Description test task ${Date.now()}`
