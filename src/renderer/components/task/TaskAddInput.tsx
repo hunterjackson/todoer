@@ -3,6 +3,9 @@ import { Plus, Flag, X, Tag, FolderKanban } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { DatePicker } from '@renderer/components/ui/DatePicker'
 import { TaskContentAutocomplete } from '@renderer/components/ui/TaskContentAutocomplete'
+import { useProjects } from '@hooks/useProjects'
+import { useLabels } from '@hooks/useLabels'
+import { parseInlineTaskContent, findProjectByName, findLabelByName } from '@shared/utils'
 import type { TaskCreate, Priority, Label, Project } from '@shared/types'
 import { PRIORITY_COLORS } from '@shared/types'
 
@@ -31,28 +34,56 @@ export function TaskAddInput({
   const [selectedLabels, setSelectedLabels] = useState<Label[]>([])
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const { projects } = useProjects()
+  const { labels: allLabels } = useLabels()
 
   const handleSubmit = async () => {
     if (!content.trim() || isSubmitting) return
 
     setIsSubmitting(true)
     try {
+      // Parse inline modifiers from content (same as QuickAddModal)
+      const parsed = parseInlineTaskContent(content)
+      let finalContent = parsed.content
+      let finalProjectId = selectedProject?.id || initialProjectId
+      let finalPriority = priority
+      const finalLabelIds = selectedLabels.map((l) => l.id)
+
+      // Resolve inline #project
+      if (parsed.projectName) {
+        const matchedProject = findProjectByName(parsed.projectName, projects)
+        if (matchedProject) {
+          finalProjectId = matchedProject.id
+        }
+      }
+
+      // Resolve inline @label
+      if (parsed.labelNames) {
+        for (const labelName of parsed.labelNames) {
+          const matchedLabel = findLabelByName(labelName, allLabels)
+          if (matchedLabel && !finalLabelIds.includes(matchedLabel.id)) {
+            finalLabelIds.push(matchedLabel.id)
+          }
+        }
+      }
+
+      // Use inline priority if specified and user hasn't manually changed it
+      if (parsed.priority && priority === 4) {
+        finalPriority = parsed.priority
+      }
+
+      const taskData: TaskCreate = {
+        content: finalContent,
+        dueDate: dueDate ? dueDate.getTime() : undefined,
+        priority: finalPriority,
+        projectId: finalProjectId,
+        labelIds: finalLabelIds
+      }
+
       if (onSubmit) {
-        await onSubmit({
-          content: content.trim(),
-          dueDate: dueDate ? dueDate.getTime() : undefined,
-          priority,
-          projectId: selectedProject?.id || initialProjectId,
-          labelIds: selectedLabels.map((l) => l.id)
-        })
+        await onSubmit(taskData)
       } else if (onCreate) {
-        await onCreate({
-          content: content.trim(),
-          dueDate: dueDate ? dueDate.getTime() : undefined,
-          priority,
-          projectId: selectedProject?.id || initialProjectId,
-          labelIds: selectedLabels.map((l) => l.id)
-        })
+        await onCreate(taskData)
       }
       setContent('')
       setDueDate(null)
