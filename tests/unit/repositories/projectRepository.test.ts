@@ -344,4 +344,33 @@ describe('ProjectRepository', () => {
       expect(count).toBe(1)
     })
   })
+
+  describe('recursive delete', () => {
+    it('should delete grandchild subprojects when deleting a parent', () => {
+      const parent = projectRepo.create({ name: 'Parent' })
+      const child = projectRepo.create({ name: 'Child', parentId: parent.id })
+      projectRepo.create({ name: 'Grandchild', parentId: child.id })
+
+      projectRepo.delete(parent.id)
+
+      // All three should be soft-deleted
+      const all = projectRepo.list()
+      const nonInbox = all.filter(p => p.id !== 'inbox')
+      expect(nonInbox).toHaveLength(0)
+    })
+
+    it('should move tasks from grandchild subprojects to Inbox on delete', () => {
+      const parent = projectRepo.create({ name: 'Parent' })
+      const child = projectRepo.create({ name: 'Child', parentId: parent.id })
+      const grandchild = projectRepo.create({ name: 'Grandchild', parentId: child.id })
+
+      taskRepo.create({ content: 'Task in grandchild', projectId: grandchild.id })
+
+      projectRepo.delete(parent.id)
+
+      // Task should have been moved to Inbox
+      const inboxTasks = taskRepo.list({ projectId: 'inbox' })
+      expect(inboxTasks.some(t => t.content === 'Task in grandchild')).toBe(true)
+    })
+  })
 })

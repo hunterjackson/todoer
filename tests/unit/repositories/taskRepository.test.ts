@@ -494,4 +494,42 @@ describe('TaskRepository', () => {
       expect(results).toHaveLength(0)
     })
   })
+
+  describe('recursive delete/restore', () => {
+    it('should delete grandchildren when deleting a parent task', () => {
+      const parent = repo.create({ content: 'Parent' })
+      const child = repo.create({ content: 'Child', parentId: parent.id })
+      repo.create({ content: 'Grandchild', parentId: child.id })
+
+      repo.delete(parent.id)
+
+      const all = repo.list({})
+      expect(all).toHaveLength(0)
+    })
+
+    it('should restore grandchildren when restoring a parent task', () => {
+      const parent = repo.create({ content: 'Parent' })
+      const child = repo.create({ content: 'Child', parentId: parent.id })
+      repo.create({ content: 'Grandchild', parentId: child.id })
+
+      repo.delete(parent.id)
+      expect(repo.list({})).toHaveLength(0)
+
+      repo.restore(parent.id)
+      const all = repo.list({})
+      expect(all).toHaveLength(3)
+    })
+
+    it('should handle deeply nested task deletion', () => {
+      const t1 = repo.create({ content: 'Level 1' })
+      const t2 = repo.create({ content: 'Level 2', parentId: t1.id })
+      const t3 = repo.create({ content: 'Level 3', parentId: t2.id })
+      repo.create({ content: 'Level 4', parentId: t3.id })
+
+      repo.delete(t1.id)
+
+      const all = repo.list({})
+      expect(all).toHaveLength(0)
+    })
+  })
 })

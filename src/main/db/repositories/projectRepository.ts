@@ -156,36 +156,39 @@ export class ProjectRepository {
     if (!existing) return false
 
     const timestamp = now()
-    this.run(
-      'UPDATE projects SET deleted_at = ? WHERE id = ?',
-      [timestamp, id]
-    )
 
-    // Move tasks from deleted project to Inbox
-    this.run(
-      'UPDATE tasks SET project_id = ?, updated_at = ? WHERE project_id = ? AND deleted_at IS NULL',
-      [INBOX_PROJECT_ID, timestamp, id]
-    )
+    // Collect all descendant project IDs recursively
+    const allProjectIds = [id, ...this.getDescendantProjectIds(id)]
 
-    // Also delete subprojects and move their tasks to Inbox
-    const subprojectIds = this.queryAll<{ id: string }>(
-      'SELECT id FROM projects WHERE parent_id = ? AND deleted_at IS NULL',
-      [id]
-    )
-
-    this.run(
-      'UPDATE projects SET deleted_at = ? WHERE parent_id = ?',
-      [timestamp, id]
-    )
-
-    for (const sub of subprojectIds) {
+    // Soft-delete all projects in the hierarchy
+    for (const projectId of allProjectIds) {
+      this.run(
+        'UPDATE projects SET deleted_at = ? WHERE id = ?',
+        [timestamp, projectId]
+      )
+      // Move tasks from each deleted project to Inbox
       this.run(
         'UPDATE tasks SET project_id = ?, updated_at = ? WHERE project_id = ? AND deleted_at IS NULL',
-        [INBOX_PROJECT_ID, timestamp, sub.id]
+        [INBOX_PROJECT_ID, timestamp, projectId]
       )
     }
 
     return true
+  }
+
+  // Collect all descendant project IDs recursively
+  private getDescendantProjectIds(parentId: string): string[] {
+    const ids: string[] = []
+    const childIds = this.queryAll<{ id: string }>(
+      'SELECT id FROM projects WHERE parent_id = ? AND deleted_at IS NULL',
+      [parentId]
+    ).map(r => r.id)
+
+    for (const childId of childIds) {
+      ids.push(childId)
+      ids.push(...this.getDescendantProjectIds(childId))
+    }
+    return ids
   }
 
   reorder(projectId: string, newOrder: number): Project | null {

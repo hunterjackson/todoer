@@ -289,6 +289,21 @@ export class TaskRepository {
     return this.get(id)
   }
 
+  // Collect all descendant task IDs recursively
+  private getDescendantIds(parentId: string): string[] {
+    const ids: string[] = []
+    const childIds = this.queryAll<{ id: string }>(
+      'SELECT id FROM tasks WHERE parent_id = ?',
+      [parentId]
+    ).map(r => r.id)
+
+    for (const childId of childIds) {
+      ids.push(childId)
+      ids.push(...this.getDescendantIds(childId))
+    }
+    return ids
+  }
+
   delete(id: string): boolean {
     const existing = this.get(id)
     if (!existing) return false
@@ -299,11 +314,14 @@ export class TaskRepository {
       [timestamp, timestamp, id]
     )
 
-    // Also delete subtasks
-    this.run(
-      'UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE parent_id = ?',
-      [timestamp, timestamp, id]
-    )
+    // Recursively delete all descendants
+    const descendantIds = this.getDescendantIds(id)
+    for (const descendantId of descendantIds) {
+      this.run(
+        'UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE id = ?',
+        [timestamp, timestamp, descendantId]
+      )
+    }
 
     return true
   }
@@ -315,11 +333,14 @@ export class TaskRepository {
       [timestamp, id]
     )
 
-    // Also restore subtasks
-    this.run(
-      'UPDATE tasks SET deleted_at = NULL, updated_at = ? WHERE parent_id = ?',
-      [timestamp, id]
-    )
+    // Recursively restore all descendants
+    const descendantIds = this.getDescendantIds(id)
+    for (const descendantId of descendantIds) {
+      this.run(
+        'UPDATE tasks SET deleted_at = NULL, updated_at = ? WHERE id = ?',
+        [timestamp, descendantId]
+      )
+    }
 
     return this.get(id)
   }
