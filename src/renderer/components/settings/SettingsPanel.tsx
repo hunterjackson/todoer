@@ -268,23 +268,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
                 </button>
               </label>
 
-              <label className="flex items-center justify-between cursor-pointer">
-                <span className="text-sm">Show completed tasks</span>
-                <button
-                  onClick={() => {
-                    updateSetting('showCompletedTasks', !settings.showCompletedTasks)
-                  }}
-                  className={`relative w-10 h-6 rounded-full transition-colors ${
-                    settings.showCompletedTasks ? 'bg-primary' : 'bg-muted'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                      settings.showCompletedTasks ? 'translate-x-4' : ''
-                    }`}
-                  />
-                </button>
-              </label>
             </div>
           </div>
 

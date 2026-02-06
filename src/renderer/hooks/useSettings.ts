@@ -7,7 +7,6 @@ export interface AppSettings {
   dateFormat: 'mdy' | 'dmy' | 'ymd'
   notificationsEnabled: boolean
   dailyGoal: number
-  showCompletedTasks: boolean
   defaultProject: string
 }
 
@@ -18,7 +17,6 @@ const defaultSettings: AppSettings = {
   dateFormat: 'mdy',
   notificationsEnabled: true,
   dailyGoal: 5,
-  showCompletedTasks: false,
   defaultProject: 'inbox'
 }
 
@@ -54,9 +52,6 @@ async function loadSettingsToCache(): Promise<void> {
 
       const dailyGoalVal = await window.api.settings.get('dailyGoal')
       if (dailyGoalVal !== null) settings.dailyGoal = parseInt(dailyGoalVal, 10)
-
-      const showCompletedVal = await window.api.settings.get('showCompletedTasks')
-      if (showCompletedVal !== null) settings.showCompletedTasks = showCompletedVal === 'true'
 
       const defaultProjectVal = await window.api.settings.get('defaultProject')
       if (defaultProjectVal !== null) settings.defaultProject = defaultProjectVal
