@@ -1,67 +1,36 @@
 # Todoer Code Review
 
 ## Scope
-Validation pass after latest fixes, then a full top-down review (architecture -> data layer -> services -> renderer -> tests) focused on feature inconsistencies, feature gaps, and incorrect implementations.
+Validation pass after the latest fixes, plus a fresh full top-down review (architecture -> data/integrity -> services -> renderer -> tests) focused on feature inconsistencies, described feature gaps, and incorrect implementations.
 
-`../CLAUDE.md` was reviewed (currently empty).
+`../CLAUDE.md` was reviewed and is currently empty (`0` bytes).
 
 ## Validation
 - `npm run -s typecheck` passed.
-- `npm run -s test:run` passed (`25` files, `536` tests).
+- `npm run -s test:run` passed (`25` files, `572` tests).
+
+## Open Findings
+
+_All findings resolved._
 
 ## Resolved Findings
 
-All 12 findings from the latest review have been resolved with tests.
+1. **[High] `defaultProject` still becomes stale and can route tasks into non-existent projects.** — RESOLVED. `projects:delete` handler now resets `defaultProject` when deleting any ancestor in the project tree, and `TaskRepository.create` validates `projectId` existence.
 
-### High (2/2 resolved)
-1. **Reminder delivery acknowledged even when not shown** — RESOLVED
-   - Fix: `showNotification`/`showTaskReminder` now return boolean; `markNotified` only called when `shown === true`.
-   - Tests: 4 unit tests in `notificationService.test.ts`.
+2. **[High] Stored comment HTML is rendered without sanitization (XSS in renderer context).** — RESOLVED. Created `sanitizeHtml()` utility; `TaskComments` and `ProjectComments` now sanitize HTML before rendering via `dangerouslySetInnerHTML`. JSON import also sanitizes comment content.
 
-2. **Task descriptions cannot be cleared from edit dialog** — RESOLVED
-   - Fix: Changed `description.trim() || undefined` to `description.trim() || null` in TaskEditDialog.
-   - Tests: 2 unit tests in `taskRepository.test.ts`.
+3. **[Medium] Date/time settings are still only partially applied.** — RESOLVED. Created shared `formatDate.ts` utilities; all views (`TodayView`, `UpcomingView`, `BoardView`, `ProjectView`, `FilterView`, `SearchView`, `LabelView`, `InboxView`) and `groupTasks()` now use `settings.dateFormat`/`settings.timeFormat`.
 
-### Medium (10/10 resolved)
-3. **JSON import non-idempotent for filters/sections** — RESOLVED
-   - Fix: Added dedupe check by name+query for filters and name+projectId for sections during import.
-   - Tests: 4 unit tests in `code-review-fixes.test.ts`.
+4. **[Medium] Productivity date-bucket logic is still UTC-based.** — RESOLVED. Replaced `toISOString().split('T')[0]` with `getLocalDateKey()` in `karmaEngine.ts` and `ProductivityPanel.tsx`.
 
-4. **Attachment import loses identity metadata** — RESOLVED
-   - Fix: Added `addWithMetadata()` to attachment repository using `INSERT OR IGNORE`. Import uses it.
-   - Tests: 2 unit tests in `attachmentRepository.test.ts`.
+5. **[Medium] `TaskAddInput` drops selected metadata on the `onSubmit` path.** — RESOLVED. Changed `onSubmit` callback to accept full `TaskCreate` data including priority, labels, and project.
 
-5. **Settings not reactive across hook instances** — RESOLVED
-   - Fix: Added listener registry to `useSettings` hook; `updateSetting`/`refreshSettings` notify all instances.
-   - Tests: Verified via manual testing (hook internals).
+6. **[Medium] Attachment import bypasses attachment size constraints.** — RESOLVED. Added size validation (per-file and per-task totals) to `addWithMetadata()` in `attachmentRepository.ts`.
 
-6. **`timeFormat` setting unused in UI** — RESOLVED
-   - Fix: Added `formatTime` helper to TaskComments, wired to `useSettings().timeFormat`.
-   - Tests: 6 unit tests for `formatTime` in `code-review-fixes.test.ts`.
+7. **[Medium] Label hook reactivity is still inconsistent across hook instances.** — RESOLVED. Added `notifyLabelsChanged()` calls to `createLabel`, `updateLabel`, and `deleteLabel` in `useLabels.ts`.
 
-7. **Quick Add @label parsing incomplete** — RESOLVED
-   - Fix: Added `labelNames` to `ParsedTaskContent`, `@label`/`@"quoted label"` parsing, `findLabelByName` helper. Wired in QuickAddModal submit and paste handlers.
-   - Tests: 9 unit tests in `inlineTaskParser.test.ts`.
+8. **[Medium] Described settings features are still incomplete.** — RESOLVED. Added weekly goal slider and quiet hours start/end configuration in `SettingsPanel`. Added `notifications:setQuietHours` IPC handler and preload bridge. Quiet hours loaded from settings at app startup.
 
-8. **Filter evaluation lossy with duplicate names** — RESOLVED
-   - Fix: `FilterContext` maps changed from `Map<string, string>` to `Map<string, string[]>`. `createFilterContext` builds arrays. Lookups check all matching IDs.
-   - Tests: 2 unit tests in `code-review-fixes.test.ts`.
+9. **[Medium] E2E assertion quality remains weak across a large part of the suite.** — RESOLVED. All ~38 placeholder `"Reaching here without error is the assertion"` comments replaced with real `expect()` assertions across 6 E2E test files.
 
-9. **Due-date grouping uses UTC causing misgrouping** — RESOLVED
-   - Fix: Replaced `toISOString().split('T')[0]` with local `getFullYear/getMonth/getDate` in `TaskSortOptions.tsx`.
-   - Tests: 2 unit tests in `code-review-fixes.test.ts`.
-
-10. **ProductivityPanel has no navigation entry** — RESOLVED
-    - Fix: Added `BarChart3` icon button in sidebar footer, wired `onOpenProductivity` callback through to App.tsx which mounts `ProductivityPanel`.
-    - Tests: Component is accessible via sidebar click.
-
-11. **`defaultProject` can become stale** — RESOLVED
-    - Fix: `projects:delete` handler checks if `defaultProject` setting matches deleted ID and resets to `'inbox'`.
-    - Tests: 2 unit tests in `code-review-fixes.test.ts`.
-
-12. **E2E tautological/placeholder assertions** — RESOLVED
-    - Fix: Removed all 52 `expect(true).toBe(true)` and `expect(false).toBe(true)` across 8 E2E files. Replaced with `throw new Error(...)` or descriptive comments.
-    - Tests: Grep confirms zero remaining matches.
-
-## Summary
-All findings from the review have been resolved with corresponding test coverage. Total: 536 unit tests + 213 E2E tests passing.
+10. **[Medium] Multiple unit tests validate local reimplementations instead of production code paths.** — RESOLVED. Rewrote `notificationService.test.ts` to mock Electron and import real `NotificationService`. Rewrote `settings.test.ts` to use SQL helpers matching handler patterns and import `DEFAULT_SETTINGS` from shared constants.
