@@ -245,7 +245,10 @@ export function groupTasks(
           key = 'no-date'
         } else {
           const date = new Date(task.dueDate)
-          key = date.toISOString().split('T')[0]
+          const y = date.getFullYear()
+          const m = String(date.getMonth() + 1).padStart(2, '0')
+          const d = String(date.getDate()).padStart(2, '0')
+          key = `${y}-${m}-${d}`
         }
         break
       default:

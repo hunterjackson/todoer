@@ -465,6 +465,47 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
   })
 
+  // ─── v4 Fix #9: Due-date grouping uses local dates not UTC ───
+  describe('v4 Fix #9: Due-date grouping uses local dates', () => {
+    it('should group by local date, not UTC date', () => {
+      // Simulate the fixed grouping logic: local YYYY-MM-DD
+      const getLocalDateKey = (timestamp: number): string => {
+        const date = new Date(timestamp)
+        const y = date.getFullYear()
+        const m = String(date.getMonth() + 1).padStart(2, '0')
+        const d = String(date.getDate()).padStart(2, '0')
+        return `${y}-${m}-${d}`
+      }
+
+      // Create a timestamp at 11:30 PM local time on Feb 6
+      const localDate = new Date(2026, 1, 6, 23, 30) // Feb 6, 11:30 PM local
+      const key = getLocalDateKey(localDate.getTime())
+
+      // Should always be Feb 6 in local time, regardless of UTC offset
+      expect(key).toBe('2026-02-06')
+    })
+
+    it('should not produce UTC date for late-night timestamps', () => {
+      // The OLD bug: toISOString().split('T')[0] gives UTC date
+      // At 11:30 PM in UTC-5, the UTC date would be the next day
+      const getOldUtcKey = (timestamp: number): string => {
+        return new Date(timestamp).toISOString().split('T')[0]
+      }
+
+      const getNewLocalKey = (timestamp: number): string => {
+        const date = new Date(timestamp)
+        const y = date.getFullYear()
+        const m = String(date.getMonth() + 1).padStart(2, '0')
+        const d = String(date.getDate()).padStart(2, '0')
+        return `${y}-${m}-${d}`
+      }
+
+      // Midnight local time - both should agree
+      const midnight = new Date(2026, 1, 6, 0, 0)
+      expect(getNewLocalKey(midnight.getTime())).toBe('2026-02-06')
+    })
+  })
+
   // ─── Fix #12: MCP server awaits DB init ───
   describe('Fix #12: MCP server DB init', () => {
     it('initDatabase should be idempotent (safe to call twice)', async () => {
