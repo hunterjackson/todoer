@@ -13,7 +13,8 @@ import {
   deepClone,
   groupBy,
   sortBy,
-  escapeHtml
+  escapeHtml,
+  topologicalSort
 } from '@shared/utils'
 
 describe('utils', () => {
@@ -299,6 +300,62 @@ describe('utils', () => {
 
     it('should leave safe text unchanged', () => {
       expect(escapeHtml('Hello World')).toBe('Hello World')
+    })
+  })
+
+  describe('topologicalSort', () => {
+    it('should sort parents before children for deep nesting', () => {
+      // Deliberately reversed: grandchild, child, root
+      const items = [
+        { id: 'c', parentId: 'b' },
+        { id: 'b', parentId: 'a' },
+        { id: 'a', parentId: null },
+      ]
+      const sorted = topologicalSort(items)
+      const ids = sorted.map(i => i.id)
+      expect(ids.indexOf('a')).toBeLessThan(ids.indexOf('b'))
+      expect(ids.indexOf('b')).toBeLessThan(ids.indexOf('c'))
+    })
+
+    it('should handle multiple roots', () => {
+      const items = [
+        { id: 'b1', parentId: 'a' },
+        { id: 'a', parentId: null },
+        { id: 'd', parentId: 'c' },
+        { id: 'c', parentId: null },
+      ]
+      const sorted = topologicalSort(items)
+      const ids = sorted.map(i => i.id)
+      expect(ids.indexOf('a')).toBeLessThan(ids.indexOf('b1'))
+      expect(ids.indexOf('c')).toBeLessThan(ids.indexOf('d'))
+    })
+
+    it('should treat items with unknown parents as roots', () => {
+      const items = [
+        { id: 'b', parentId: 'unknown' },
+        { id: 'a', parentId: null },
+      ]
+      const sorted = topologicalSort(items)
+      expect(sorted).toHaveLength(2)
+      // Both should be present
+      expect(sorted.map(i => i.id)).toContain('a')
+      expect(sorted.map(i => i.id)).toContain('b')
+    })
+
+    it('should handle empty input', () => {
+      expect(topologicalSort([])).toEqual([])
+    })
+
+    it('should handle 4-level deep nesting in worst-case order', () => {
+      const items = [
+        { id: 'd', parentId: 'c' },
+        { id: 'b', parentId: 'a' },
+        { id: 'c', parentId: 'b' },
+        { id: 'a', parentId: null },
+      ]
+      const sorted = topologicalSort(items)
+      const ids = sorted.map(i => i.id)
+      expect(ids).toEqual(['a', 'b', 'c', 'd'])
     })
   })
 })

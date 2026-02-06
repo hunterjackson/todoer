@@ -23,6 +23,7 @@ import {
   getUndoAction,
   getRedoAction
 } from '../services/undoRedo'
+import { topologicalSort } from '@shared/utils'
 import type { Task, TaskCreate, TaskUpdate, CommentCreate, CommentUpdate } from '@shared/types'
 
 // Lazy-initialized repository singletons
@@ -700,12 +701,8 @@ export function registerIpcHandlers(): void {
       const taskIdMap = new Map<string, string>()
 
       // Import projects first (tasks may reference them)
-      // Sort so parents come before children
-      const sortedProjects = [...data.projects].sort((a, b) => {
-        if (!a.parentId && b.parentId) return -1
-        if (a.parentId && !b.parentId) return 1
-        return 0
-      })
+      // Topological sort ensures parents are imported before children at any depth
+      const sortedProjects = topologicalSort(data.projects)
 
       let projectsImported = 0
       for (const project of sortedProjects) {
@@ -784,27 +781,8 @@ export function registerIpcHandlers(): void {
         }
       }
 
-      // Import tasks - use topological sort for proper parent ordering
-      // Build a dependency map and sort topologically
-      const taskMap = new Map(data.tasks.map((t: Task) => [t.id, t]))
-      const sortedTasks: Task[] = []
-      const visited = new Set<string>()
-
-      function visitTask(task: Task) {
-        if (visited.has(task.id)) return
-        visited.add(task.id)
-
-        // Visit parent first if it exists
-        if (task.parentId && taskMap.has(task.parentId)) {
-          visitTask(taskMap.get(task.parentId)!)
-        }
-
-        sortedTasks.push(task)
-      }
-
-      for (const task of data.tasks) {
-        visitTask(task)
-      }
+      // Import tasks - topological sort ensures parents are imported before children
+      const sortedTasks = topologicalSort(data.tasks)
 
       let tasksImported = 0
       for (const task of sortedTasks) {

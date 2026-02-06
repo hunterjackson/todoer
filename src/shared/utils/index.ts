@@ -188,6 +188,46 @@ export function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (m) => map[m])
 }
 
+/**
+ * Topological sort for items with parent-child relationships.
+ * Guarantees parents appear before children. Items with missing/unknown
+ * parents are treated as roots.
+ */
+export function topologicalSort<T extends { id: string; parentId?: string | null }>(items: T[]): T[] {
+  const itemMap = new Map<string, T>()
+  const childrenMap = new Map<string, T[]>()
+  const roots: T[] = []
+
+  for (const item of items) {
+    itemMap.set(item.id, item)
+  }
+
+  for (const item of items) {
+    if (!item.parentId || !itemMap.has(item.parentId)) {
+      roots.push(item)
+    } else {
+      const siblings = childrenMap.get(item.parentId) || []
+      siblings.push(item)
+      childrenMap.set(item.parentId, siblings)
+    }
+  }
+
+  const result: T[] = []
+  const visit = (node: T) => {
+    result.push(node)
+    const children = childrenMap.get(node.id) || []
+    for (const child of children) {
+      visit(child)
+    }
+  }
+
+  for (const root of roots) {
+    visit(root)
+  }
+
+  return result
+}
+
 // Re-export inline task parser utilities
 export {
   parseInlineTaskContent,
