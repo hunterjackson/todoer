@@ -535,6 +535,48 @@ test.describe('Fix #17: Settings validation', () => {
 })
 
 // ─────────────────────────────────────────────
+// Fix #18: Task deletion removes reminders
+// ─────────────────────────────────────────────
+test.describe('Fix #18: Reminder cleanup on delete', () => {
+  test('should delete reminders for deleted parent and child tasks', async () => {
+    const result = await page.evaluate(async () => {
+      const parent = await window.api.tasks.create({
+        content: `DeleteRemindersParent-${Date.now()}`
+      })
+      const child = await window.api.tasks.create({
+        content: `DeleteRemindersChild-${Date.now()}`,
+        parentId: parent.id
+      })
+
+      await window.api.reminders.create({
+        taskId: parent.id,
+        remindAt: Date.now() - 60_000
+      })
+      await window.api.reminders.create({
+        taskId: child.id,
+        remindAt: Date.now() - 60_000
+      })
+
+      await window.api.tasks.delete(parent.id)
+
+      const parentReminders = await window.api.reminders.getByTask(parent.id)
+      const childReminders = await window.api.reminders.getByTask(child.id)
+      const dueReminders = await window.api.reminders.getDue()
+
+      return {
+        parentCount: parentReminders.length,
+        childCount: childReminders.length,
+        dueTaskIds: dueReminders.map((reminder) => reminder.taskId)
+      }
+    })
+
+    expect(result.parentCount).toBe(0)
+    expect(result.childCount).toBe(0)
+    expect(result.dueTaskIds).toHaveLength(0)
+  })
+})
+
+// ─────────────────────────────────────────────
 // Console error check
 // ─────────────────────────────────────────────
 test.describe('Console Errors', () => {
