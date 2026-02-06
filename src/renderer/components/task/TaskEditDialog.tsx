@@ -308,7 +308,14 @@ export function TaskEditDialog({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Edit task</h2>
           <button
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              if (debounceRef.current) {
+                clearTimeout(debounceRef.current)
+                debounceRef.current = null
+                performAutoSave()
+              }
+              onOpenChange(false)
+            }}
             className="p-1 rounded hover:bg-accent"
           >
             <X className="w-5 h-5" />

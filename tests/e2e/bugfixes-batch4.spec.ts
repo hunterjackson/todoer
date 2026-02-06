@@ -380,6 +380,51 @@ test.describe('Bug #82: No redundant Project group-by in project view', () => {
   })
 })
 
+// ============================================================
+// BUG: X button close should flush pending autosave
+// ============================================================
+test.describe('Bug: X button flushes pending autosave', () => {
+  const taskName = `XCloseFlush-${Date.now()}`
+
+  test('should save edits when closing dialog via X button', async () => {
+    await goToInbox()
+    await createTask(taskName)
+
+    // Click task content to open edit dialog
+    const taskContent = page.locator(`.task-item:has-text("${taskName}") .cursor-pointer`).first()
+    await taskContent.click()
+    await page.waitForTimeout(500)
+
+    // Verify dialog opened
+    const dialog = page.locator('.fixed.inset-0').first()
+    await dialog.locator('text=Edit task').waitFor({ state: 'visible', timeout: 3000 })
+
+    // Change priority to P1 (click the first flag button)
+    const p1Flag = dialog.locator('button[title="Priority 1"]').first()
+    await p1Flag.click()
+    await page.waitForTimeout(100)
+
+    // Immediately click the X button (before 800ms debounce fires)
+    const xButton = dialog.locator('button:has(.lucide-x)').first()
+    await xButton.click()
+    await page.waitForTimeout(500)
+
+    // Reopen the task dialog
+    const taskContent2 = page.locator(`.task-item:has-text("${taskName}") .cursor-pointer`).first()
+    await taskContent2.click()
+    await page.waitForTimeout(500)
+
+    // Verify priority was saved (P1 flag should be selected/filled)
+    const dialog2 = page.locator('.fixed.inset-0').first()
+    await dialog2.locator('text=Edit task').waitFor({ state: 'visible', timeout: 3000 })
+    const p1Button = dialog2.locator('button[title="Priority 1"]').first()
+    const p1Classes = await p1Button.getAttribute('class')
+    expect(p1Classes).toContain('bg-accent')
+
+    await closeDialogs()
+  })
+})
+
 // Final check: no console errors during entire test run
 test('should have no console errors throughout test run', () => {
   expect(consoleErrors).toHaveLength(0)
