@@ -64,6 +64,7 @@ export function UpcomingView(): React.ReactElement {
           onToggleCompleted={(show) => setViewSettings(viewKey, { showCompleted: show })}
           allExpanded={allExpanded}
           onToggleExpandAll={handleToggleExpandAll}
+          excludeGroupOptions={['priority', 'project', 'dueDate']}
         />
       </div>
 

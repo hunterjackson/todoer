@@ -535,6 +535,28 @@ test.describe('Cross-View Feature Presence', () => {
     await expect(sortBtn).toBeVisible()
   })
 
+  test('upcoming view should not show misleading group-by options', async () => {
+    await closeDialogs()
+    await ensureSidebarVisible()
+    await page.click('button:has-text("Upcoming")')
+    await page.waitForTimeout(500)
+
+    // Click the Group button to open dropdown
+    const groupBtn = page.locator('button:has-text("Group:")').first()
+    await expect(groupBtn).toBeVisible()
+    await groupBtn.click()
+    await page.waitForTimeout(200)
+
+    // Only "None" should be available - priority/project/dueDate should NOT appear
+    const dropdownItems = page.locator('.bg-popover .py-1 button')
+    const count = await dropdownItems.count()
+    expect(count).toBe(1)
+    await expect(dropdownItems.first()).toContainText('None')
+
+    // Close dropdown
+    await page.keyboard.press('Escape')
+  })
+
   test('all main views should have completed toggle', async () => {
     await goToInbox()
     let completedBtn = page.locator('button:has-text("Completed")').first()
