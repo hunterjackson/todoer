@@ -124,19 +124,30 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('tasks:delete', async (_event, id: string, recordUndo: boolean = true) => {
-    const { taskRepo } = getRepositories()
+    const { taskRepo, reminderRepo } = getRepositories()
 
     // Get task data for potential undo
     const task = recordUndo ? taskRepo.get(id) : null
 
+    // Snapshot reminders before delete (taskRepo.delete removes them)
+    let reminderSnapshot: Array<{ taskId: string; remindAt: number; notified: boolean }> = []
+    if (recordUndo && task) {
+      const descendantIds = taskRepo.getDescendantIds(id)
+      const allTaskIds = [id, ...descendantIds]
+      for (const taskId of allTaskIds) {
+        const reminders = reminderRepo.getByTask(taskId)
+        reminderSnapshot.push(...reminders.map(r => ({ taskId: r.taskId, remindAt: r.remindAt, notified: r.notified })))
+      }
+    }
+
     const result = taskRepo.delete(id)
 
-    // Record operation for undo (store full task data for restoration)
+    // Record operation for undo (store full task data + reminders for restoration)
     if (recordUndo && task) {
       taskUndoStack.push({
         type: 'delete',
         taskId: id,
-        data: task,
+        data: { ...task, reminders: reminderSnapshot },
         timestamp: Date.now()
       })
     }
@@ -1140,7 +1151,7 @@ export function registerIpcHandlers(): void {
     const operation = taskUndoStack.undo()
     if (!operation) return { success: false, reason: 'Nothing to undo' }
 
-    const { taskRepo, karmaEngine } = getRepositories()
+    const { taskRepo, karmaEngine, reminderRepo } = getRepositories()
 
     try {
       // Handle single operation or batch
@@ -1150,10 +1161,25 @@ export function registerIpcHandlers(): void {
         const action = getUndoAction(op)
 
         switch (action.action) {
-          case 'create':
+          case 'create': {
             // Undo delete = restore the soft-deleted task
             taskRepo.restore(action.taskId)
+            // Restore snapshotted reminders if present
+            const reminders = op.data?.reminders as Array<{ taskId: string; remindAt: number; notified: boolean }> | undefined
+            if (reminders?.length) {
+              for (const r of reminders) {
+                try {
+                  const newReminder = reminderRepo.create({ taskId: r.taskId, remindAt: r.remindAt })
+                  if (r.notified) {
+                    reminderRepo.markNotified(newReminder.id)
+                  }
+                } catch {
+                  // Skip if task doesn't exist or other error
+                }
+              }
+            }
             break
+          }
 
           case 'delete':
             taskRepo.delete(action.taskId)

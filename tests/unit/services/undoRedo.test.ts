@@ -203,13 +203,37 @@ describe('Undo/Redo Stack', () => {
       expect(undoStack.canUndo()).toBe(false)
     })
   })
+
+  describe('Delete with reminders', () => {
+    it('should store reminder snapshots in delete operation data', () => {
+      const reminders = [
+        { id: 'r1', taskId: '1', remindAt: Date.now() + 60000, notified: false },
+        { id: 'r2', taskId: '1', remindAt: Date.now() + 120000, notified: false }
+      ]
+      const op: TaskOperation = {
+        type: 'delete',
+        taskId: '1',
+        data: {
+          content: 'Task with reminders',
+          reminders
+        }
+      }
+
+      undoStack.push(op)
+      const undone = undoStack.undo()
+
+      expect(!Array.isArray(undone) && undone?.data.reminders).toHaveLength(2)
+      expect(!Array.isArray(undone) && undone?.data.reminders[0].id).toBe('r1')
+    })
+  })
 })
 
 // Types and implementation for testing
 interface TaskOperation {
   type: 'create' | 'update' | 'delete' | 'complete' | 'uncomplete' | 'reorder'
   taskId: string
-  data: Record<string, unknown>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any
   previousData?: Record<string, unknown>
 }
 

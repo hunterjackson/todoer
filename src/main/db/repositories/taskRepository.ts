@@ -388,7 +388,7 @@ export class TaskRepository {
   }
 
   // Collect all descendant task IDs recursively with cycle detection
-  private getDescendantIds(parentId: string, visited: Set<string> = new Set()): string[] {
+  getDescendantIds(parentId: string, visited: Set<string> = new Set()): string[] {
     if (visited.has(parentId)) return [] // cycle detected
     visited.add(parentId)
 
