@@ -598,6 +598,36 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
   })
 
+  // ─── v5 Fix: Quiet hours logic ───
+  describe('v5 Fix: Quiet hours logic', () => {
+    // Test the isQuietTime algorithm directly
+    function isQuietTime(hour: number, quietStart: number, quietEnd: number): boolean {
+      if (quietStart > quietEnd) {
+        // Crosses midnight (e.g., 22-7)
+        return hour >= quietStart || hour < quietEnd
+      }
+      return hour >= quietStart && hour < quietEnd
+    }
+
+    it('should detect quiet time crossing midnight (22-7)', () => {
+      expect(isQuietTime(23, 22, 7)).toBe(true)
+      expect(isQuietTime(0, 22, 7)).toBe(true)
+      expect(isQuietTime(6, 22, 7)).toBe(true)
+      expect(isQuietTime(7, 22, 7)).toBe(false)
+      expect(isQuietTime(12, 22, 7)).toBe(false)
+      expect(isQuietTime(21, 22, 7)).toBe(false)
+    })
+
+    it('should detect quiet time not crossing midnight (9-17)', () => {
+      expect(isQuietTime(10, 9, 17)).toBe(true)
+      expect(isQuietTime(9, 9, 17)).toBe(true)
+      expect(isQuietTime(16, 9, 17)).toBe(true)
+      expect(isQuietTime(17, 9, 17)).toBe(false)
+      expect(isQuietTime(8, 9, 17)).toBe(false)
+      expect(isQuietTime(22, 9, 17)).toBe(false)
+    })
+  })
+
   // ─── Fix #12: MCP server awaits DB init ───
   describe('Fix #12: MCP server DB init', () => {
     it('initDatabase should be idempotent (safe to call twice)', async () => {

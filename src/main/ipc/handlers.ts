@@ -584,6 +584,11 @@ export function registerIpcHandlers(): void {
     return notificationService.isEnabled()
   })
 
+  ipcMain.handle('notifications:setQuietHours', async (_event, start: number, end: number) => {
+    notificationService.setQuietHours(start, end)
+    return true
+  })
+
   // Settings handlers
   ipcMain.handle('settings:get', async (_event, key: string) => {
     const db = getDatabase()

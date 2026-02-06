@@ -91,6 +91,26 @@ if (isMcpMode) {
       }
       stmt.free()
 
+      // Load quiet hours settings
+      const quietStartStmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+      quietStartStmt.bind(['quietHoursStart'])
+      let quietStart = 22
+      let quietEnd = 7
+      if (quietStartStmt.step()) {
+        const r = quietStartStmt.getAsObject() as { value: string }
+        quietStart = parseInt(r.value, 10)
+      }
+      quietStartStmt.free()
+
+      const quietEndStmt = db.prepare('SELECT value FROM settings WHERE key = ?')
+      quietEndStmt.bind(['quietHoursEnd'])
+      if (quietEndStmt.step()) {
+        const r = quietEndStmt.getAsObject() as { value: string }
+        quietEnd = parseInt(r.value, 10)
+      }
+      quietEndStmt.free()
+      notificationService.setQuietHours(quietStart, quietEnd)
+
       notificationService.startChecking(async () => {
         const dueReminders = reminderRepo.getDue()
         for (const reminder of dueReminders) {

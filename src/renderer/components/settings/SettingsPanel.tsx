@@ -113,6 +113,34 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
             </p>
           </div>
 
+          {/* Weekly Goal */}
+          <div>
+            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4" /> Weekly Goal
+            </h3>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="5"
+                max="100"
+                step="5"
+                value={settings.weeklyGoal}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10)
+                  updateSetting('weeklyGoal', val)
+                  window.api.karma.updateGoals({ weeklyGoal: val }).catch(() => {})
+                }}
+                className="flex-1"
+              />
+              <span className="text-sm font-medium w-16 text-right">
+                {settings.weeklyGoal} tasks
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Number of tasks to complete each week
+            </p>
+          </div>
+
           {/* Week Start */}
           <div>
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
@@ -242,6 +270,44 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
                 />
               </button>
             </label>
+            {settings.notificationsEnabled && (
+              <div className="mt-3 space-y-2">
+                <span className="text-sm text-muted-foreground">Quiet hours (no notifications)</span>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={settings.quietHoursStart}
+                    onChange={(e) => {
+                      const start = parseInt(e.target.value, 10)
+                      updateSetting('quietHoursStart', start)
+                      window.api.notifications.setQuietHours(start, settings.quietHoursEnd).catch(() => {})
+                    }}
+                    className="py-1.5 px-2 text-sm rounded-lg border border-border bg-background"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-muted-foreground">to</span>
+                  <select
+                    value={settings.quietHoursEnd}
+                    onChange={(e) => {
+                      const end = parseInt(e.target.value, 10)
+                      updateSetting('quietHoursEnd', end)
+                      window.api.notifications.setQuietHours(settings.quietHoursStart, end).catch(() => {})
+                    }}
+                    className="py-1.5 px-2 text-sm rounded-lg border border-border bg-background"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Behavior */}

@@ -7,6 +7,9 @@ export interface AppSettings {
   dateFormat: 'mdy' | 'dmy' | 'ymd'
   notificationsEnabled: boolean
   dailyGoal: number
+  weeklyGoal: number
+  quietHoursStart: number
+  quietHoursEnd: number
   defaultProject: string
 }
 
@@ -17,6 +20,9 @@ const defaultSettings: AppSettings = {
   dateFormat: 'mdy',
   notificationsEnabled: true,
   dailyGoal: 5,
+  weeklyGoal: 25,
+  quietHoursStart: 22,
+  quietHoursEnd: 7,
   defaultProject: 'inbox'
 }
 
@@ -65,6 +71,15 @@ async function loadSettingsToCache(): Promise<void> {
 
       const dailyGoalVal = await window.api.settings.get('dailyGoal')
       if (dailyGoalVal !== null) settings.dailyGoal = parseInt(dailyGoalVal, 10)
+
+      const weeklyGoalVal = await window.api.settings.get('weeklyGoal')
+      if (weeklyGoalVal !== null) settings.weeklyGoal = parseInt(weeklyGoalVal, 10)
+
+      const quietStartVal = await window.api.settings.get('quietHoursStart')
+      if (quietStartVal !== null) settings.quietHoursStart = parseInt(quietStartVal, 10)
+
+      const quietEndVal = await window.api.settings.get('quietHoursEnd')
+      if (quietEndVal !== null) settings.quietHoursEnd = parseInt(quietEndVal, 10)
 
       const defaultProjectVal = await window.api.settings.get('defaultProject')
       if (defaultProjectVal !== null) settings.defaultProject = defaultProjectVal

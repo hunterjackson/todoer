@@ -89,7 +89,8 @@ const api = {
     show: (data: { title: string; body: string }) =>
       ipcRenderer.invoke('notifications:show', data),
     setEnabled: (enabled: boolean) => ipcRenderer.invoke('notifications:setEnabled', enabled),
-    isEnabled: () => ipcRenderer.invoke('notifications:isEnabled')
+    isEnabled: () => ipcRenderer.invoke('notifications:isEnabled'),
+    setQuietHours: (start: number, end: number) => ipcRenderer.invoke('notifications:setQuietHours', start, end)
   },
 
   // Filter operations
