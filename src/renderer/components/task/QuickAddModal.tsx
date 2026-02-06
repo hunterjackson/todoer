@@ -37,10 +37,14 @@ export function QuickAddModal({ open, onOpenChange, onTaskCreated }: QuickAddMod
       refreshLabels()
       // Fetch all sections for inline parsing
       window.api.sections.listAll().then(setAllSections).catch(() => {})
-      // Load default project setting
-      window.api.settings.get('defaultProject').then((defaultProject) => {
-        if (defaultProject) {
-          setProjectId(defaultProject)
+      // Load default project setting, validating project still exists
+      window.api.settings.get('defaultProject').then(async (defaultProject) => {
+        if (defaultProject && defaultProject !== 'inbox') {
+          // Verify the project still exists before using it
+          const project = await window.api.projects.get(defaultProject)
+          if (project) {
+            setProjectId(defaultProject)
+          }
         }
       }).catch(() => {})
       setTimeout(() => inputRef.current?.focus(), 100)
