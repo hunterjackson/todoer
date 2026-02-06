@@ -58,11 +58,12 @@ export function LabelView({ labelId }: LabelViewProps): React.ReactElement {
     return groupTasks(sortedTasks, groupBy, projects, settings.dateFormat)
   }, [sortedTasks, groupBy, projects, settings.dateFormat])
 
-  const handleCreateTask = async (content: string, dueDate?: string) => {
+  const handleCreateTask = async (data: TaskCreate) => {
+    const labelIds = new Set(data.labelIds || [])
+    labelIds.add(labelId)
     await window.api.tasks.create({
-      content,
-      dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
-      labelIds: [labelId]
+      ...data,
+      labelIds: [...labelIds]
     })
     setShowAddInput(false)
     fetchTasks()

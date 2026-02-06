@@ -8,7 +8,7 @@ import { PRIORITY_COLORS } from '@shared/types'
 
 interface TaskAddInputProps {
   onCreate?: (data: TaskCreate) => Promise<void>
-  onSubmit?: (content: string, dueDate?: string) => Promise<void>
+  onSubmit?: (data: TaskCreate) => Promise<void>
   onCancel?: () => void
   projectId?: string
   autoFocus?: boolean
@@ -38,7 +38,13 @@ export function TaskAddInput({
     setIsSubmitting(true)
     try {
       if (onSubmit) {
-        await onSubmit(content.trim(), dueDate ? dueDate.toISOString() : undefined)
+        await onSubmit({
+          content: content.trim(),
+          dueDate: dueDate ? dueDate.getTime() : undefined,
+          priority,
+          projectId: selectedProject?.id || initialProjectId,
+          labelIds: selectedLabels.map((l) => l.id)
+        })
       } else if (onCreate) {
         await onCreate({
           content: content.trim(),
