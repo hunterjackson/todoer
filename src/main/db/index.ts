@@ -258,13 +258,17 @@ function seedInitialData(database: SqlJsDatabase): void {
   const now = Date.now()
 
   // Check if Inbox exists
-  const existing = database.exec(`SELECT id FROM projects WHERE id = '${INBOX_PROJECT_ID}'`)
+  const inboxStmt = database.prepare('SELECT id FROM projects WHERE id = ?')
+  inboxStmt.bind([INBOX_PROJECT_ID])
+  const inboxExists = inboxStmt.step()
+  inboxStmt.free()
 
-  if (existing.length === 0 || existing[0].values.length === 0) {
-    database.run(`
-      INSERT INTO projects (id, name, color, sort_order, view_mode, is_favorite, created_at)
-      VALUES ('${INBOX_PROJECT_ID}', 'Inbox', '#246fe0', 0, 'list', 0, ${now})
-    `)
+  if (!inboxExists) {
+    database.run(
+      `INSERT INTO projects (id, name, color, sort_order, view_mode, is_favorite, created_at)
+       VALUES (?, 'Inbox', '#246fe0', 0, 'list', 0, ?)`,
+      [INBOX_PROJECT_ID, now]
+    )
   }
 
   // Initialize karma stats if not exists
