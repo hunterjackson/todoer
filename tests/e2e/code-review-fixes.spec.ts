@@ -561,7 +561,9 @@ test.describe('Fix #18: Reminder cleanup on delete', () => {
 
       const parentReminders = await window.api.reminders.getByTask(parent.id)
       const childReminders = await window.api.reminders.getByTask(child.id)
-      const dueReminders = await window.api.reminders.getDue()
+      const dueReminders = (await window.api.reminders.getDue()) as Array<{
+        taskId: string
+      }>
 
       return {
         parentCount: parentReminders.length,
