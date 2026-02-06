@@ -62,7 +62,7 @@
 | Natural language parsing | ✅ | chrono-node |
 | Relative dates | ✅ | today, tomorrow, etc |
 | Specific dates | ✅ | |
-| Time support | ✅ | |
+| Time support | ⚠️ | NLP parsing only; no time picker UI or time display |
 | Remove date | ✅ | |
 
 ### Deadlines (Separate)
