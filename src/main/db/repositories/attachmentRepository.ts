@@ -90,6 +90,15 @@ export function createAttachmentRepository(db: SqlJsDatabase) {
       return { id, taskId, filename, mimeType, size: data.length, createdAt: now }
     },
 
+    addWithMetadata(id: string, taskId: string, filename: string, mimeType: string, data: Buffer, createdAt: number): TaskAttachment {
+      run(
+        `INSERT OR IGNORE INTO task_attachments (id, task_id, filename, mime_type, size, data, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, taskId, filename, mimeType, data.length, data, createdAt]
+      )
+      return { id, taskId, filename, mimeType, size: data.length, createdAt }
+    },
+
     delete(id: string): boolean {
       run('DELETE FROM task_attachments WHERE id = ?', [id])
       return true

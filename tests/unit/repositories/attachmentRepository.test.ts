@@ -134,4 +134,39 @@ describe('Attachment Repository', () => {
     expect(repo.listByTask('task-1')).toHaveLength(1)
     expect(repo.listByTask('task-2')).toHaveLength(1)
   })
+
+  it('should preserve original id and createdAt with addWithMetadata', () => {
+    const repo = createAttachmentRepository(db)
+    const originalId = 'original-attachment-id'
+    const originalCreatedAt = 1700000000000
+
+    const result = repo.addWithMetadata(
+      originalId,
+      'task-1',
+      'preserved.txt',
+      'text/plain',
+      Buffer.from('hello'),
+      originalCreatedAt
+    )
+
+    expect(result.id).toBe(originalId)
+    expect(result.createdAt).toBe(originalCreatedAt)
+    expect(result.filename).toBe('preserved.txt')
+
+    // Verify by listing
+    const list = repo.listByTask('task-1')
+    expect(list).toHaveLength(1)
+    expect(list[0].id).toBe(originalId)
+  })
+
+  it('addWithMetadata should skip duplicate IDs (INSERT OR IGNORE)', () => {
+    const repo = createAttachmentRepository(db)
+
+    repo.addWithMetadata('same-id', 'task-1', 'first.txt', 'text/plain', Buffer.from('a'), 1700000000000)
+    repo.addWithMetadata('same-id', 'task-1', 'second.txt', 'text/plain', Buffer.from('b'), 1700000000001)
+
+    const list = repo.listByTask('task-1')
+    expect(list).toHaveLength(1)
+    expect(list[0].filename).toBe('first.txt')
+  })
 })

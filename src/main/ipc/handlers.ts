@@ -978,7 +978,14 @@ export function registerIpcHandlers(): void {
 
           const attachmentRepo = createAttachmentRepository(getDatabase())
           const dataBuffer = Buffer.from(attachment.dataBase64, 'base64')
-          attachmentRepo.add(remappedTaskId, attachment.filename, attachment.mimeType, dataBuffer)
+          attachmentRepo.addWithMetadata(
+            attachment.id,
+            remappedTaskId,
+            attachment.filename,
+            attachment.mimeType,
+            dataBuffer,
+            attachment.createdAt || Date.now()
+          )
           attachmentsImported++
         } catch {
           // Skip failures
