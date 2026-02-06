@@ -118,14 +118,25 @@ export class CommentRepository {
   }
 
   delete(id: string): void {
+    this.db.run('DELETE FROM attachments WHERE comment_id = ?', [id])
     this.run('DELETE FROM comments WHERE id = ?', [id])
   }
 
   deleteByTask(taskId: string): void {
+    this.db.run(
+      `DELETE FROM attachments
+       WHERE comment_id IN (SELECT id FROM comments WHERE task_id = ?)`,
+      [taskId]
+    )
     this.run('DELETE FROM comments WHERE task_id = ?', [taskId])
   }
 
   deleteByProject(projectId: string): void {
+    this.db.run(
+      `DELETE FROM attachments
+       WHERE comment_id IN (SELECT id FROM comments WHERE project_id = ?)`,
+      [projectId]
+    )
     this.run('DELETE FROM comments WHERE project_id = ?', [projectId])
   }
 

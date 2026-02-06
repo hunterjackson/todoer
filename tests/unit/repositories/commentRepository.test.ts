@@ -10,6 +10,7 @@ describe('Comment Repository', () => {
   beforeEach(async () => {
     const SQL = await initSqlJs()
     db = new SQL.Database()
+    db.run('PRAGMA foreign_keys = ON')
 
     // Create tables
     db.run(`
@@ -43,6 +44,17 @@ describe('Comment Repository', () => {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         CHECK (task_id IS NOT NULL OR project_id IS NOT NULL)
+      )
+    `)
+
+    db.run(`
+      CREATE TABLE attachments (
+        id TEXT PRIMARY KEY,
+        comment_id TEXT NOT NULL REFERENCES comments(id),
+        name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        path TEXT NOT NULL
       )
     `)
 
@@ -188,6 +200,21 @@ describe('Comment Repository', () => {
       const comments = commentRepo.list(taskId)
       expect(comments.length).toBe(1)
       expect(comments[0].id).toBe(comment1.id)
+    })
+
+    it('should delete comment attachments before deleting the comment', () => {
+      const comment = commentRepo.create({ taskId, content: 'With file' })
+      db.run(
+        `INSERT INTO attachments (id, comment_id, name, mime_type, size, path)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        ['att-1', comment.id, 'doc.txt', 'text/plain', 7, '/tmp/doc.txt']
+      )
+
+      expect(() => commentRepo.delete(comment.id)).not.toThrow()
+      expect(commentRepo.get(comment.id)).toBeNull()
+
+      const result = db.exec('SELECT COUNT(*) FROM attachments WHERE comment_id = ?', [comment.id])
+      expect(result[0].values[0][0]).toBe(0)
     })
   })
 
