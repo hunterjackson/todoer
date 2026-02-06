@@ -24,6 +24,19 @@ const defaultSettings: AppSettings = {
 let settingsCache: AppSettings | null = null
 let loadingPromise: Promise<void> | null = null
 
+// Listener registry for cross-instance reactivity
+type SettingsListener = (settings: AppSettings) => void
+const listeners = new Set<SettingsListener>()
+
+function notifyListeners() {
+  if (settingsCache) {
+    const snapshot = { ...settingsCache }
+    for (const listener of listeners) {
+      listener(snapshot)
+    }
+  }
+}
+
 async function loadSettingsToCache(): Promise<void> {
   if (settingsCache) return
   if (loadingPromise) {
@@ -78,12 +91,26 @@ export function useSettings() {
     }
   }, [])
 
+  // Subscribe to cross-instance updates
+  useEffect(() => {
+    const listener: SettingsListener = (updated) => {
+      setSettings(updated)
+    }
+    listeners.add(listener)
+    return () => {
+      listeners.delete(listener)
+    }
+  }, [])
+
   const updateSetting = useCallback(async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     // Update cache
     if (settingsCache) {
       settingsCache[key] = value
     }
     setSettings((prev) => ({ ...prev, [key]: value }))
+
+    // Notify all other hook instances
+    notifyListeners()
 
     // Persist
     try {
@@ -98,6 +125,7 @@ export function useSettings() {
     loadingPromise = null
     await loadSettingsToCache()
     setSettings(settingsCache!)
+    notifyListeners()
   }, [])
 
   return { settings, loading, updateSetting, refreshSettings }
