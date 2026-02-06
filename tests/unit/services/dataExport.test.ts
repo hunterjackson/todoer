@@ -85,6 +85,61 @@ describe('Data Import', () => {
       expect(() => importFromJSON('{}')).toThrow()
     })
 
+    it('should round-trip attachments with base64 data', () => {
+      const exportData = {
+        tasks: [{ id: 't1', content: 'Task 1', createdAt: 1000, updatedAt: 1000 }] as any[],
+        projects: [] as any[],
+        labels: [] as any[],
+        filters: [] as any[],
+        attachments: [
+          {
+            id: 'a1',
+            taskId: 't1',
+            filename: 'test.txt',
+            mimeType: 'text/plain',
+            size: 11,
+            createdAt: 4000,
+            dataBase64: Buffer.from('hello world').toString('base64')
+          },
+          {
+            id: 'a2',
+            taskId: 't1',
+            filename: 'image.png',
+            mimeType: 'image/png',
+            size: 4,
+            createdAt: 5000,
+            dataBase64: Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64')
+          }
+        ]
+      }
+
+      const json = realExportToJSON(exportData)
+      const result = realImportFromJSON(json)
+
+      expect(result.attachments).toHaveLength(2)
+      expect(result.attachments![0].filename).toBe('test.txt')
+      expect(result.attachments![0].dataBase64).toBe(Buffer.from('hello world').toString('base64'))
+      // Verify base64 can be decoded back
+      expect(Buffer.from(result.attachments![0].dataBase64, 'base64').toString()).toBe('hello world')
+      expect(result.attachments![1].filename).toBe('image.png')
+      expect(result.attachments![1].mimeType).toBe('image/png')
+    })
+
+    it('should handle missing attachments gracefully', () => {
+      const exportData = {
+        tasks: [{ id: 't1', content: 'Task 1', createdAt: 1000, updatedAt: 1000 }] as any[],
+        projects: [] as any[],
+        labels: [] as any[],
+        filters: [] as any[]
+        // no attachments field
+      }
+
+      const json = realExportToJSON(exportData)
+      const result = realImportFromJSON(json)
+
+      expect(result.attachments).toEqual([])
+    })
+
     it('should round-trip comments, reminders, settings, and karma', () => {
       const exportData = {
         tasks: [{ id: 't1', content: 'Task 1', createdAt: 1000, updatedAt: 1000 }] as any[],

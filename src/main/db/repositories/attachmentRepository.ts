@@ -95,6 +95,23 @@ export function createAttachmentRepository(db: SqlJsDatabase) {
       return true
     },
 
+    listAllWithData(): TaskAttachmentWithData[] {
+      const result = db.exec(
+        `SELECT id, task_id, filename, mime_type, size, data, created_at
+         FROM task_attachments ORDER BY created_at`
+      )
+      if (result.length === 0) return []
+      return result[0].values.map((row) => ({
+        id: row[0] as string,
+        taskId: row[1] as string,
+        filename: row[2] as string,
+        mimeType: row[3] as string,
+        size: row[4] as number,
+        data: Buffer.from(row[5] as Uint8Array),
+        createdAt: row[6] as number
+      }))
+    },
+
     count(taskId: string): number {
       const result = db.exec(
         'SELECT COUNT(*) FROM task_attachments WHERE task_id = ?',

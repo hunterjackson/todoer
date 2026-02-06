@@ -628,6 +628,19 @@ export function registerIpcHandlers(): void {
       labels: taskRepo.getLabels(t.id)
     }))
 
+    // Export attachments with data serialized as base64
+    const attachmentRepo = createAttachmentRepository(db)
+    const rawAttachments = attachmentRepo.listAllWithData()
+    const attachments = rawAttachments.map((a) => ({
+      id: a.id,
+      taskId: a.taskId,
+      filename: a.filename,
+      mimeType: a.mimeType,
+      size: a.size,
+      createdAt: a.createdAt,
+      dataBase64: a.data.toString('base64')
+    }))
+
     const json = exportToJSON({
       tasks: tasksWithLabels,
       projects,
@@ -636,6 +649,7 @@ export function registerIpcHandlers(): void {
       sections,
       comments,
       reminders,
+      attachments,
       settings,
       karmaStats,
       karmaHistory
@@ -937,6 +951,24 @@ export function registerIpcHandlers(): void {
         }
       }
 
+      // Import attachments (after tasks, since they reference task IDs)
+      let attachmentsImported = 0
+      for (const attachment of data.attachments || []) {
+        try {
+          const remappedTaskId = attachment.taskId
+            ? taskIdMap.get(attachment.taskId) || null
+            : null
+          if (!remappedTaskId) continue
+
+          const attachmentRepo = createAttachmentRepository(getDatabase())
+          const dataBuffer = Buffer.from(attachment.dataBase64, 'base64')
+          attachmentRepo.add(remappedTaskId, attachment.filename, attachment.mimeType, dataBuffer)
+          attachmentsImported++
+        } catch {
+          // Skip failures
+        }
+      }
+
       // Import settings
       if (data.settings && typeof data.settings === 'object') {
         const db = getDatabase()
@@ -991,7 +1023,8 @@ export function registerIpcHandlers(): void {
           filters: filtersImported,
           sections: sectionsImported,
           comments: commentsImported,
-          reminders: remindersImported
+          reminders: remindersImported,
+          attachments: attachmentsImported
         }
       }
     } catch (error) {

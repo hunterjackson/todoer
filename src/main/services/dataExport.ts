@@ -1,5 +1,15 @@
 import type { Task, Project, Label, Filter, Section, Comment, Reminder, KarmaStats, KarmaHistory } from '@shared/types'
 
+export interface ExportAttachment {
+  id: string
+  taskId: string
+  filename: string
+  mimeType: string
+  size: number
+  createdAt: number
+  dataBase64: string
+}
+
 export interface ExportData {
   version: number
   exportedAt: number
@@ -10,6 +20,7 @@ export interface ExportData {
   sections?: Section[]
   comments?: Comment[]
   reminders?: Reminder[]
+  attachments?: ExportAttachment[]
   settings?: Record<string, string>
   karmaStats?: KarmaStats
   karmaHistory?: KarmaHistory[]
@@ -98,6 +109,7 @@ export function importFromJSON(jsonStr: string): Omit<ExportData, 'version' | 'e
     sections: data.sections || [],
     comments: data.comments || [],
     reminders: data.reminders || [],
+    attachments: data.attachments || [],
     settings: data.settings || {},
     karmaStats: data.karmaStats,
     karmaHistory: data.karmaHistory || []
