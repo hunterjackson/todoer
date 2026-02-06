@@ -423,6 +423,48 @@ describe('CODE_REVIEW Fix Tests', () => {
     })
   })
 
+  // ─── v4 Fix #8: Filter evaluation with duplicate project/section names ───
+  describe('v4 Fix #8: Filter evaluation with duplicate names', () => {
+    it('should match tasks in either project when names collide', () => {
+      const project1 = projectRepo.create({ name: 'Work', color: '#ff0000' })
+      const project2 = projectRepo.create({ name: 'Work', color: '#0000ff' })
+
+      const task1 = taskRepo.create({ content: 'Task in project 1', projectId: project1.id, priority: 4 })
+      const task2 = taskRepo.create({ content: 'Task in project 2', projectId: project2.id, priority: 4 })
+
+      const tasks = [task1, task2].map(t => taskRepo.get(t.id)!)
+      const context = createFilterContext(
+        [project1, project2],
+        [],
+        []
+      )
+
+      const results = evaluateFilter(tasks, '#work', context)
+      expect(results).toHaveLength(2)
+    })
+
+    it('should match tasks in either section when names collide', () => {
+      const project1 = projectRepo.create({ name: 'Proj A', color: '#ff0000' })
+      const project2 = projectRepo.create({ name: 'Proj B', color: '#0000ff' })
+
+      const section1 = sectionRepo.create({ name: 'Todo', projectId: project1.id })
+      const section2 = sectionRepo.create({ name: 'Todo', projectId: project2.id })
+
+      const task1 = taskRepo.create({ content: 'Task 1', projectId: project1.id, sectionId: section1.id, priority: 4 })
+      const task2 = taskRepo.create({ content: 'Task 2', projectId: project2.id, sectionId: section2.id, priority: 4 })
+
+      const tasks = [task1, task2].map(t => taskRepo.get(t.id)!)
+      const context = createFilterContext(
+        [project1, project2],
+        [],
+        [section1, section2]
+      )
+
+      const results = evaluateFilter(tasks, '/todo', context)
+      expect(results).toHaveLength(2)
+    })
+  })
+
   // ─── Fix #12: MCP server awaits DB init ───
   describe('Fix #12: MCP server DB init', () => {
     it('initDatabase should be idempotent (safe to call twice)', async () => {

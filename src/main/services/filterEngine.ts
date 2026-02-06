@@ -25,9 +25,9 @@ import { startOfDay, endOfDay, addDays } from '@shared/utils'
  */
 
 interface FilterContext {
-  projects: Map<string, string> // name -> id
-  labels: Map<string, string> // name -> id
-  sections: Map<string, string> // name -> id
+  projects: Map<string, string[]> // name -> ids (supports duplicate names)
+  labels: Map<string, string[]> // name -> ids (supports duplicate names)
+  sections: Map<string, string[]> // name -> ids (supports duplicate names)
 }
 
 export function evaluateFilter(
@@ -221,17 +221,17 @@ function evaluateCondition(task: Task, condition: string, context: FilterContext
 
     if (hasWildcard) {
       // Find any matching project using wildcard pattern
-      for (const [name, id] of context.projects) {
-        if (matchWildcard(projectName, name) && task.projectId === id) {
+      for (const [name, ids] of context.projects) {
+        if (matchWildcard(projectName, name) && ids.includes(task.projectId ?? '')) {
           return true
         }
       }
       return false
     }
 
-    const projectId = context.projects.get(projectName)
-    if (projectId) {
-      return task.projectId === projectId
+    const projectIds = context.projects.get(projectName)
+    if (projectIds) {
+      return projectIds.includes(task.projectId ?? '')
     }
     // Also try matching against raw project ID
     return task.projectId === projectName
@@ -261,17 +261,17 @@ function evaluateCondition(task: Task, condition: string, context: FilterContext
 
     if (hasWildcard) {
       // Find any matching section using wildcard pattern
-      for (const [name, id] of context.sections) {
-        if (matchWildcard(sectionName, name) && task.sectionId === id) {
+      for (const [name, ids] of context.sections) {
+        if (matchWildcard(sectionName, name) && ids.includes(task.sectionId ?? '')) {
           return true
         }
       }
       return false
     }
 
-    const sectionId = context.sections.get(sectionName)
-    if (sectionId) {
-      return task.sectionId === sectionId
+    const sectionIds = context.sections.get(sectionName)
+    if (sectionIds) {
+      return sectionIds.includes(task.sectionId ?? '')
     }
     // Also try matching against raw section ID
     return task.sectionId === sectionName
@@ -348,20 +348,29 @@ export function createFilterContext(
   labels: { id: string; name: string }[],
   sections: { id: string; name: string }[] = []
 ): FilterContext {
-  const projectMap = new Map<string, string>()
-  const labelMap = new Map<string, string>()
-  const sectionMap = new Map<string, string>()
+  const projectMap = new Map<string, string[]>()
+  const labelMap = new Map<string, string[]>()
+  const sectionMap = new Map<string, string[]>()
 
   for (const p of projects) {
-    projectMap.set(p.name.toLowerCase(), p.id)
+    const key = p.name.toLowerCase()
+    const existing = projectMap.get(key) || []
+    existing.push(p.id)
+    projectMap.set(key, existing)
   }
 
   for (const l of labels) {
-    labelMap.set(l.name.toLowerCase(), l.id)
+    const key = l.name.toLowerCase()
+    const existing = labelMap.get(key) || []
+    existing.push(l.id)
+    labelMap.set(key, existing)
   }
 
   for (const s of sections) {
-    sectionMap.set(s.name.toLowerCase(), s.id)
+    const key = s.name.toLowerCase()
+    const existing = sectionMap.get(key) || []
+    existing.push(s.id)
+    sectionMap.set(key, existing)
   }
 
   return { projects: projectMap, labels: labelMap, sections: sectionMap }

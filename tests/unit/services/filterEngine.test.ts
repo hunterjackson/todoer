@@ -4,7 +4,7 @@ import type { Task } from '@shared/types'
 
 describe('Enhanced Filter Engine', () => {
   let tasks: Task[]
-  let context: { projects: Map<string, string>; labels: Map<string, string>; sections: Map<string, string> }
+  let context: { projects: Map<string, string[]>; labels: Map<string, string[]>; sections: Map<string, string[]> }
 
   beforeEach(() => {
     const now = Date.now()
@@ -14,21 +14,21 @@ describe('Enhanced Filter Engine', () => {
 
     context = {
       projects: new Map([
-        ['work', 'proj-1'],
-        ['personal', 'proj-2'],
-        ['shopping', 'proj-3'],
-        ['work-admin', 'proj-4']
+        ['work', ['proj-1']],
+        ['personal', ['proj-2']],
+        ['shopping', ['proj-3']],
+        ['work-admin', ['proj-4']]
       ]),
       labels: new Map([
-        ['urgent', 'label-1'],
-        ['home', 'label-2'],
-        ['waiting', 'label-3'],
-        ['urgent-blocker', 'label-4']
+        ['urgent', ['label-1']],
+        ['home', ['label-2']],
+        ['waiting', ['label-3']],
+        ['urgent-blocker', ['label-4']]
       ]),
       sections: new Map([
-        ['to do', 'sec-1'],
-        ['in progress', 'sec-2'],
-        ['done', 'sec-3']
+        ['to do', ['sec-1']],
+        ['in progress', ['sec-2']],
+        ['done', ['sec-3']]
       ])
     }
 
