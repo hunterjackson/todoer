@@ -415,6 +415,34 @@ describe('TaskRepository', () => {
       expect(todayTasks.some((t) => t.content === 'Subtask of overdue')).toBe(true)
     })
 
+    it('should include deeply nested descendants of due-today tasks', () => {
+      const today = new Date()
+      today.setHours(12, 0, 0, 0)
+
+      const parent = repo.create({ content: 'Grandparent due today', dueDate: today.getTime() })
+      const child = repo.create({ content: 'Child no date', parentId: parent.id })
+      repo.create({ content: 'Grandchild no date', parentId: child.id })
+
+      const todayTasks = repo.getToday()
+      expect(todayTasks.some((t) => t.content === 'Grandparent due today')).toBe(true)
+      expect(todayTasks.some((t) => t.content === 'Child no date')).toBe(true)
+      expect(todayTasks.some((t) => t.content === 'Grandchild no date')).toBe(true)
+    })
+
+    it('should include deeply nested descendants of overdue tasks', () => {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+
+      const parent = repo.create({ content: 'Grandparent overdue', dueDate: yesterday.getTime() })
+      const child = repo.create({ content: 'Child of overdue', parentId: parent.id })
+      repo.create({ content: 'Grandchild of overdue', parentId: child.id })
+
+      const todayTasks = repo.getToday()
+      expect(todayTasks.some((t) => t.content === 'Grandparent overdue')).toBe(true)
+      expect(todayTasks.some((t) => t.content === 'Child of overdue')).toBe(true)
+      expect(todayTasks.some((t) => t.content === 'Grandchild of overdue')).toBe(true)
+    })
+
     it('should not include subtasks of tasks due in the future', () => {
       const nextWeek = new Date()
       nextWeek.setDate(nextWeek.getDate() + 7)

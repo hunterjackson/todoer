@@ -396,21 +396,27 @@ export class TaskRepository {
     const todayEnd = endOfDay()
 
     const rows = this.queryAll<TaskRow>(
-      `SELECT * FROM tasks
+      `WITH RECURSIVE today_ancestors AS (
+         -- Base: tasks that are due today or overdue
+         SELECT id FROM tasks
+         WHERE deleted_at IS NULL
+           AND completed = 0
+           AND ((due_date >= ? AND due_date <= ?) OR due_date <= ?)
+       ), descendants AS (
+         -- Seed: the today/overdue tasks themselves
+         SELECT id FROM today_ancestors
+         UNION ALL
+         -- Recurse: children of already-found tasks
+         SELECT t.id FROM tasks t
+         INNER JOIN descendants d ON t.parent_id = d.id
+         WHERE t.deleted_at IS NULL AND t.completed = 0
+       )
+       SELECT * FROM tasks
        WHERE deleted_at IS NULL
          AND completed = 0
-         AND (
-           (due_date >= ? AND due_date <= ?)
-           OR due_date <= ?
-           OR (parent_id IS NOT NULL AND parent_id IN (
-             SELECT id FROM tasks
-             WHERE deleted_at IS NULL
-               AND completed = 0
-               AND ((due_date >= ? AND due_date <= ?) OR due_date <= ?)
-           ))
-         )
+         AND id IN (SELECT id FROM descendants)
        ORDER BY due_date ASC, priority ASC, sort_order ASC`,
-      [todayStart, todayEnd, todayStart, todayStart, todayEnd, todayStart]
+      [todayStart, todayEnd, todayStart]
     )
 
     return rows.map((row) => this.rowToTask(row))
