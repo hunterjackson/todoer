@@ -23,7 +23,7 @@ import {
   getUndoAction,
   getRedoAction
 } from '../services/undoRedo'
-import { topologicalSort, sanitizeHtml } from '@shared/utils'
+import { topologicalSort, sanitizeHtml, sanitizeFilename } from '@shared/utils'
 import type { Task, TaskCreate, TaskUpdate, CommentCreate, CommentUpdate } from '@shared/types'
 
 // Lazy-initialized repository singletons
@@ -1009,7 +1009,7 @@ export function registerIpcHandlers(): void {
           attachmentRepo.addWithMetadata(
             attachment.id,
             remappedTaskId,
-            attachment.filename,
+            sanitizeFilename(attachment.filename),
             attachment.mimeType,
             dataBuffer,
             attachment.createdAt || Date.now()
@@ -1427,7 +1427,8 @@ export function registerIpcHandlers(): void {
     if (!existsSync(tempDir)) {
       mkdirSync(tempDir, { recursive: true })
     }
-    const tempPath = join(tempDir, attachment.filename)
+    const safeFilename = sanitizeFilename(attachment.filename)
+    const tempPath = join(tempDir, safeFilename)
     writeFileSync(tempPath, attachment.data)
 
     await shell.openPath(tempPath)

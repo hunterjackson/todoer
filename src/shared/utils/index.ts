@@ -237,4 +237,17 @@ export {
 } from './inlineTaskParser'
 export type { ParsedTaskContent } from './inlineTaskParser'
 export { sanitizeHtml } from './sanitizeHtml'
+
+// Sanitize filename to prevent path traversal attacks
+// Strips directory separators and traversal components, keeping only the basename
+export function sanitizeFilename(filename: string): string {
+  // Extract basename: take everything after the last / or \
+  let sanitized = filename.replace(/^.*[\\/]/, '')
+  // Remove leading dots (prevents .bashrc, ..hidden, etc.)
+  sanitized = sanitized.replace(/^\.+/, '')
+  // Remove null bytes
+  sanitized = sanitized.replace(/\0/g, '')
+  // Fallback if name is now empty
+  return sanitized || 'attachment'
+}
 export { formatDateByPreference, formatDateHeader, formatDateGroupLabel, formatTime } from './formatDate'

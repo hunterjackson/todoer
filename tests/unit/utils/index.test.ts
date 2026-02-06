@@ -14,7 +14,8 @@ import {
   groupBy,
   sortBy,
   escapeHtml,
-  topologicalSort
+  topologicalSort,
+  sanitizeFilename
 } from '@shared/utils'
 
 describe('utils', () => {
@@ -356,6 +357,37 @@ describe('utils', () => {
       const sorted = topologicalSort(items)
       const ids = sorted.map(i => i.id)
       expect(ids).toEqual(['a', 'b', 'c', 'd'])
+    })
+  })
+
+  describe('sanitizeFilename', () => {
+    it('should pass through a simple filename', () => {
+      expect(sanitizeFilename('document.pdf')).toBe('document.pdf')
+    })
+
+    it('should strip directory traversal with ../', () => {
+      expect(sanitizeFilename('../../etc/passwd')).toBe('passwd')
+    })
+
+    it('should strip absolute Unix paths', () => {
+      expect(sanitizeFilename('/etc/shadow')).toBe('shadow')
+    })
+
+    it('should strip Windows-style paths', () => {
+      expect(sanitizeFilename('C:\\Windows\\System32\\evil.exe')).toBe('evil.exe')
+    })
+
+    it('should strip leading dots', () => {
+      expect(sanitizeFilename('.bashrc')).toBe('bashrc')
+    })
+
+    it('should strip null bytes', () => {
+      expect(sanitizeFilename('file\0.txt')).toBe('file.txt')
+    })
+
+    it('should return fallback for empty result', () => {
+      expect(sanitizeFilename('../../')).toBe('attachment')
+      expect(sanitizeFilename('...')).toBe('attachment')
     })
   })
 })
