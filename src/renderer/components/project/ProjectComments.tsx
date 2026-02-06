@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { MessageSquare, Send, Trash2, Edit2, X, Check } from 'lucide-react'
 import { RichTextEditor } from '@renderer/components/ui/RichTextEditor'
 import type { Comment } from '@shared/types'
+import { sanitizeHtml } from '@shared/utils'
 
 interface ProjectCommentsProps {
   projectId: string
@@ -152,7 +153,7 @@ export function ProjectComments({ projectId }: ProjectCommentsProps): React.Reac
                     {isHtml(comment.content) ? (
                       <div
                         className="text-sm prose prose-sm max-w-none dark:prose-invert flex-1"
-                        dangerouslySetInnerHTML={{ __html: comment.content }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(comment.content) }}
                       />
                     ) : (
                       <p className="text-sm flex-1 whitespace-pre-wrap">{comment.content}</p>

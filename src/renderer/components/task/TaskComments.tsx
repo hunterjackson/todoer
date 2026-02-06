@@ -4,6 +4,7 @@ import { useComments } from '../../hooks/useComments'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { RichTextEditor } from '@renderer/components/ui/RichTextEditor'
 import type { Comment } from '@shared/types'
+import { sanitizeHtml } from '@shared/utils'
 
 function formatTime(date: Date, timeFormat: '12h' | '24h'): string {
   const hours = date.getHours()
@@ -140,7 +141,7 @@ export function TaskComments({ taskId }: TaskCommentsProps): React.ReactElement 
                   {isHtml(comment.content) ? (
                     <div
                       className="text-sm rich-text-content"
-                      dangerouslySetInnerHTML={{ __html: comment.content }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(comment.content) }}
                     />
                   ) : (
                     <p className="text-sm whitespace-pre-wrap">{comment.content}</p>

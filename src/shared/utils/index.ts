@@ -236,3 +236,4 @@ export {
   findSectionByName
 } from './inlineTaskParser'
 export type { ParsedTaskContent } from './inlineTaskParser'
+export { sanitizeHtml } from './sanitizeHtml'
