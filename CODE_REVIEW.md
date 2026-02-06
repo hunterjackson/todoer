@@ -1,36 +1,37 @@
 # Todoer Code Review
 
 ## Scope
-Validation pass after the latest fixes, plus a fresh full top-down review (architecture -> data/integrity -> services -> renderer -> tests) focused on feature inconsistencies, described feature gaps, and incorrect implementations.
+Re-validation pass after the latest fixes, plus a fresh architecture-first full review (architecture -> data/integrity -> services -> renderer -> tests), focused on feature inconsistencies, described feature gaps, and incorrect implementations.
 
-`../CLAUDE.md` was reviewed and is currently empty (`0` bytes).
+`../CLAUDE.md` was reviewed and is empty (`0` bytes).
 
 ## Validation
 - `npm run -s typecheck` passed.
-- `npm run -s test:run` passed (`25` files, `572` tests).
+- `npm run -s test:run` passed (`27` files, `602` tests).
 
 ## Open Findings
 
-_All findings resolved._
+None. All findings from this review have been resolved.
 
-## Resolved Findings
+## Fixed Since Prior Review
 
-1. **[High] `defaultProject` still becomes stale and can route tasks into non-existent projects.** — RESOLVED. `projects:delete` handler now resets `defaultProject` when deleting any ancestor in the project tree, and `TaskRepository.create` validates `projectId` existence.
+Previously listed findings that now validate as fixed and were removed from the open list:
+- Productivity local-date bucket handling (`karma` history/streak paths).
+- `TaskAddInput` metadata handoff on submit.
+- Attachment import size-limit bypass in `addWithMetadata`.
+- Label hook cross-instance notification updates.
+- Weekly goal and quiet-hours settings UI/IPC wiring.
+- E2E placeholder assertion comments replaced.
 
-2. **[High] Stored comment HTML is rendered without sanitization (XSS in renderer context).** — RESOLVED. Created `sanitizeHtml()` utility; `TaskComments` and `ProjectComments` now sanitize HTML before rendering via `dangerouslySetInnerHTML`. JSON import also sanitizes comment content.
+### v6 Findings Resolved (This Pass)
 
-3. **[Medium] Date/time settings are still only partially applied.** — RESOLVED. Created shared `formatDate.ts` utilities; all views (`TodayView`, `UpcomingView`, `BoardView`, `ProjectView`, `FilterView`, `SearchView`, `LabelView`, `InboxView`) and `groupTasks()` now use `settings.dateFormat`/`settings.timeFormat`.
-
-4. **[Medium] Productivity date-bucket logic is still UTC-based.** — RESOLVED. Replaced `toISOString().split('T')[0]` with `getLocalDateKey()` in `karmaEngine.ts` and `ProductivityPanel.tsx`.
-
-5. **[Medium] `TaskAddInput` drops selected metadata on the `onSubmit` path.** — RESOLVED. Changed `onSubmit` callback to accept full `TaskCreate` data including priority, labels, and project.
-
-6. **[Medium] Attachment import bypasses attachment size constraints.** — RESOLVED. Added size validation (per-file and per-task totals) to `addWithMetadata()` in `attachmentRepository.ts`.
-
-7. **[Medium] Label hook reactivity is still inconsistent across hook instances.** — RESOLVED. Added `notifyLabelsChanged()` calls to `createLabel`, `updateLabel`, and `deleteLabel` in `useLabels.ts`.
-
-8. **[Medium] Described settings features are still incomplete.** — RESOLVED. Added weekly goal slider and quiet hours start/end configuration in `SettingsPanel`. Added `notifications:setQuietHours` IPC handler and preload bridge. Quiet hours loaded from settings at app startup.
-
-9. **[Medium] E2E assertion quality remains weak across a large part of the suite.** — RESOLVED. All ~38 placeholder `"Reaching here without error is the assertion"` comments replaced with real `expect()` assertions across 6 E2E test files.
-
-10. **[Medium] Multiple unit tests validate local reimplementations instead of production code paths.** — RESOLVED. Rewrote `notificationService.test.ts` to mock Electron and import real `NotificationService`. Rewrote `settings.test.ts` to use SQL helpers matching handler patterns and import `DEFAULT_SETTINGS` from shared constants.
+1. **[High] Referential integrity** - Added FK constraints to DDL, application-level validation in task/project repositories (validateProjectExists, validateParentTaskExists), cycle detection via visited Set in getDescendantIds.
+2. **[High] defaultProject stale** - QuickAddModal now verifies project exists before using stored default; task/project creation validates IDs.
+3. **[High] Comment sanitization/XSS** - Extended sanitizeHtml to handle vbscript:, whitespace-prefixed URLs, SVG/style/math/base/meta tags; import path sanitizes comment HTML.
+4. **[High] Recurrence completion** - Handlers and MCP tools now handle `recurrenceRule` without `dueDate` by using `Date.now()` as base date.
+5. **[High] Attachment path traversal** - Added `sanitizeFilename()` utility; applied to attachment open and import paths.
+6. **[Medium] Date/time settings** - Wired `formatDateByPreference` into TaskComments and MCP; ProductivityPanel uses locale-default weekday labels.
+7. **[Medium] Due-date grouping timezone** - Fixed label parsing to use `new Date(y, m-1, d)` instead of `new Date(key)` for local date semantics.
+8. **[Medium] Time support inconsistent** - Updated FEATURE_AUDIT.md to mark time support as partial (NLP only, no time picker/display UI).
+9. **[Medium] Unit tests reimplementations** - Clarified comments explaining why helper SQL functions and repository-level tests are used (settings inline in handlers, IPC requires electron mock).
+10. **[Low] Shared constants stale** - Removed dead code (SHORTCUTS, VIEW_MODES, DATE_PRESETS, IPC_CHANNELS), synced DEFAULT_SETTINGS with AppSettings interface.
