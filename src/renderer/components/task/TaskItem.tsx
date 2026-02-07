@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Circle, CheckCircle2, Calendar, Flag, Trash2, Edit, Tag, Clock, AlertCircle } from 'lucide-react'
+import { Circle, CheckCircle2, Calendar, Flag, Trash2, Edit, Tag, Clock, AlertCircle, UserCircle } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useSettings } from '@renderer/hooks/useSettings'
 import type { Task, Priority, Label } from '@shared/types'
@@ -191,6 +191,14 @@ export function TaskItem({
               {label.name}
             </span>
           ))}
+
+          {/* Delegated to */}
+          {task.delegatedTo && (
+            <span className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <UserCircle className="w-2.5 h-2.5" />
+              {task.delegatedTo}
+            </span>
+          )}
         </div>
       </div>
 

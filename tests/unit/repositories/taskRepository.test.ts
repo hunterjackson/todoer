@@ -63,7 +63,8 @@ async function createTestDb(): Promise<SqlJsDatabase> {
       sort_order REAL NOT NULL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      deleted_at INTEGER
+      deleted_at INTEGER,
+      delegated_to TEXT
     );
 
     CREATE TABLE task_labels (
@@ -728,6 +729,56 @@ describe('TaskRepository', () => {
 
       // Delete should not hang or throw stack overflow - cycle detection should stop it
       expect(() => repo.delete(t1.id)).not.toThrow()
+    })
+  })
+
+  describe('delegatedTo', () => {
+    it('should create a task with delegatedTo', () => {
+      const task = repo.create({ content: 'Delegated task', delegatedTo: 'Alice' })
+      expect(task.delegatedTo).toBe('Alice')
+    })
+
+    it('should default delegatedTo to null', () => {
+      const task = repo.create({ content: 'Normal task' })
+      expect(task.delegatedTo).toBeNull()
+    })
+
+    it('should update delegatedTo', () => {
+      const task = repo.create({ content: 'Task' })
+      const updated = repo.update(task.id, { delegatedTo: 'Bob' })
+      expect(updated?.delegatedTo).toBe('Bob')
+    })
+
+    it('should clear delegatedTo with null', () => {
+      const task = repo.create({ content: 'Task', delegatedTo: 'Alice' })
+      const updated = repo.update(task.id, { delegatedTo: null })
+      expect(updated?.delegatedTo).toBeNull()
+    })
+
+    it('should list delegated users', () => {
+      repo.create({ content: 'Task 1', delegatedTo: 'Alice' })
+      repo.create({ content: 'Task 2', delegatedTo: 'Bob' })
+      repo.create({ content: 'Task 3', delegatedTo: 'Alice' })
+      repo.create({ content: 'Task 4' })
+
+      const users = repo.listDelegatedUsers()
+      expect(users).toHaveLength(2)
+      expect(users).toContain('Alice')
+      expect(users).toContain('Bob')
+    })
+
+    it('should not include deleted tasks in delegated users', () => {
+      const task = repo.create({ content: 'Task', delegatedTo: 'Charlie' })
+      repo.delete(task.id)
+
+      const users = repo.listDelegatedUsers()
+      expect(users).not.toContain('Charlie')
+    })
+
+    it('should preserve delegatedTo in get', () => {
+      const task = repo.create({ content: 'Task', delegatedTo: 'Diana' })
+      const fetched = repo.get(task.id)
+      expect(fetched?.delegatedTo).toBe('Diana')
     })
   })
 })

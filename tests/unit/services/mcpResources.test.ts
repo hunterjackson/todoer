@@ -29,7 +29,8 @@ describe('MCP Resources', () => {
       recurrence_rule TEXT, priority INTEGER DEFAULT 4,
       completed INTEGER DEFAULT 0, completed_at INTEGER,
       sort_order REAL DEFAULT 0, created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL, deleted_at INTEGER
+      updated_at INTEGER NOT NULL, deleted_at INTEGER,
+      delegated_to TEXT
     )`)
     db.run(`CREATE TABLE projects (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT DEFAULT '#808080',

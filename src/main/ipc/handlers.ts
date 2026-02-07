@@ -287,6 +287,11 @@ export function registerIpcHandlers(): void {
     return taskRepo.list({ labelId, completed: false })
   })
 
+  ipcMain.handle('tasks:listDelegatedUsers', async () => {
+    const { taskRepo } = getRepositories()
+    return taskRepo.listDelegatedUsers()
+  })
+
   // Project handlers
   ipcMain.handle('projects:list', async () => {
     const { projectRepo } = getRepositories()
@@ -394,7 +399,8 @@ export function registerIpcHandlers(): void {
           duration: task.duration,
           recurrenceRule: task.recurrenceRule,
           priority: task.priority,
-          labelIds: labelIds.length > 0 ? labelIds : undefined
+          labelIds: labelIds.length > 0 ? labelIds : undefined,
+          delegatedTo: task.delegatedTo
         })
         taskIdMap.set(task.id, newTask.id)
 
@@ -933,7 +939,8 @@ export function registerIpcHandlers(): void {
             duration: task.duration ?? null,
             priority: task.priority,
             recurrenceRule: task.recurrenceRule,
-            labelIds: remappedLabelIds
+            labelIds: remappedLabelIds,
+            delegatedTo: task.delegatedTo ?? null
           })
 
           // Restore original metadata (sortOrder, timestamps, completed state)
