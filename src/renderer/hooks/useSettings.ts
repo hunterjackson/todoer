@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import type { ShortcutBinding } from '@shared/shortcuts'
 
 export interface AppSettings {
   confirmDelete: boolean
@@ -11,6 +12,7 @@ export interface AppSettings {
   quietHoursStart: number
   quietHoursEnd: number
   defaultProject: string
+  keyboardShortcuts: Record<string, ShortcutBinding>
 }
 
 const defaultSettings: AppSettings = {
@@ -23,7 +25,8 @@ const defaultSettings: AppSettings = {
   weeklyGoal: 25,
   quietHoursStart: 22,
   quietHoursEnd: 7,
-  defaultProject: 'inbox'
+  defaultProject: 'inbox',
+  keyboardShortcuts: {}
 }
 
 // Cache settings in memory for fast access
@@ -83,6 +86,18 @@ async function loadSettingsToCache(): Promise<void> {
 
       const defaultProjectVal = await window.api.settings.get('defaultProject')
       if (defaultProjectVal !== null) settings.defaultProject = defaultProjectVal
+
+      const keyboardShortcutsVal = await window.api.settings.get('keyboardShortcuts')
+      if (keyboardShortcutsVal !== null) {
+        try {
+          const parsed = JSON.parse(keyboardShortcutsVal)
+          if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+            settings.keyboardShortcuts = parsed
+          }
+        } catch {
+          // Ignore invalid JSON, use defaults
+        }
+      }
     } catch {
       // Use defaults on error
     }
@@ -129,7 +144,8 @@ export function useSettings() {
 
     // Persist
     try {
-      await window.api.settings.set(key, String(value))
+      const serialized = key === 'keyboardShortcuts' ? JSON.stringify(value) : String(value)
+      await window.api.settings.set(key, serialized)
     } catch {
       // Ignore errors
     }

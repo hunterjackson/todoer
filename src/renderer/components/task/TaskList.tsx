@@ -5,6 +5,7 @@ import { ChevronRight, CornerDownRight } from 'lucide-react'
 import { TaskItem } from './TaskItem'
 import { TaskAddInput } from './TaskAddInput'
 import { cn } from '@renderer/lib/utils'
+import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts'
 import type { Task, TaskCreate, Priority } from '@shared/types'
 
 interface TaskNode extends Task {
@@ -162,6 +163,7 @@ export function TaskList({
   allExpanded,
   onCreateSubtask
 }: TaskListProps): React.ReactElement {
+  const { matchShortcut } = useKeyboardShortcuts()
   const [focusedIndex, setFocusedIndex] = useState<number>(-1)
   const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set())
   const [inlineSubtaskParentId, setInlineSubtaskParentId] = useState<string | null>(null)
@@ -398,105 +400,126 @@ export function TaskList({
 
       const focusedTask = focusedIndex >= 0 ? flattenedTasks[focusedIndex] : null
 
-      switch (e.key.toLowerCase()) {
-        case 'j':
-          // Move down
+      // Move down
+      if (matchShortcut(e, 'taskMoveDown')) {
+        e.preventDefault()
+        setFocusedIndex((prev) => Math.min(prev + 1, flattenedTasks.length - 1))
+        return
+      }
+      // Move up
+      if (matchShortcut(e, 'taskMoveUp')) {
+        e.preventDefault()
+        setFocusedIndex((prev) => Math.max(prev - 1, 0))
+        return
+      }
+      // Complete/uncomplete
+      if (matchShortcut(e, 'taskComplete') && focusedTask) {
+        e.preventDefault()
+        if (focusedTask.completed) {
+          onUncomplete(focusedTask.id)
+        } else {
+          onComplete(focusedTask.id)
+        }
+        return
+      }
+      // Edit focused task
+      if (matchShortcut(e, 'taskEdit') && focusedTask) {
+        e.preventDefault()
+        onEdit(focusedTask)
+        return
+      }
+      // Delete focused task
+      if (matchShortcut(e, 'taskDelete') && focusedTask) {
+        e.preventDefault()
+        onDelete(focusedTask.id)
+        return
+      }
+      // Set priority 1-4
+      if (focusedTask && onUpdatePriority) {
+        if (matchShortcut(e, 'taskPriority1')) {
           e.preventDefault()
-          setFocusedIndex((prev) => Math.min(prev + 1, flattenedTasks.length - 1))
-          break
-        case 'k':
-          // Move up
+          onUpdatePriority(focusedTask.id, 1)
+          return
+        }
+        if (matchShortcut(e, 'taskPriority2')) {
           e.preventDefault()
-          setFocusedIndex((prev) => Math.max(prev - 1, 0))
-          break
-        case 'e':
-          // Complete/uncomplete focused task
-          if (focusedTask) {
-            e.preventDefault()
-            if (focusedTask.completed) {
-              onUncomplete(focusedTask.id)
-            } else {
-              onComplete(focusedTask.id)
-            }
-          }
-          break
-        case 'enter':
-          // Edit focused task
-          if (focusedTask && !e.metaKey && !e.ctrlKey) {
-            e.preventDefault()
-            onEdit(focusedTask)
-          }
-          break
-        case 'backspace':
-        case 'delete':
-          // Delete focused task
-          if (focusedTask && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault()
-            onDelete(focusedTask.id)
-          }
-          break
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-          // Set priority
-          if (focusedTask && onUpdatePriority) {
-            e.preventDefault()
-            const priority = parseInt(e.key) as Priority
-            onUpdatePriority(focusedTask.id, priority)
-          }
-          break
-        case 'arrowleft':
-        case 'h':
-          // Collapse subtasks
-          if (focusedTask && focusedTask.children.length > 0) {
-            e.preventDefault()
-            if (!collapsedTasks.has(focusedTask.id)) {
-              toggleTaskCollapse(focusedTask.id)
-            }
-          }
-          break
-        case 'arrowright':
-        case 'l':
-          // Expand subtasks
-          if (focusedTask && focusedTask.children.length > 0) {
-            e.preventDefault()
-            if (collapsedTasks.has(focusedTask.id)) {
-              toggleTaskCollapse(focusedTask.id)
-            }
-          }
-          break
-        case 'tab':
-          // Indent/outdent with Tab/Shift+Tab
-          if (focusedTask && onReorder) {
-            e.preventDefault()
-            if (e.shiftKey) {
-              outdentTask(focusedTask.id)
-            } else {
-              indentTask(focusedTask.id)
-            }
-          }
-          break
-        case 's':
-          // Add subtask to focused task
-          if (focusedTask) {
-            e.preventDefault()
-            setInlineSubtaskParentId(focusedTask.id)
-            setInlineSubtaskContent('')
-          }
-          break
-        case 'escape':
-          // Clear focus or close inline subtask input
-          if (inlineSubtaskParentId) {
-            setInlineSubtaskParentId(null)
-            setInlineSubtaskContent('')
-          } else {
-            setFocusedIndex(-1)
-          }
-          break
+          onUpdatePriority(focusedTask.id, 2)
+          return
+        }
+        if (matchShortcut(e, 'taskPriority3')) {
+          e.preventDefault()
+          onUpdatePriority(focusedTask.id, 3)
+          return
+        }
+        if (matchShortcut(e, 'taskPriority4')) {
+          e.preventDefault()
+          onUpdatePriority(focusedTask.id, 4)
+          return
+        }
+      }
+      // Collapse subtasks
+      if (matchShortcut(e, 'taskCollapse') && focusedTask && focusedTask.children.length > 0) {
+        e.preventDefault()
+        if (!collapsedTasks.has(focusedTask.id)) {
+          toggleTaskCollapse(focusedTask.id)
+        }
+        return
+      }
+      // Also collapse on ArrowLeft (alternate key)
+      if (e.key === 'ArrowLeft' && !e.altKey && !e.ctrlKey && !e.metaKey && focusedTask && focusedTask.children.length > 0) {
+        e.preventDefault()
+        if (!collapsedTasks.has(focusedTask.id)) {
+          toggleTaskCollapse(focusedTask.id)
+        }
+        return
+      }
+      // Expand subtasks
+      if (matchShortcut(e, 'taskExpand') && focusedTask && focusedTask.children.length > 0) {
+        e.preventDefault()
+        if (collapsedTasks.has(focusedTask.id)) {
+          toggleTaskCollapse(focusedTask.id)
+        }
+        return
+      }
+      // Also expand on ArrowRight (alternate key)
+      if (e.key === 'ArrowRight' && !e.altKey && !e.ctrlKey && !e.metaKey && focusedTask && focusedTask.children.length > 0) {
+        e.preventDefault()
+        if (collapsedTasks.has(focusedTask.id)) {
+          toggleTaskCollapse(focusedTask.id)
+        }
+        return
+      }
+      // Outdent (check before indent since Shift+Tab matches before Tab)
+      if (matchShortcut(e, 'taskOutdent') && focusedTask && onReorder) {
+        e.preventDefault()
+        outdentTask(focusedTask.id)
+        return
+      }
+      // Indent
+      if (matchShortcut(e, 'taskIndent') && focusedTask && onReorder) {
+        e.preventDefault()
+        indentTask(focusedTask.id)
+        return
+      }
+      // Add subtask
+      if (matchShortcut(e, 'taskAddSubtask') && focusedTask) {
+        e.preventDefault()
+        setInlineSubtaskParentId(focusedTask.id)
+        setInlineSubtaskContent('')
+        return
+      }
+      // Clear focus / close inline subtask
+      if (matchShortcut(e, 'taskClearFocus')) {
+        if (inlineSubtaskParentId) {
+          setInlineSubtaskParentId(null)
+          setInlineSubtaskContent('')
+        } else {
+          setFocusedIndex(-1)
+        }
+        return
       }
     },
-    [focusedIndex, flattenedTasks, collapsedTasks, onComplete, onUncomplete, onEdit, onDelete, onUpdatePriority, toggleTaskCollapse, onReorder, indentTask, outdentTask, inlineSubtaskParentId]
+    [focusedIndex, flattenedTasks, collapsedTasks, onComplete, onUncomplete, onEdit, onDelete, onUpdatePriority, toggleTaskCollapse, onReorder, indentTask, outdentTask, inlineSubtaskParentId, matchShortcut]
   )
 
   useEffect(() => {

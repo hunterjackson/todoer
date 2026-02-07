@@ -12,5 +12,6 @@ export const DEFAULT_SETTINGS = {
   weeklyGoal: 25,
   quietHoursStart: 22,
   quietHoursEnd: 7,
-  defaultProject: INBOX_PROJECT_ID
+  defaultProject: INBOX_PROJECT_ID,
+  keyboardShortcuts: '{}' // JSON string of Record<ShortcutAction, ShortcutBinding> overrides
 } as const

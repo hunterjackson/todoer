@@ -148,7 +148,8 @@ describe('Settings Service', () => {
         'weeklyGoal',
         'quietHoursStart',
         'quietHoursEnd',
-        'defaultProject'
+        'defaultProject',
+        'keyboardShortcuts'
       ]
       for (const key of expectedKeys) {
         expect(DEFAULT_SETTINGS).toHaveProperty(key)

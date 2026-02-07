@@ -1,52 +1,36 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { X, Keyboard } from 'lucide-react'
+import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts'
+import { parseShortcutDisplay, type ShortcutCategory, type ShortcutDefinition } from '@shared/shortcuts'
 
 interface KeyboardShortcutsHelpProps {
   open: boolean
   onClose: () => void
 }
 
-const shortcuts = [
-  {
-    category: 'General',
-    items: [
-      { keys: ['Q'], description: 'Quick add task' },
-      { keys: ['/'], description: 'Search' },
-      { keys: ['M'], description: 'Toggle sidebar' },
-      { keys: ['?'], description: 'Show keyboard shortcuts' },
-      { keys: ['Esc'], description: 'Close modal/dialog' },
-      { keys: ['Cmd+Z'], description: 'Undo' },
-      { keys: ['Cmd+Shift+Z'], description: 'Redo' },
-      { keys: ['Cmd+,'], description: 'Open Settings' }
-    ]
-  },
-  {
-    category: 'Navigation',
-    items: [
-      { keys: ['G', 'T'], description: 'Go to Today' },
-      { keys: ['G', 'I'], description: 'Go to Inbox' },
-      { keys: ['G', 'U'], description: 'Go to Upcoming' },
-      { keys: ['G', 'C'], description: 'Go to Calendar' }
-    ]
-  },
-  {
-    category: 'Task List (hover over list)',
-    items: [
-      { keys: ['J / K'], description: 'Move focus down / up' },
-      { keys: ['Tab / Shift+Tab'], description: 'Indent / outdent task' },
-      { keys: ['E'], description: 'Complete/uncomplete focused task' },
-      { keys: ['1-4'], description: 'Set priority' },
-      { keys: ['Enter'], description: 'Edit focused task' },
-      { keys: ['H / L'], description: 'Collapse / expand subtasks' },
-      { keys: ['Cmd+Delete'], description: 'Delete focused task' }
-    ]
-  }
-]
+const CATEGORY_DISPLAY: Record<ShortcutCategory, string> = {
+  'General': 'General',
+  'Navigation': 'Navigation',
+  'Task List': 'Task List (hover over list)'
+}
 
 export function KeyboardShortcutsHelp({
   open,
   onClose
 }: KeyboardShortcutsHelpProps): React.ReactElement | null {
+  const { getShortcuts } = useKeyboardShortcuts()
+
+  const groupedShortcuts = useMemo(() => {
+    const shortcuts = getShortcuts()
+    const groups = new Map<ShortcutCategory, ShortcutDefinition[]>()
+    for (const s of shortcuts) {
+      const list = groups.get(s.category) || []
+      list.push(s)
+      groups.set(s.category, list)
+    }
+    return groups
+  }, [getShortcuts])
+
   useEffect(() => {
     if (open) {
       const handleEscape = (e: KeyboardEvent) => {
@@ -87,34 +71,38 @@ export function KeyboardShortcutsHelp({
 
         {/* Shortcuts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {shortcuts.map((section) => (
-            <div key={section.category}>
+          {Array.from(groupedShortcuts.entries()).map(([category, shortcuts]) => (
+            <div key={category}>
               <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                {section.category}
+                {CATEGORY_DISPLAY[category]}
               </h3>
               <div className="space-y-2">
-                {section.items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between"
-                  >
-                    <span className="text-sm">{item.description}</span>
-                    <div className="flex items-center gap-1">
-                      {item.keys.map((key, keyIndex) => (
-                        <React.Fragment key={keyIndex}>
-                          {keyIndex > 0 && (
-                            <span className="text-xs text-muted-foreground mx-1">
-                              then
-                            </span>
-                          )}
-                          <kbd className="px-2 py-1 text-xs font-mono bg-muted rounded border">
-                            {key}
-                          </kbd>
-                        </React.Fragment>
-                      ))}
+                {shortcuts.map((shortcut) => {
+                  const keyParts = parseShortcutDisplay(shortcut.binding)
+                  return (
+                    <div
+                      key={shortcut.action}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-sm">{shortcut.label}</span>
+                      <div className="flex items-center gap-1">
+                        {keyParts.map((part, index) => (
+                          <React.Fragment key={index}>
+                            {part === 'then' ? (
+                              <span className="text-xs text-muted-foreground mx-1">
+                                then
+                              </span>
+                            ) : (
+                              <kbd className="px-2 py-1 text-xs font-mono bg-muted rounded border">
+                                {part}
+                              </kbd>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           ))}
