@@ -31,7 +31,8 @@ describe('Comment Repository', () => {
         sort_order REAL DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
-        deleted_at INTEGER
+        deleted_at INTEGER,
+        delegated_to TEXT
       )
     `)
 

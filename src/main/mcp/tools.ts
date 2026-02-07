@@ -86,6 +86,10 @@ export function registerTools(): Tool[] {
             type: 'array',
             items: { type: 'string' },
             description: 'Label names to apply to the task'
+          },
+          delegatedTo: {
+            type: 'string',
+            description: 'Person this task is delegated to (for "waiting for" tracking)'
           }
         },
         required: ['content']
@@ -149,6 +153,10 @@ export function registerTools(): Tool[] {
           projectId: {
             type: 'string',
             description: 'Move to a different project'
+          },
+          delegatedTo: {
+            type: 'string',
+            description: 'Person this task is delegated to (use null to clear)'
           }
         },
         required: ['taskId']
@@ -262,7 +270,8 @@ export function handleToolCall(
                   priority: t.priority,
                   dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : null,
                   completed: t.completed,
-                  projectId: t.projectId
+                  projectId: t.projectId,
+                  delegatedTo: t.delegatedTo
                 })),
                 null,
                 2
@@ -302,7 +311,8 @@ export function handleToolCall(
           recurrenceRule,
           priority: normalizePriority(args.priority),
           projectId: args.projectId as string | undefined,
-          labelIds
+          labelIds,
+          delegatedTo: (args.delegatedTo as string) || null
         })
 
         return {
@@ -383,6 +393,7 @@ export function handleToolCall(
         if (args.description !== undefined) updates.description = args.description
         if (args.priority !== undefined) updates.priority = normalizePriority(args.priority)
         if (args.projectId) updates.projectId = args.projectId
+        if (args.delegatedTo !== undefined) updates.delegatedTo = (args.delegatedTo as string) || null
 
         if (args.dueDate) {
           const parsed = parseDateWithRecurrence(args.dueDate as string)

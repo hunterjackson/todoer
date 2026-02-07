@@ -49,6 +49,7 @@ export function exportToCSV(tasks: Task[]): string {
     'completed',
     'dueDate',
     'projectId',
+    'delegatedTo',
     'createdAt',
     'completedAt'
   ]
