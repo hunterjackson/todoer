@@ -99,7 +99,6 @@ async function main() {
   }
 
   // Helper: timestamps
-  const now = Date.now()
   const DAY = 86400000
   const todayMidnight = new Date()
   todayMidnight.setHours(0, 0, 0, 0)
@@ -114,7 +113,7 @@ async function main() {
     projectId?: string | null
     sectionId?: string | null
     dueDate?: number | null
-    priority?: number
+    priority?: 1 | 2 | 3 | 4
     labelIds?: string[]
     duration?: number | null
     parentId?: string | null
