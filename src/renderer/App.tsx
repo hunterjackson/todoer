@@ -24,10 +24,12 @@ import { ExportImportToast } from './components/ui/ExportImportToast'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ProductivityPanel } from './components/settings/ProductivityPanel'
 import { useStore } from './stores/useStore'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import type { Task } from '@shared/types'
 
 export default function App(): React.ReactElement {
   const { currentView, currentViewId, setView, searchQuery, theme, sidebarCollapsed, toggleSidebar, goBack, goForward, canGoBack, canGoForward } = useStore()
+  const { matchShortcut } = useKeyboardShortcuts()
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -173,23 +175,24 @@ export default function App(): React.ReactElement {
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       const isInput = isInputFocused()
+      const lastKey = window.__lastKey
 
-      // Navigate back: Alt+Left
-      if (e.key === 'ArrowLeft' && e.altKey && !e.metaKey && !e.ctrlKey) {
+      // Navigate back
+      if (matchShortcut(e, 'navBack', lastKey)) {
         e.preventDefault()
         goBack()
         return
       }
 
-      // Navigate forward: Alt+Right
-      if (e.key === 'ArrowRight' && e.altKey && !e.metaKey && !e.ctrlKey) {
+      // Navigate forward
+      if (matchShortcut(e, 'navForward', lastKey)) {
         e.preventDefault()
         goForward()
         return
       }
 
-      // Undo: Cmd/Ctrl+Z
-      if (e.key === 'z' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      // Undo
+      if (matchShortcut(e, 'undo', lastKey)) {
         e.preventDefault()
         const result = await window.api.undo.undo()
         if (result.success) {
@@ -199,11 +202,8 @@ export default function App(): React.ReactElement {
         return
       }
 
-      // Redo: Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y
-      if (
-        (e.key === 'z' && (e.metaKey || e.ctrlKey) && e.shiftKey) ||
-        (e.key === 'y' && (e.metaKey || e.ctrlKey))
-      ) {
+      // Redo (also support Ctrl+Y as alternate)
+      if (matchShortcut(e, 'redo', lastKey) || (e.key === 'y' && (e.metaKey || e.ctrlKey))) {
         e.preventDefault()
         const result = await window.api.undo.redo()
         if (result.success) {
@@ -213,56 +213,50 @@ export default function App(): React.ReactElement {
         return
       }
 
-      // Quick add: q
-      if (e.key === 'q' && !e.metaKey && !e.ctrlKey && !isInput) {
+      // Quick add
+      if (!isInput && matchShortcut(e, 'quickAdd', lastKey)) {
         e.preventDefault()
         setQuickAddOpen(true)
       }
 
-      // Search: /
-      if (e.key === '/' && !isInput) {
+      // Search
+      if (!isInput && matchShortcut(e, 'search', lastKey)) {
         e.preventDefault()
         setView('search')
       }
 
-      // Toggle sidebar: m
-      if (e.key === 'm' && !e.metaKey && !e.ctrlKey && !isInput) {
+      // Toggle sidebar
+      if (!isInput && matchShortcut(e, 'toggleSidebar', lastKey)) {
         e.preventDefault()
         toggleSidebar()
       }
 
-      // Show keyboard shortcuts help: ?
-      if (e.key === '?' && !isInput) {
+      // Show keyboard shortcuts help
+      if (!isInput && matchShortcut(e, 'help', lastKey)) {
         e.preventDefault()
         setShowShortcutsHelp(true)
       }
 
-      // Open settings: comma
-      if (e.key === ',' && (e.metaKey || e.ctrlKey)) {
+      // Open settings
+      if (matchShortcut(e, 'settings', lastKey)) {
         e.preventDefault()
         setShowSettings(true)
       }
 
-      // Go to Calendar: g c
-      if (e.key === 'c' && window.__lastKey === 'g' && !isInput) {
+      // Navigation chords
+      if (!isInput && matchShortcut(e, 'goCalendar', lastKey)) {
         e.preventDefault()
         setView('calendar')
       }
-
-      // Go to Today: g t
-      if (e.key === 't' && window.__lastKey === 'g' && !isInput) {
+      if (!isInput && matchShortcut(e, 'goToday', lastKey)) {
         e.preventDefault()
         setView('today')
       }
-
-      // Go to Inbox: g i
-      if (e.key === 'i' && window.__lastKey === 'g' && !isInput) {
+      if (!isInput && matchShortcut(e, 'goInbox', lastKey)) {
         e.preventDefault()
         setView('inbox')
       }
-
-      // Go to Upcoming: g u
-      if (e.key === 'u' && window.__lastKey === 'g' && !isInput) {
+      if (!isInput && matchShortcut(e, 'goUpcoming', lastKey)) {
         e.preventDefault()
         setView('upcoming')
       }
@@ -275,7 +269,7 @@ export default function App(): React.ReactElement {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setView, toggleSidebar, goBack, goForward])
+  }, [setView, toggleSidebar, goBack, goForward, matchShortcut])
 
   const renderView = () => {
     switch (currentView) {

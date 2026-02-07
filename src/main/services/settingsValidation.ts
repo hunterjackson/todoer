@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from '@shared/constants'
+import { validateShortcutsJSON } from '@shared/shortcuts'
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS
 
@@ -76,6 +77,12 @@ export function validateSettingEntry(
       if (!normalizedValue) {
         throw new Error(`Invalid value for ${settingKey}: ${value}`)
       }
+      return { key: settingKey, value: normalizedValue }
+    }
+
+    case 'keyboardShortcuts': {
+      // Validate JSON structure and return the original string
+      validateShortcutsJSON(normalizedValue)
       return { key: settingKey, value: normalizedValue }
     }
   }

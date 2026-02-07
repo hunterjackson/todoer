@@ -1,10 +1,19 @@
-import React, { useEffect } from 'react'
-import { X, Settings, Moon, Sun, Monitor, Bell, Trash2, Globe, Clock, Calendar, FolderKanban } from 'lucide-react'
+import React, { useEffect, useState, useCallback } from 'react'
+import { X, Settings, Moon, Sun, Monitor, Bell, Trash2, Globe, Clock, Calendar, FolderKanban, Keyboard, RotateCcw } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useProjects } from '@hooks/useProjects'
 import { useSettings } from '@hooks/useSettings'
 import { INBOX_PROJECT_ID } from '@shared/constants'
 import { getSelectableDefaultProjects, resolveDefaultProjectId } from '@renderer/lib/defaultProject'
+import {
+  DEFAULT_SHORTCUTS,
+  detectConflicts,
+  mergeShortcuts,
+  parseShortcutDisplay,
+  type ShortcutAction,
+  type ShortcutBinding,
+  type ShortcutCategory
+} from '@shared/shortcuts'
 
 interface SettingsPanelProps {
   open: boolean
@@ -12,6 +21,154 @@ interface SettingsPanelProps {
 }
 
 type ThemeOption = 'light' | 'dark' | 'system'
+
+function ShortcutEditor({
+  overrides,
+  onUpdate
+}: {
+  overrides: Record<string, ShortcutBinding>
+  onUpdate: (newOverrides: Record<string, ShortcutBinding>) => void
+}) {
+  const [editingAction, setEditingAction] = useState<ShortcutAction | null>(null)
+
+  const merged = mergeShortcuts(DEFAULT_SHORTCUTS, overrides)
+  const conflicts = detectConflicts(merged)
+  const conflictSet = new Set(conflicts.flatMap(([a, b]) => [a, b]))
+
+  // Group by category
+  const grouped = new Map<ShortcutCategory, typeof merged>()
+  for (const s of merged) {
+    const list = grouped.get(s.category) || []
+    list.push(s)
+    grouped.set(s.category, list)
+  }
+
+  const handleKeyCapture = useCallback((e: KeyboardEvent) => {
+    if (!editingAction) return
+    // Ignore lone modifier keys
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    const newBinding: ShortcutBinding = {
+      key: e.key,
+      ...(e.ctrlKey || e.metaKey ? { ctrl: true } : {}),
+      ...(e.shiftKey ? { shift: true } : {}),
+      ...(e.altKey ? { alt: true } : {})
+    }
+
+    // If Escape is pressed with no modifiers, cancel editing
+    if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+      setEditingAction(null)
+      return
+    }
+
+    const newOverrides = { ...overrides, [editingAction]: newBinding }
+    onUpdate(newOverrides)
+    setEditingAction(null)
+  }, [editingAction, overrides, onUpdate])
+
+  useEffect(() => {
+    if (editingAction) {
+      window.addEventListener('keydown', handleKeyCapture, true)
+      return () => window.removeEventListener('keydown', handleKeyCapture, true)
+    }
+  }, [editingAction, handleKeyCapture])
+
+  const handleReset = (action: ShortcutAction) => {
+    const newOverrides = { ...overrides }
+    delete newOverrides[action]
+    onUpdate(newOverrides)
+  }
+
+  const handleResetAll = () => {
+    onUpdate({})
+  }
+
+  const hasOverrides = Object.keys(overrides).length > 0
+
+  return (
+    <div className="space-y-3">
+      {hasOverrides && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleResetAll}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Reset all to defaults
+          </button>
+        </div>
+      )}
+      {Array.from(grouped.entries()).map(([category, shortcuts]) => (
+        <div key={category}>
+          <h4 className="text-xs font-medium text-muted-foreground mb-1.5">{category}</h4>
+          <div className="space-y-1">
+            {shortcuts.map((shortcut) => {
+              const isEditing = editingAction === shortcut.action
+              const isConflict = conflictSet.has(shortcut.action)
+              const isOverridden = shortcut.action in overrides
+              const keyParts = parseShortcutDisplay(shortcut.binding)
+
+              return (
+                <div
+                  key={shortcut.action}
+                  className={`flex items-center justify-between py-1 px-2 rounded text-sm ${
+                    isConflict ? 'bg-destructive/10' : ''
+                  }`}
+                >
+                  <span className="text-sm flex-1 mr-2">{shortcut.label}</span>
+                  <div className="flex items-center gap-1">
+                    {isEditing ? (
+                      <span className="px-2 py-1 text-xs font-mono bg-primary/20 border border-primary rounded animate-pulse">
+                        Press a key...
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setEditingAction(shortcut.action)}
+                        className="flex items-center gap-1 hover:opacity-80"
+                        title="Click to change shortcut"
+                      >
+                        {keyParts.map((part, i) => (
+                          <React.Fragment key={i}>
+                            {part === 'then' ? (
+                              <span className="text-xs text-muted-foreground mx-0.5">then</span>
+                            ) : (
+                              <kbd className={`px-1.5 py-0.5 text-xs font-mono rounded border ${
+                                isOverridden ? 'bg-primary/10 border-primary/30' : 'bg-muted'
+                              }`}>
+                                {part}
+                              </kbd>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </button>
+                    )}
+                    {isOverridden && !isEditing && (
+                      <button
+                        onClick={() => handleReset(shortcut.action)}
+                        className="p-0.5 rounded hover:bg-accent"
+                        title="Reset to default"
+                      >
+                        <RotateCcw className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+      {conflicts.length > 0 && (
+        <p className="text-xs text-destructive mt-1">
+          Warning: Some shortcuts have conflicting bindings
+        </p>
+      )}
+    </div>
+  )
+}
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.ReactElement | null {
   const { theme, setTheme } = useStore()
@@ -351,6 +508,17 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps): React.Reac
               </label>
 
             </div>
+          </div>
+
+          {/* Keyboard Shortcuts */}
+          <div>
+            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Keyboard className="w-4 h-4" /> Keyboard Shortcuts
+            </h3>
+            <ShortcutEditor
+              overrides={settings.keyboardShortcuts}
+              onUpdate={(newOverrides) => updateSetting('keyboardShortcuts', newOverrides)}
+            />
           </div>
 
           {/* Data */}
