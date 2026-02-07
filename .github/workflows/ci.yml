@@ -3,14 +3,14 @@ name: CI
 on:
   push:
   pull_request:
-    branches: [main]
+    branches: [master]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test:
+  test-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
       - name: Unit & integration tests
         run: npm run test:run
 
-      - name: Build app (required for E2E)
+      - name: Build app
         run: npm run build
 
       - name: E2E tests
@@ -47,23 +47,6 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
-
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build app
-        run: npm run build
 
       - name: Package Linux (AppImage + deb)
         run: npx electron-builder --linux --publish never
