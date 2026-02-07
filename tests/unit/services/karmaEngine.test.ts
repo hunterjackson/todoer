@@ -58,6 +58,7 @@ describe('KarmaEngine', () => {
     createdAt: Date.now(),
     updatedAt: Date.now(),
     deletedAt: null,
+    delegatedTo: null,
     labels: [],
     ...overrides
   })

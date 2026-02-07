@@ -26,6 +26,11 @@ const api = {
     getByLabel: (labelId: string) => ipcRenderer.invoke('tasks:getByLabel', labelId)
   },
 
+  // Delegated users
+  delegatedUsers: {
+    list: () => ipcRenderer.invoke('tasks:listDelegatedUsers')
+  },
+
   // Project operations
   projects: {
     list: () => ipcRenderer.invoke('projects:list'),

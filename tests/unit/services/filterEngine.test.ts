@@ -48,6 +48,7 @@ describe('Enhanced Filter Engine', () => {
         completedAt: null,
         sortOrder: 1,
         deletedAt: null,
+        delegatedTo: null,
         recurrenceRule: 'FREQ=WEEKLY',
         createdAt: lastWeek,
         updatedAt: lastWeek,
@@ -68,6 +69,7 @@ describe('Enhanced Filter Engine', () => {
         completedAt: null,
         sortOrder: 2,
         deletedAt: null,
+        delegatedTo: null,
         recurrenceRule: null,
         createdAt: yesterday,
         updatedAt: yesterday,
@@ -88,6 +90,7 @@ describe('Enhanced Filter Engine', () => {
         completedAt: null,
         sortOrder: 3,
         deletedAt: null,
+        delegatedTo: 'Alice',
         recurrenceRule: null,
         createdAt: now,
         updatedAt: now,
@@ -108,6 +111,7 @@ describe('Enhanced Filter Engine', () => {
         completedAt: null,
         sortOrder: 4,
         deletedAt: null,
+        delegatedTo: null,
         recurrenceRule: null,
         createdAt: lastWeek,
         updatedAt: lastWeek,
@@ -131,6 +135,7 @@ describe('Enhanced Filter Engine', () => {
         completedAt: now,
         sortOrder: 5,
         deletedAt: null,
+        delegatedTo: null,
         recurrenceRule: null,
         createdAt: lastWeek,
         updatedAt: lastWeek,
@@ -151,6 +156,7 @@ describe('Enhanced Filter Engine', () => {
         completedAt: null,
         sortOrder: 6,
         deletedAt: null,
+        delegatedTo: 'Bob',
         recurrenceRule: null,
         createdAt: now,
         updatedAt: now,
@@ -335,6 +341,39 @@ describe('Enhanced Filter Engine', () => {
       const result = evaluateFilter(tasks, '/*progress*', context)
       // Should match 'in progress' section
       expect(result.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Delegated filtering', () => {
+    it('should filter tasks delegated to anyone', () => {
+      const result = evaluateFilter(tasks, 'delegated', context)
+      expect(result).toHaveLength(2)
+      expect(result.some(t => t.delegatedTo === 'Alice')).toBe(true)
+      expect(result.some(t => t.delegatedTo === 'Bob')).toBe(true)
+    })
+
+    it('should filter tasks delegated to anyone using wildcard', () => {
+      const result = evaluateFilter(tasks, 'delegated:*', context)
+      expect(result).toHaveLength(2)
+    })
+
+    it('should filter tasks delegated to specific person', () => {
+      const result = evaluateFilter(tasks, 'delegated:alice', context)
+      expect(result).toHaveLength(1)
+      expect(result[0].content).toBe('Review documents')
+    })
+
+    it('should filter non-delegated tasks with negation', () => {
+      const result = evaluateFilter(tasks, '!delegated', context)
+      // Tasks 1, 2, 4 have no delegation and are not completed/deleted
+      expect(result.every(t => !t.delegatedTo)).toBe(true)
+      expect(result.length).toBeGreaterThan(0)
+    })
+
+    it('should combine delegated filter with other filters', () => {
+      const result = evaluateFilter(tasks, 'delegated & #work', context)
+      expect(result).toHaveLength(1)
+      expect(result[0].content).toBe('Review documents')
     })
   })
 })

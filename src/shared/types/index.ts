@@ -23,6 +23,7 @@ export interface Task {
   sortOrder: number
   createdAt: number
   updatedAt: number
+  delegatedTo: string | null
   deletedAt: number | null
   // Virtual fields (populated from joins)
   labels?: TaskLabel[]
@@ -42,6 +43,7 @@ export interface TaskCreate {
   recurrenceRule?: string | null
   priority?: Priority
   labelIds?: string[]
+  delegatedTo?: string | null
 }
 
 export interface TaskUpdate {
@@ -57,6 +59,7 @@ export interface TaskUpdate {
   priority?: Priority
   labelIds?: string[]
   sortOrder?: number
+  delegatedTo?: string | null
 }
 
 // Priority levels (1 = highest, 4 = lowest/default)

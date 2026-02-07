@@ -17,6 +17,9 @@ import { startOfDay, endOfDay, addDays } from '@shared/utils'
  * - no deadline, has:deadline
  * - recurring, !recurring
  * - assigned, unassigned
+ * - delegated:name (tasks delegated to specific person)
+ * - delegated (any delegated task)
+ * - !delegated (tasks without delegation)
  * - has:description, has:labels, has:duration
  * - search:text (explicit text search)
  * - ! (negation prefix)
@@ -104,6 +107,18 @@ function evaluateCondition(task: Task, condition: string, context: FilterContext
   }
   if (c === 'unassigned') {
     return task.projectId === null
+  }
+
+  // Delegated filter
+  if (c === 'delegated') {
+    return task.delegatedTo !== null && task.delegatedTo !== ''
+  }
+  if (c.startsWith('delegated:')) {
+    const name = c.slice(10).trim()
+    if (name === '*') {
+      return task.delegatedTo !== null && task.delegatedTo !== ''
+    }
+    return task.delegatedTo?.toLowerCase() === name
   }
 
   // has: prefix queries
