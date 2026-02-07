@@ -88,6 +88,14 @@ function runMigrations(database: SqlJsDatabase): void {
     database.run('ALTER TABLE comments ADD COLUMN project_id TEXT')
   }
 
+  // Add delegated_to column to tasks if missing
+  const taskCols = database.exec("PRAGMA table_info(tasks)")
+  const taskColNames = taskCols[0]?.values.map(row => row[1]) || []
+
+  if (!taskColNames.includes('delegated_to')) {
+    database.run('ALTER TABLE tasks ADD COLUMN delegated_to TEXT')
+  }
+
   // Create task_attachments table if missing (stores files as BLOBs)
   database.run(`
     CREATE TABLE IF NOT EXISTS task_attachments (
@@ -125,7 +133,8 @@ function initSchema(database: SqlJsDatabase): void {
       sort_order REAL NOT NULL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      deleted_at INTEGER
+      deleted_at INTEGER,
+      delegated_to TEXT
     );
 
     -- Projects table
@@ -257,6 +266,7 @@ function initSchema(database: SqlJsDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_reminders_task ON reminders(task_id);
     CREATE INDEX IF NOT EXISTS idx_reminders_remind_at ON reminders(remind_at);
     CREATE INDEX IF NOT EXISTS idx_activity_entity ON activity_log(entity_type, entity_id);
+    CREATE INDEX IF NOT EXISTS idx_tasks_delegated ON tasks(delegated_to) WHERE delegated_to IS NOT NULL;
   `)
 }
 

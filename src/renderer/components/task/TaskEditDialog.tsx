@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { X, Flag, Clock, Plus, CheckCircle2, Circle, Check, Paperclip, Download, Trash2, FileText } from 'lucide-react'
+import { X, Flag, Clock, Plus, CheckCircle2, Circle, Check, Paperclip, Download, Trash2, FileText, UserCircle } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { DatePicker } from '@renderer/components/ui/DatePicker'
 import { LabelSelector } from '@renderer/components/ui/LabelSelector'
@@ -39,6 +39,9 @@ export function TaskEditDialog({
   const [projectId, setProjectId] = useState<string>('inbox')
   const [labelIds, setLabelIds] = useState<string[]>([])
   const [duration, setDuration] = useState<number | null>(null)
+  const [delegatedTo, setDelegatedTo] = useState<string>('')
+  const [delegatedUserSuggestions, setDelegatedUserSuggestions] = useState<string[]>([])
+  const [showDelegatedSuggestions, setShowDelegatedSuggestions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [subtasks, setSubtasks] = useState<Task[]>([])
@@ -54,10 +57,11 @@ export function TaskEditDialog({
   const isInitialLoad = useRef(true)
   const lastSavedData = useRef<string>('')
 
-  // Refresh projects list when dialog opens to catch newly created projects
+  // Refresh projects list and delegated users when dialog opens
   useEffect(() => {
     if (open) {
       refreshProjects()
+      window.api.delegatedUsers.list().then(setDelegatedUserSuggestions).catch(() => {})
     }
   }, [open, refreshProjects])
 
@@ -125,6 +129,7 @@ export function TaskEditDialog({
       setPriority(task.priority as Priority)
       setProjectId(task.projectId || 'inbox')
       setDuration(task.duration)
+      setDelegatedTo(task.delegatedTo || '')
 
       // Fetch labels for task
       window.api.tasks.getLabels(task.id).then((labels: Label[]) => {
@@ -148,9 +153,10 @@ export function TaskEditDialog({
       projectId,
       sectionId: shouldClearSection ? null : undefined,
       labelIds,
-      duration
+      duration,
+      delegatedTo: delegatedTo.trim() || null
     }
-  }, [task, content, description, dueDate, deadline, priority, projectId, labelIds, duration])
+  }, [task, content, description, dueDate, deadline, priority, projectId, labelIds, duration, delegatedTo])
 
   // Autosave with debounce
   const performAutoSave = useCallback(async () => {
@@ -185,7 +191,7 @@ export function TaskEditDialog({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [content, description, dueDate, deadline, priority, projectId, labelIds, duration, performAutoSave, task, open])
+  }, [content, description, dueDate, deadline, priority, projectId, labelIds, duration, delegatedTo, performAutoSave, task, open])
 
   // Mark initial load complete after all fields are set
   useEffect(() => {
@@ -500,6 +506,65 @@ export function TaskEditDialog({
                 />
                 <span className="text-sm text-muted-foreground">min</span>
               </div>
+            </div>
+          </div>
+
+          {/* Delegated to */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Delegated to</label>
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <UserCircle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <input
+                  type="text"
+                  value={delegatedTo}
+                  onChange={(e) => {
+                    setDelegatedTo(e.target.value)
+                    setShowDelegatedSuggestions(e.target.value.length > 0)
+                  }}
+                  onFocus={() => {
+                    if (delegatedUserSuggestions.length > 0) {
+                      setShowDelegatedSuggestions(true)
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay to allow click on suggestion
+                    setTimeout(() => setShowDelegatedSuggestions(false), 200)
+                  }}
+                  placeholder="Person name"
+                  className="flex-1 px-3 py-1.5 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {delegatedTo && (
+                  <button
+                    type="button"
+                    onClick={() => setDelegatedTo('')}
+                    className="p-1 rounded hover:bg-accent"
+                    title="Clear delegation"
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+              {showDelegatedSuggestions && delegatedUserSuggestions.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
+                  {delegatedUserSuggestions
+                    .filter(name => name.toLowerCase().includes(delegatedTo.toLowerCase()))
+                    .map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className="w-full px-3 py-1.5 text-sm text-left hover:bg-accent"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setDelegatedTo(name)
+                          setShowDelegatedSuggestions(false)
+                        }}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
 

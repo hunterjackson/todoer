@@ -31,6 +31,7 @@ interface TaskRow {
   created_at: number
   updated_at: number
   deleted_at: number | null
+  delegated_to: string | null
 }
 
 export class TaskRepository {
@@ -123,6 +124,7 @@ export class TaskRepository {
       sortOrder: row.sort_order,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      delegatedTo: row.delegated_to ?? null,
       deletedAt: row.deleted_at
     }
   }
@@ -272,8 +274,8 @@ export class TaskRepository {
     this.run(
       `INSERT INTO tasks (id, content, description, project_id, section_id, parent_id,
        due_date, deadline, duration, recurrence_rule, priority, completed, completed_at,
-       sort_order, created_at, updated_at, deleted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL)`,
+       sort_order, created_at, updated_at, deleted_at, delegated_to)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, ?)`,
       [
         id,
         normalizedContent,
@@ -288,7 +290,8 @@ export class TaskRepository {
         data.priority ?? 4,
         sortOrder,
         timestamp,
-        timestamp
+        timestamp,
+        data.delegatedTo ?? null
       ]
     )
 
@@ -377,6 +380,10 @@ export class TaskRepository {
     if (data.sortOrder !== undefined) {
       updates.push('sort_order = ?')
       params.push(data.sortOrder)
+    }
+    if (data.delegatedTo !== undefined) {
+      updates.push('delegated_to = ?')
+      params.push(data.delegatedTo)
     }
 
     params.push(id)
@@ -597,5 +604,12 @@ export class TaskRepository {
 
   getSubtasks(taskId: string): Task[] {
     return this.list({ parentId: taskId })
+  }
+
+  listDelegatedUsers(): string[] {
+    const rows = this.queryAll<{ delegated_to: string }>(
+      'SELECT DISTINCT delegated_to FROM tasks WHERE delegated_to IS NOT NULL AND deleted_at IS NULL'
+    )
+    return rows.map(r => r.delegated_to)
   }
 }
